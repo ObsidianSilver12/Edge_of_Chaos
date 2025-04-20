@@ -1,0 +1,54 @@
+HOW TO RUN THE TREE OF LIFE 3D MODELING TOOL
+=============================================
+
+PREREQUISITES:
+-------------
+1. Node.js (version 14 or higher) must be installed on your computer
+   - Download from: https://nodejs.org/
+
+INSTALLATION:
+------------
+1. Open a command prompt or terminal
+2. Navigate to this directory:
+   cd C:\Kim\Claude\Edge_of_Chaos\tree-of-life-3d-model
+
+3. Install the required dependencies:
+   npm install
+
+   This will take a few minutes as it downloads all necessary packages.
+
+RUNNING THE APPLICATION:
+----------------------
+1. In the same directory, start the development server:
+   npm start
+
+2. The application should automatically open in your default web browser
+   - If it doesn't, open your browser and go to: http://localhost:3000
+
+USING THE APPLICATION:
+--------------------
+1. The 10 Sephiroth nodes are already placed in the traditional Tree of Life arrangement
+2. Use the buttons in the left panel to add Platonic solids to the scene
+3. Click and drag objects to move them in 3D space
+4. Use the orbit controls (dragging the background) to rotate the view
+5. Connect points and take measurements to identify geometric patterns
+
+TROUBLESHOOTING:
+--------------
+If you encounter any issues:
+
+1. Make sure Node.js is properly installed
+   - Check by running: node --version
+
+2. If dependencies fail to install, try clearing npm cache:
+   npm cache clean --force
+   npm install
+
+3. If the app crashes or doesn't start:
+   - Check for error messages in the terminal
+   - Try closing and reopening the terminal
+   - Restart your computer if necessary
+
+4. For performance issues:
+   - Close other applications
+   - Use a modern browser like Chrome, Firefox, or Edge
