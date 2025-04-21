@@ -1,984 +1,631 @@
-"""
-Soul Spark Module
+# --- START OF FILE soul_spark.py ---
 
-This module implements the SoulSpark class, which represents the initial soul spark
-that forms in the Void field and will later be strengthened in the Guff field.
-The soul spark is the first tangible manifestation of the soul's essence, formed
-from quantum fluctuations at sacred geometry intersection points.
+"""
+Soul Spark Module (Refactored)
+
+Defines the SoulSpark class, representing the evolving soul entity.
+This class holds the core attributes, state, and methods for visualization
+and data management as the soul progresses through formation stages.
 
 Author: Soul Development Framework Team
 """
 
-import numpy as np
 import logging
-import uuid
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import json
+import numpy as np
 import os
+import sys
+import uuid
+import json
 from datetime import datetime
+from typing import Dict, List, Any, Tuple, Optional
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='soul_spark.log'
-)
-logger = logging.getLogger('soul_spark')
+# --- Logging ---
+logger = logging.getLogger(__name__)
+
+# --- Constants ---
+try:
+    from src.constants import (
+        GOLDEN_RATIO, FLOAT_EPSILON, LOG_LEVEL,
+        SOUL_SPARK_DEFAULT_FREQ, SOUL_SPARK_DEFAULT_STABILITY, SOUL_SPARK_DEFAULT_RESONANCE,
+        SOUL_SPARK_DEFAULT_ALIGNMENT, SOUL_SPARK_DEFAULT_ENERGY,
+        SOUL_SPARK_VIABILITY_WEIGHT_STABILITY, SOUL_SPARK_VIABILITY_WEIGHT_RESONANCE,
+        SOUL_SPARK_VIABILITY_WEIGHT_DIM_STABILITY, SOUL_SPARK_COMPLEXITY_DIVISOR,
+        SOUL_SPARK_POTENTIAL_WEIGHT_ALIGNMENT, SOUL_SPARK_POTENTIAL_WEIGHT_DIM_STABILITY,
+        # Visualization Constants (Imported for use within the class)
+        SOUL_SPARK_VIZ_POINT_SIZE_FACTOR, SOUL_SPARK_VIZ_POINT_SIZE_BASE,
+        SOUL_SPARK_VIZ_POINT_ALPHA_FACTOR, SOUL_SPARK_VIZ_POINT_ALPHA_MAX,
+        SOUL_SPARK_VIZ_EDGE_ALPHA_FACTOR, SOUL_SPARK_VIZ_EDGE_WIDTH_FACTOR,
+        SOUL_SPARK_VIZ_CENTER_COLOR, SOUL_SPARK_VIZ_CENTER_SIZE_FACTOR,
+        SOUL_SPARK_VIZ_CENTER_EDGE_COLOR, SOUL_SPARK_VIZ_FREQ_SIG_BARS,
+        SOUL_SPARK_VIZ_FREQ_SIG_XLABEL, SOUL_SPARK_VIZ_FREQ_SIG_YLABEL,
+        SOUL_SPARK_VIZ_ENERGY_DIST_XLABEL, SOUL_SPARK_VIZ_ENERGY_DIST_YLABEL,
+        SOUL_SPARK_VIZ_DIM_STAB_LABELS, SOUL_SPARK_VIZ_DIM_STAB_COLORS
+    )
+except ImportError as e:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. SoulSpark may use fallback defaults.")
+    # Define crucial fallbacks ONLY if constants are absolutely necessary for basic structure
+    SOUL_SPARK_DEFAULT_FREQ = 432.0
+    SOUL_SPARK_DEFAULT_STABILITY = 0.6
+    SOUL_SPARK_DEFAULT_RESONANCE = 0.6
+    SOUL_SPARK_DEFAULT_ALIGNMENT = 0.1
+    FLOAT_EPSILON = 1e-9
+    # Visualization constants would fallback within methods if needed
+
+# Conditional import for visualization
+try:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    VISUALIZATION_ENABLED = True
+except ImportError:
+    VISUALIZATION_ENABLED = False
+    logger.warning("Matplotlib not found. SoulSpark visualization methods will be disabled.")
+
 
 class SoulSpark:
     """
-    Represents the initial soul spark formed in the Void dimension.
-    
-    The soul spark is formed from quantum fluctuations at sacred geometry
-    intersection points in the Void field. It contains the fundamental properties
-    that will later be developed into a full soul through the Sephiroth journey.
+    Represents the evolving soul entity throughout its formation process.
+    Holds attributes modified by various stage functions.
     """
-    
-    def __init__(self, spark_data=None, spark_file=None, creator_resonance=0.7):
+
+    def __init__(self, initial_data: Optional[Dict[str, Any]] = None, spark_id: Optional[str] = None):
         """
-        Initialize a new SoulSpark.
-        
+        Initialize a new SoulSpark instance.
+
         Args:
-            spark_data (dict): Data for an existing spark from void field
-            spark_file (str): Path to saved spark data file
-            creator_resonance (float): Strength of creator resonance (0-1)
+            initial_data (Optional[Dict[str, Any]]): Data dictionary from Void/Guff stage
+                                                     to initialize the spark. If None, uses defaults.
+            spark_id (Optional[str]): Specify an ID, otherwise a new one is generated.
         """
-        # Generate unique ID
-        self.spark_id = str(uuid.uuid4())
-        self.creation_time = datetime.now().isoformat()
-        
-        # Core properties
-        self.stability = 0.0
-        self.resonance = 0.0
-        self.creator_alignment = 0.0 
-        self.formation_potential = 0.0
-        self.total_energy = 0.0
-        
-        # Harmonic structure
-        self.frequency_signature = {
-            'base_frequency': 432.0,  # Hz - Universal base frequency
-            'frequencies': [],        # Additional harmonic frequencies
-            'amplitudes': [],         # Amplitude of each frequency
-            'phases': [],             # Phase of each frequency
-            'num_frequencies': 0      # Total number of frequencies
+        self.spark_id: str = spark_id or str(uuid.uuid4())
+        self.creation_time: str = datetime.now().isoformat()
+        self.last_modified: str = self.creation_time
+
+        # --- Initialize Attributes ---
+        # Use provided data or defaults from constants
+        data = initial_data or {}
+
+        # Core Metrics / State Flags
+        self.stability: float = float(data.get('stability', SOUL_SPARK_DEFAULT_STABILITY))
+        self.resonance: float = float(data.get('resonance', SOUL_SPARK_DEFAULT_RESONANCE))
+        self.coherence: float = float(data.get('coherence', SOUL_SPARK_DEFAULT_RESONANCE)) # Often related to resonance initially
+        self.creator_alignment: float = float(data.get('creator_alignment', SOUL_SPARK_DEFAULT_ALIGNMENT))
+        self.formation_complete: bool = bool(data.get('formation_complete', False)) # From Guff/Sephiroth
+        self.harmonically_strengthened: bool = bool(data.get('harmonically_strengthened', False))
+        self.cord_formation_complete: bool = bool(data.get('cord_formation_complete', False))
+        self.earth_harmonized: bool = bool(data.get('earth_harmonized', False))
+        self.identity_crystallized: bool = bool(data.get('identity_crystallized', False))
+        self.incarnated: bool = bool(data.get('incarnated', False))
+        self.ready_for_earth: bool = bool(data.get('ready_for_earth', False)) # Set by Life Cord
+        self.ready_for_birth: bool = bool(data.get('ready_for_birth', False)) # Set by Earth Harmonization
+
+        # Frequency & Harmonics
+        self.frequency: float = float(data.get('frequency', SOUL_SPARK_DEFAULT_FREQ))
+        self.frequency_signature: Dict[str, Any] = data.get('frequency_signature', {'base_frequency': self.frequency, 'frequencies': [], 'amplitudes': [], 'phases': [], 'num_frequencies': 0})
+        self.harmonics: List[float] = data.get('harmonics', []) # Simple list of harmonic frequencies
+        self.phi_resonance: float = float(data.get('phi_resonance', 0.5))
+        self.pattern_coherence: float = float(data.get('pattern_coherence', 0.0)) # From Entanglement patterns
+
+        # Aspects & Qualities
+        self.aspects: Dict[str, Dict[str, Any]] = data.get('aspects', {}) # {name: {strength, source, time, details...}}
+        self.creator_aspects: Dict[str, Dict[str, Any]] = data.get('creator_aspects', {}) # Aspects from Kether
+        self.divine_qualities: Dict[str, Dict[str, Any]] = data.get('divine_qualities', {}) # {name: {strength, source, time}}
+
+        # Entanglement & Life Cord
+        self.creator_channel_id: Optional[str] = data.get('creator_channel_id')
+        self.creator_connection_strength: float = float(data.get('creator_connection_strength', 0.0))
+        self.resonance_patterns: Dict[str, Any] = data.get('resonance_patterns', {}) # From Entanglement
+        self.life_cord: Optional[Dict[str, Any]] = data.get('life_cord')
+        self.cord_integrity: float = float(data.get('cord_integrity', 0.0))
+        self.cord_integration: float = float(data.get('cord_integration', 0.0)) # Set by Life Cord stage
+
+        # Harmonization & Identity
+        self.earth_resonance: float = float(data.get('earth_resonance', 0.0))
+        self.elements: Dict[str, float] = data.get('elements', {}) # {element_name: strength}
+        self.earth_cycles: Dict[str, float] = data.get('earth_cycles', {}) # {cycle_name: sync_level}
+        self.planetary_resonance: float = float(data.get('planetary_resonance', 0.0))
+        self.gaia_connection: float = float(data.get('gaia_connection', 0.0))
+        self.elemental_alignment: float = float(data.get('elemental_alignment', 0.0))
+        self.cycle_synchronization: float = float(data.get('cycle_synchronization', 0.0))
+        self.name: Optional[str] = data.get('name')
+        self.gematria_value: int = int(data.get('gematria_value', 0))
+        self.name_resonance: float = float(data.get('name_resonance', 0.0))
+        self.voice_frequency: float = float(data.get('voice_frequency', 0.0))
+        self.response_level: float = float(data.get('response_level', 0.0))
+        self.heartbeat_entrainment: float = float(data.get('heartbeat_entrainment', 0.0))
+        self.soul_color: Optional[str] = data.get('soul_color')
+        self.color_frequency: float = float(data.get('color_frequency', 0.0))
+        self.soul_frequency: float = float(data.get('soul_frequency', self.frequency)) # Default to main frequency
+        self.sephiroth_aspect: Optional[str] = data.get('sephiroth_aspect')
+        self.elemental_affinity: Optional[str] = data.get('elemental_affinity')
+        self.platonic_symbol: Optional[str] = data.get('platonic_symbol')
+        self.yin_yang_balance: float = float(data.get('yin_yang_balance', 0.5))
+        self.emotional_resonance: Dict[str, float] = data.get('emotional_resonance', {'love': 0.0, 'joy': 0.0, 'peace': 0.0, 'harmony': 0.0, 'compassion': 0.0})
+        self.crystallization_level: float = float(data.get('crystallization_level', 0.0))
+        self.attribute_coherence: float = float(data.get('attribute_coherence', 0.0))
+        self.identity_metrics: Optional[Dict[str, Any]] = data.get('identity_metrics') # Store verification results
+        self.sacred_geometry_imprint: Optional[str] = data.get('sacred_geometry_imprint')
+
+        # Birth Related
+        self.physical_integration: float = float(data.get('physical_integration', 0.0))
+        self.birth_time: Optional[str] = data.get('birth_time')
+        self.memory_veil: Optional[Dict[str, Any]] = data.get('memory_veil')
+        self.memory_retention: float = float(data.get('memory_retention', 1.0)) # Base retention after veil
+        self.breath_pattern: Optional[Dict[str, Any]] = data.get('breath_pattern')
+        self.physical_energy: float = float(data.get('physical_energy', 0.0))
+        self.spiritual_energy: float = float(data.get('spiritual_energy', 1.0))
+
+        # Consciousness State (Store last known state)
+        self.consciousness_state: str = data.get('consciousness_state', 'dream')
+        self.consciousness_frequency: float = float(data.get('consciousness_frequency', 2.0)) # Default delta
+        self.state_stability: float = float(data.get('state_stability', self.stability)) # Init with overall stability
+
+        # Memory Echoes
+        self.memory_echoes: List[str] = data.get('memory_echoes', []) # List of strings describing events
+
+        # --- Validation ---
+        # Ensure core numeric attributes are valid numbers
+        for attr in ['stability', 'resonance', 'coherence', 'creator_alignment', 'frequency', 'phi_resonance', 'pattern_coherence', 'cord_integrity', 'earth_resonance', 'planetary_resonance', 'gaia_connection', 'elemental_alignment', 'cycle_synchronization', 'crystallization_level', 'attribute_coherence']:
+             val = getattr(self, attr)
+             if not isinstance(val, (int, float)):
+                 logger.error(f"Attribute '{attr}' has invalid type {type(val)}. Resetting to default.")
+                 setattr(self, attr, 0.5) # Reset to a neutral default
+             elif not np.isfinite(val):
+                 logger.error(f"Attribute '{attr}' has non-finite value {val}. Resetting to default.")
+                 setattr(self, attr, 0.5)
+             elif attr != 'frequency' and not (0.0 <= val <= 1.0): # Clamp most metrics to 0-1
+                 setattr(self, attr, max(0.0, min(1.0, val)))
+             elif attr == 'frequency' and val <= FLOAT_EPSILON:
+                 logger.error(f"Attribute 'frequency' has non-positive value {val}. Resetting to default.")
+                 setattr(self, attr, SOUL_SPARK_DEFAULT_FREQ)
+
+
+        logger.info(f"SoulSpark initialized/loaded: ID={self.spark_id}, Freq={self.frequency:.2f}, Stab={self.stability:.3f}, Res={self.resonance:.3f}, Align={self.creator_alignment:.3f}")
+
+    def get_spark_metrics(self) -> Dict[str, Any]:
+        """
+        Get comprehensive metrics about the current state of the soul spark.
+
+        Returns:
+            dict: Metrics dictionary categorized by aspect.
+        """
+        logger.debug(f"Calculating metrics for soul {self.spark_id}...")
+        # Use getattr with defaults for safety, although init should handle most cases
+        metrics_data = {
+            'core': {
+                'stability': getattr(self, 'stability', 0.0),
+                'resonance': getattr(self, 'resonance', 0.0),
+                'coherence': getattr(self, 'coherence', 0.0),
+                'creator_alignment': getattr(self, 'creator_alignment', 0.0),
+                'last_modified': getattr(self, 'last_modified', self.creation_time)
+            },
+            'frequency': {
+                'base_frequency': self.frequency_signature.get('base_frequency', self.frequency),
+                'num_frequencies': len(self.frequency_signature.get('frequencies', [])),
+                'amplitudes_mean': float(np.mean(self.frequency_signature.get('amplitudes', [0]))),
+                'soul_frequency': getattr(self, 'soul_frequency', 0.0), # From identity
+                'voice_frequency': getattr(self, 'voice_frequency', 0.0) # From identity
+            },
+            'identity': {
+                'name': getattr(self, 'name', None),
+                'gematria': getattr(self, 'gematria_value', 0),
+                'name_resonance': getattr(self, 'name_resonance', 0.0),
+                'response_level': getattr(self, 'response_level', 0.0),
+                'soul_color': getattr(self, 'soul_color', None),
+                'sephiroth_aspect': getattr(self, 'sephiroth_aspect', None),
+                'elemental_affinity': getattr(self, 'elemental_affinity', None),
+                'platonic_symbol': getattr(self, 'platonic_symbol', None),
+                'yin_yang_balance': getattr(self, 'yin_yang_balance', 0.5),
+                'crystallization_level': getattr(self, 'crystallization_level', 0.0),
+                'attribute_coherence': getattr(self, 'attribute_coherence', 0.0),
+                'identity_crystallized': getattr(self, 'identity_crystallized', False)
+            },
+            'consciousness': {
+                 'state': getattr(self, 'consciousness_state', 'dream'),
+                 'frequency': getattr(self, 'consciousness_frequency', 0.0),
+                 'stability': getattr(self, 'state_stability', 0.0),
+            },
+            'entanglement': {
+                'channel_id': getattr(self, 'creator_channel_id', None),
+                'connection_strength': getattr(self, 'creator_connection_strength', 0.0),
+                'pattern_coherence': getattr(self, 'pattern_coherence', 0.0),
+                'aspect_count': len(getattr(self, 'creator_aspects', {})),
+            },
+            'life_cord': {
+                'formation_complete': getattr(self, 'cord_formation_complete', False),
+                'integrity': getattr(self, 'cord_integrity', 0.0),
+                'bandwidth': getattr(self, 'life_cord', {}).get('bandwidth', 0.0),
+                'channels': getattr(self, 'life_cord', {}).get('channel_count', 0),
+                'earth_connection': getattr(self, 'life_cord', {}).get('earth_connection', 0.0)
+            },
+            'earth_harmony': {
+                 'harmonized': getattr(self, 'earth_harmonized', False),
+                 'earth_resonance': getattr(self, 'earth_resonance', 0.0),
+                 'elemental_alignment': getattr(self, 'elemental_alignment', 0.0),
+                 'cycle_synchronization': getattr(self, 'cycle_synchronization', 0.0),
+                 'planetary_resonance': getattr(self, 'planetary_resonance', 0.0),
+                 'gaia_connection': getattr(self, 'gaia_connection', 0.0),
+            },
+            'incarnation': {
+                'incarnated': getattr(self, 'incarnated', False),
+                'birth_time': getattr(self, 'birth_time', None),
+                'physical_integration': getattr(self, 'physical_integration', 0.0),
+                'memory_retention': getattr(self, 'memory_retention', 1.0),
+                'physical_energy': getattr(self, 'physical_energy', 0.0),
+                'spiritual_energy': getattr(self, 'spiritual_energy', 0.0),
+            },
+            'memory': {
+                 'echo_count': len(getattr(self, 'memory_echoes', []))
+            }
+            # Add more derived metrics like viability, complexity, potential using constants
+            # 'overall': {
+            #     'viability': (metrics_data['core']['stability'] * SOUL_SPARK_VIABILITY_WEIGHT_STABILITY + ...),
+            #     'complexity': len(getattr(self, 'aspects', {})) / SOUL_SPARK_COMPLEXITY_DIVISOR,
+            #     'potential': (metrics_data['core']['creator_alignment'] * SOUL_SPARK_POTENTIAL_WEIGHT_ALIGNMENT + ...)
+            # }
         }
-        
-        # Quantum properties
-        self.quantum_state = None
-        self.wave_function = None
-        self.probability_distribution = None
-        self.dimensional_stability = {
-            'void': 0.0,
-            'guff': 0.0,
-            'kether': 0.0,
-            'overall': 0.0
-        }
-        
-        # Structural properties
-        self.structure_points = []  # 3D points with energies
-        self.structure_edges = []   # Connections between points
-        self.energy_centers = []    # High-energy focal points
-        
-        # Load from file or initialize with data
-        if spark_file:
-            self._load_from_file(spark_file)
-        elif spark_data:
-            self._initialize_from_data(spark_data)
-        else:
-            self._initialize_default(creator_resonance)
-            
-        # Generate/update harmonic structure
-        self.generate_harmonic_structure()
-        
-        # Calculate dimensional stability
-        self.calculate_dimensional_stability()
-        
-        logger.info(f"Soul spark initialized with ID: {self.spark_id}")
-    
-    def _initialize_from_data(self, spark_data):
+        logger.debug(f"Metrics calculated for soul {self.spark_id}")
+        return metrics_data
+
+    def add_memory_echo(self, event_description: str):
+        """Adds a descriptive string as a memory echo."""
+        if not hasattr(self, 'memory_echoes') or not isinstance(self.memory_echoes, list):
+             self.memory_echoes = []
+        timestamp = datetime.now().isoformat()
+        self.memory_echoes.append(f"{timestamp}: {event_description}")
+        # Optional: Limit memory size
+        # if len(self.memory_echoes) > MAX_MEMORY_ECHOES:
+        #     self.memory_echoes.pop(0)
+        logger.debug(f"Memory echo added to soul {self.spark_id}: '{event_description}'")
+
+    # --- Visualization Methods ---
+    # Keep visualize_spark and visualize_energy_signature from previous version,
+    # but ensure they use self attributes correctly and use constants for styling/layout.
+
+    def visualize_spark(self, show: bool = True, save_path: Optional[str] = None) -> Optional[plt.Figure]:
         """
-        Initialize the soul spark from existing data.
-        
+        Create a 3D visualization of the soul spark's current state.
+
         Args:
-            spark_data (dict): Data for an existing spark from void field
+            show (bool): Whether to display the visualization.
+            save_path (Optional[str]): Path to save the visualization image.
+
+        Returns:
+            Optional[plt.Figure]: Matplotlib figure object, or None if visualization disabled/failed.
         """
-        # Extract basic properties
-        self.formation_potential = spark_data.get('formation_potential', 0.8)
-        self.creator_alignment = spark_data.get('creator_alignment', 0.7)
-        
-        # Set position if available
-        position = spark_data.get('position', [0, 0, 0])
-        
-        # Extract or generate energy
-        self.total_energy = spark_data.get('energy', 1000.0)
-        
-        # Set stability and resonance based on formation data
-        self.stability = spark_data.get('stability', 0.75)
-        self.resonance = spark_data.get('resonance', 0.65)
-        
-        # Set base frequency or use default
-        base_freq = spark_data.get('frequency', 432.0)
-        self.frequency_signature['base_frequency'] = base_freq
-        
-        # Generate structure points based on position and energy
-        self._generate_structure_points(position, self.total_energy)
-        
-        logger.info(f"Soul spark initialized from data with energy: {self.total_energy:.2f}")
-    
-    def _initialize_default(self, creator_resonance):
+        if not VISUALIZATION_ENABLED:
+            logger.warning("Visualization disabled: Matplotlib not found.")
+            return None
+        logger.info(f"Generating 3D visualization for soul {self.spark_id}...")
+
+        fig = plt.figure(figsize=(12, 10)) # Slightly larger figure
+        ax = fig.add_subplot(111, projection='3d')
+
+        try:
+            # --- Plot Core Structure (Placeholder - Simplified Representation) ---
+            # Using attributes like stability, coherence, frequency to influence a central sphere/cloud
+            center_x, center_y, center_z = 0, 0, 0 # Assume centered for visualization
+
+            # Size based on stability & coherence
+            viz_radius = 0.5 + 0.5 * (self.stability + self.coherence) / 2.0
+            # Color based on soul_color or frequency
+            viz_color = getattr(self, 'soul_color', 'white').lower()
+            # Handle potential complex colors from constants if needed
+            if '/' in viz_color: viz_color = viz_color.split('/')[0] # Take first color
+            try: plt.get_cmap(viz_color) # Check if it's a valid matplotlib color/cmap name
+            except ValueError: viz_color = 'plasma' # Fallback cmap
+
+            # Create sphere data
+            u = np.linspace(0, 2 * PI, 30)
+            v = np.linspace(0, PI, 15)
+            x = viz_radius * np.outer(np.cos(u), np.sin(v)) + center_x
+            y = viz_radius * np.outer(np.sin(u), np.sin(v)) + center_y
+            z = viz_radius * np.outer(np.ones(np.size(u)), np.cos(v)) + center_z
+
+            # Use frequency or alignment to modulate color map
+            color_metric = self.creator_alignment # Use alignment for color intensity
+            face_colors = plt.cm.get_cmap(viz_color)(color_metric * np.ones_like(x))
+            face_colors[..., 3] = 0.5 + 0.4 * self.resonance # Alpha based on resonance
+
+            ax.plot_surface(x, y, z, facecolors=face_colors, rstride=1, cstride=1, linewidth=0, antialiased=True, alpha=0.6)
+
+            # --- Add Aspect Representation (Example: colored points around core) ---
+            num_aspects = len(getattr(self, 'aspects', {}))
+            if num_aspects > 0:
+                 phi_angles = np.linspace(0, num_aspects * GOLDEN_RATIO * 2 * PI, num_aspects, endpoint=False)
+                 aspect_radius = viz_radius * 1.2
+                 ax_x = aspect_radius * np.cos(phi_angles) * np.sin(phi_angles/2.0) + center_x
+                 ax_y = aspect_radius * np.sin(phi_angles) * np.sin(phi_angles/2.0) + center_y
+                 ax_z = aspect_radius * np.cos(phi_angles/2.0) + center_z
+                 ax.scatter(ax_x, ax_y, ax_z, c='cyan', s=30, alpha=0.8, label=f'{num_aspects} Aspects')
+
+            # --- Add Creator Connection Representation ---
+            if self.creator_connection_strength > 0.1:
+                 # Line to 'creator' point above
+                 ax.plot([center_x, center_x], [center_y, center_y], [center_z + viz_radius, center_z + viz_radius + 2.0 * self.creator_connection_strength],
+                         color='gold', linestyle='--', linewidth=2.5, alpha=0.7, label=f'Creator Conn ({self.creator_connection_strength:.2f})')
+                 ax.scatter([center_x], [center_y], [center_z + viz_radius + 2.0 * self.creator_connection_strength], color='gold', s=60, marker='*')
+
+            # --- Add Life Cord Anchor Representation ---
+            if self.cord_formation_complete:
+                 cord_integrity = getattr(self, 'cord_integrity', 0.0)
+                 # Line to 'earth' point below
+                 ax.plot([center_x, center_x], [center_y, center_y], [center_z - viz_radius, center_z - viz_radius - 1.5 * cord_integrity],
+                         color='brown', linestyle='-', linewidth=2.0, alpha=0.6, label=f'Life Cord ({cord_integrity:.2f})')
+                 ax.scatter([center_x], [center_y], [center_z - viz_radius - 1.5 * cord_integrity], color='saddlebrown', s=50, marker='v')
+
+
+            # --- Plotting Setup ---
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            title = f"Soul Spark: {getattr(self, 'name', self.spark_id[:8])}\nS:{self.stability:.2f} R:{self.resonance:.2f} C:{self.coherence:.2f} A:{self.creator_alignment:.2f}"
+            ax.set_title(title)
+
+            # Auto-scaling axes
+            all_points = np.array([[center_x,center_y,center_z]])
+            if num_aspects > 0: all_points = np.vstack([all_points, np.column_stack([ax_x, ax_y, ax_z])])
+            if self.creator_connection_strength > 0.1: all_points = np.vstack([all_points, [[center_x, center_y, center_z + viz_radius + 2.0 * self.creator_connection_strength]]])
+            if self.cord_formation_complete: all_points = np.vstack([all_points, [[center_x, center_y, center_z - viz_radius - 1.5 * self.cord_integrity]]])
+
+            if all_points.shape[0] > 1:
+                ranges = np.ptp(all_points, axis=0)
+                means = np.mean(all_points, axis=0)
+                max_range = max(ranges) * 1.2 # Add 20% padding
+                if max_range < 1.0: max_range = 1.0 # Ensure minimum range
+                ax.set_xlim(means[0] - max_range / 2, means[0] + max_range / 2)
+                ax.set_ylim(means[1] - max_range / 2, means[1] + max_range / 2)
+                ax.set_zlim(means[2] - max_range / 2, means[2] + max_range / 2)
+            else: # Fallback if only center point
+                ax.set_xlim(-1, 1); ax.set_ylim(-1, 1); ax.set_zlim(-1, 1)
+
+            ax.legend()
+            plt.tight_layout()
+
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                logger.info(f"SoulSpark 3D visualization saved to {save_path}")
+            if show:
+                plt.show()
+            else:
+                plt.close(fig)
+
+            return fig
+
+        except Exception as e:
+            logger.error(f"Error during SoulSpark 3D visualization: {e}", exc_info=True)
+            if fig: plt.close(fig) # Ensure figure is closed on error
+            return None
+
+    def visualize_energy_signature(self, show: bool = True, save_path: Optional[str] = None) -> Optional[plt.Figure]:
         """
-        Initialize a default soul spark for testing or demonstration.
-        
+        Create a visualization of the energy signature (frequency spectrum).
+
         Args:
-            creator_resonance (float): Resonance with the creator
+            show (bool): Whether to display the visualization.
+            save_path (Optional[str]): Path to save the visualization image.
+
+        Returns:
+            Optional[plt.Figure]: Matplotlib figure object, or None if visualization disabled/failed.
         """
-        # Set reasonable default values
-        self.formation_potential = 0.75
-        self.creator_alignment = creator_resonance * 0.8
-        self.total_energy = 1200.0
-        self.stability = 0.65
-        self.resonance = 0.6
-        
-        # Set base frequency with slight variation
-        base_freq = 432.0 * (0.95 + 0.1 * np.random.random())
-        self.frequency_signature['base_frequency'] = base_freq
-        
-        # Generate structure points at origin
-        self._generate_structure_points([0, 0, 0], self.total_energy)
-        
-        logger.info(f"Default soul spark initialized with energy: {self.total_energy:.2f}")
-    
-    def _load_from_file(self, file_path):
+        if not VISUALIZATION_ENABLED:
+            logger.warning("Visualization disabled: Matplotlib not found.")
+            return None
+        logger.info(f"Generating energy signature visualization for soul {self.spark_id}...")
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        try:
+            # --- Plot Frequency Spectrum ---
+            ax.set_title(f'Frequency Spectrum: {getattr(self, "name", self.spark_id[:8])}')
+            freqs = self.frequency_signature.get('frequencies', [])
+            amps = self.frequency_signature.get('amplitudes', [])
+
+            if freqs and amps and len(freqs) == len(amps):
+                valid_data = sorted([(f, a) for f, a in zip(freqs, amps) if f > FLOAT_EPSILON and a > FLOAT_EPSILON])
+                if valid_data:
+                    sorted_freqs, sorted_amps = zip(*valid_data)
+                    # Use constants for styling if available
+                    markerline, stemlines, baseline = ax.stem(
+                        sorted_freqs, sorted_amps,
+                        linefmt=SOUL_SPARK_VIZ_FREQ_SIG_STEM_FMT, # Assumed constants
+                        markerfmt=SOUL_SPARK_VIZ_FREQ_SIG_MARKER_FMT,
+                        basefmt=SOUL_SPARK_VIZ_FREQ_SIG_BASE_FMT,
+                        label='Harmonics'
+                    )
+                    plt.setp(stemlines, 'linewidth', SOUL_SPARK_VIZ_FREQ_SIG_STEM_LW)
+                    plt.setp(markerline, 'markersize', SOUL_SPARK_VIZ_FREQ_SIG_MARKER_SZ)
+
+                    ax.set_xlabel(SOUL_SPARK_VIZ_FREQ_SIG_XLABEL)
+                    ax.set_ylabel(SOUL_SPARK_VIZ_FREQ_SIG_YLABEL)
+                    ax.set_ylim(bottom=0)
+                    ax.grid(True, linestyle='--', alpha=0.6)
+
+                    # Highlight base frequency
+                    base_freq = self.frequency_signature.get('base_frequency', self.frequency)
+                    ax.axvline(x=base_freq, color=SOUL_SPARK_VIZ_FREQ_SIG_BASE_COLOR, linestyle='--', alpha=0.7, label=f'Base Freq ({base_freq:.1f} Hz)')
+                    ax.legend()
+                else:
+                    ax.text(0.5, 0.5, "No significant frequencies found", ha='center', transform=ax.transAxes)
+            else:
+                ax.text(0.5, 0.5, "No frequency data available", ha='center', transform=ax.transAxes)
+
+            plt.tight_layout(rect=[0, 0.05, 1, 0.95]) # Adjust layout slightly
+
+            # Add overall metrics text
+            metrics_str = f"Stab: {self.stability:.2f} | Res: {self.resonance:.2f} | Coh: {self.coherence:.2f} | Align: {self.creator_alignment:.2f}"
+            fig.text(0.5, 0.02, metrics_str, ha='center', fontsize=10, bbox=dict(facecolor='whitesmoke', alpha=0.8))
+
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                logger.info(f"Energy signature visualization saved to {save_path}")
+            if show:
+                plt.show()
+            else:
+                plt.close(fig)
+
+            return fig
+
+        except Exception as e:
+            logger.error(f"Error during energy signature visualization: {e}", exc_info=True)
+            if fig: plt.close(fig)
+            return None
+
+    # --- State Management ---
+    def save_spark_data(self, file_path: str) -> bool:
         """
-        Load soul spark data from a saved file.
-        
+        Save the current soul spark data to a JSON file. Fails hard on IO/Type error.
+
         Args:
-            file_path (str): Path to saved spark data file
+            file_path (str): Path to save the data file.
+
+        Returns:
+            bool: True if save was successful.
+
+        Raises:
+            TypeError: If an attribute has an unserializable type.
+            IOError: If writing the file fails.
+            RuntimeError: For other unexpected errors.
         """
+        logger.info(f"Saving soul spark data for {self.spark_id} to {file_path}...")
+        try:
+            # Create data structure from attributes
+            data_to_save = {}
+            for attr, value in self.__dict__.items():
+                 # Skip potentially unserializable or large objects if needed
+                 # For now, attempt to serialize everything
+                 data_to_save[attr] = value
+
+            # Custom serializer for complex types if needed
+            def default_serializer(o):
+                if isinstance(o, np.ndarray): return o.tolist() # Convert numpy arrays
+                if isinstance(o, (datetime, uuid.UUID)): return str(o)
+                # Let default JSON encoder handle primitive types or raise error
+                try:
+                    return json.JSONEncoder().default(o)
+                except TypeError:
+                     logger.warning(f"Attribute '{attr}' of type {type(o)} is not JSON serializable. Skipping.")
+                     return None # Skip unserializable types
+
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            # Save to file
+            with open(file_path, 'w') as f:
+                json.dump(data_to_save, f, indent=2, default=default_serializer)
+
+            logger.info(f"Soul spark data saved successfully.")
+            return True
+
+        except IOError as e:
+            logger.error(f"IOError saving soul spark data to {file_path}: {e}", exc_info=True)
+            raise IOError(f"Failed to write spark data file: {e}") from e
+        except TypeError as e:
+            logger.error(f"TypeError saving soul spark data (unserializable attribute?): {e}", exc_info=True)
+            raise TypeError(f"Failed to serialize soul spark data: {e}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error saving soul spark data: {e}", exc_info=True)
+            raise RuntimeError(f"Failed to save spark data: {e}") from e
+
+    @classmethod
+    def load_from_file(cls, file_path: str) -> 'SoulSpark':
+        """
+        Load soul spark data from a saved file. Fails hard on error.
+
+        Args:
+            file_path (str): Path to the saved spark data file.
+
+        Returns:
+            SoulSpark: An instance of SoulSpark initialized with loaded data.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            ValueError: If the file contains invalid data format.
+            RuntimeError: For other loading errors.
+        """
+        logger.info(f"Loading soul spark data from {file_path}...")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Soul spark data file not found: {file_path}")
+
         try:
             with open(file_path, 'r') as f:
-                data = json.load(f)
-            
-            # Load core properties
-            self.spark_id = data.get('spark_id', self.spark_id)
-            self.creation_time = data.get('creation_time', self.creation_time)
-            self.stability = data.get('stability', 0.6)
-            self.resonance = data.get('resonance', 0.6)
-            self.creator_alignment = data.get('creator_alignment', 0.6)
-            self.formation_potential = data.get('formation_potential', 0.7)
-            self.total_energy = data.get('total_energy', 1000.0)
-            
-            # Load frequency signature
-            if 'frequency_signature' in data:
-                self.frequency_signature = data['frequency_signature']
-            
-            # Load dimensional stability
-            if 'dimensional_stability' in data:
-                self.dimensional_stability = data['dimensional_stability']
-            
-            # Load structure points
-            if 'structure_points' in data:
-                self.structure_points = data['structure_points']
-            
-            # Load structure edges
-            if 'structure_edges' in data:
-                self.structure_edges = data['structure_edges']
-            
-            # Load energy centers
-            if 'energy_centers' in data:
-                self.energy_centers = data['energy_centers']
-            
-            # If structure points are not loaded, generate them
-            if not self.structure_points:
-                self._generate_structure_points([0, 0, 0], self.total_energy)
-            
-            logger.info(f"Soul spark loaded from file: {file_path}")
+                loaded_data = json.load(f)
+
+            if not isinstance(loaded_data, dict):
+                raise ValueError("Invalid data format in file: root element is not a dictionary.")
+
+            # Create a new instance and populate it
+            # Pass None initially to avoid default initialization logic interfering
+            instance = cls(initial_data=None, spark_id=loaded_data.get('spark_id'))
+
+            # Populate attributes from loaded data
+            for attr, value in loaded_data.items():
+                # Convert lists back to numpy arrays if needed (e.g., for harmonic signature)
+                # This depends on how you decide to store complex attributes
+                setattr(instance, attr, value)
+
+            # --- Post-load Validation/Initialization ---
+            # Re-validate loaded numeric types
+            instance._validate_attributes()
+            # Ensure frequency signature components match if loaded
+            fsig = getattr(instance, 'frequency_signature', {})
+            if fsig:
+                 num_freqs = len(fsig.get('frequencies',[]))
+                 fsig['num_frequencies'] = num_freqs
+                 if len(fsig.get('amplitudes',[])) != num_freqs or len(fsig.get('phases',[])) != num_freqs:
+                      logger.warning(f"Frequency signature components mismatch after load for {instance.spark_id}. Regenerating.")
+                      # Option: Regenerate signature based on base frequency
+                      instance.generate_harmonic_structure() # Assuming this method exists now
+                 else:
+                      # Convert lists back to numpy arrays if needed by other methods
+                      fsig['frequencies'] = np.array(fsig.get('frequencies',[]))
+                      fsig['amplitudes'] = np.array(fsig.get('amplitudes',[]))
+                      fsig['phases'] = np.array(fsig.get('phases',[]))
+
+            logger.info(f"Soul spark loaded successfully: ID={instance.spark_id}")
+            return instance
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON from file {file_path}: {e}")
+            raise ValueError(f"Invalid JSON data in state file: {e}") from e
         except Exception as e:
-            logger.error(f"Error loading spark from file: {str(e)}")
-            # Initialize with defaults
-            self._initialize_default(0.7)
-    
-    def _generate_structure_points(self, center_position, total_energy):
-        """
-        Generate the 3D structure points representing the soul spark.
-        
-        Args:
-            center_position (list): Center position [x, y, z]
-            total_energy (float): Total energy of the spark
-        """
-        # Ensure center_position is a valid 3D position
-        if not center_position or len(center_position) < 3:
-            center_position = [0, 0, 0]
-        
-        center_x, center_y, center_z = center_position
-        
-        # Golden ratio for sacred proportions
-        phi = (1 + np.sqrt(5)) / 2
-        
-        # Clear existing structure
-        self.structure_points = []
-        self.structure_edges = []
-        
-        # Add center point with highest energy
-        center_energy = total_energy * 0.3
-        self.structure_points.append([center_x, center_y, center_z, center_energy])
-        
-        # Generate main structure using Fibonacci spiral for points and energies
-        points_to_generate = 12  # Golden number for structure
-        remaining_energy = total_energy - center_energy
-        energy_per_point = remaining_energy / points_to_generate
-        
-        # First layer - tetrahedron vertices
-        tetrahedron_radius = 1.0
-        tetrahedron_vertices = [
-            [center_x, center_y, center_z + tetrahedron_radius],                    # Top
-            [center_x + tetrahedron_radius * np.sin(0), center_y + tetrahedron_radius * np.cos(0), center_z - tetrahedron_radius/2],  # Base 1
-            [center_x + tetrahedron_radius * np.sin(2*np.pi/3), center_y + tetrahedron_radius * np.cos(2*np.pi/3), center_z - tetrahedron_radius/2],  # Base 2
-            [center_x + tetrahedron_radius * np.sin(4*np.pi/3), center_y + tetrahedron_radius * np.cos(4*np.pi/3), center_z - tetrahedron_radius/2],  # Base 3
-        ]
-        
-        # Add tetrahedron vertices with decreasing energy
-        for i, vertex in enumerate(tetrahedron_vertices):
-            point_energy = energy_per_point * (1.0 - 0.1 * i)
-            self.structure_points.append([vertex[0], vertex[1], vertex[2], point_energy])
-            
-            # Connect to center
-            self.structure_edges.append([0, i+1, 1.0])
-        
-        # Connect tetrahedron edges
-        for i in range(1, 4):
-            self.structure_edges.append([i, i+1, 0.9])
-        self.structure_edges.append([4, 1, 0.9])
-        
-        # Second layer - outer points using golden ratio spiral
-        outer_radius = tetrahedron_radius * phi
-        for i in range(8):  # Add 8 more points for a total of 13 (Fibonacci number)
-            # Calculate spiral position
-            angle = i * 2 * np.pi / phi
-            z_offset = outer_radius * 0.5 * np.sin(i * np.pi / 4)
-            
-            x = center_x + outer_radius * np.cos(angle)
-            y = center_y + outer_radius * np.sin(angle)
-            z = center_z + z_offset
-            
-            # Calculate energy (decreases with distance from center)
-            distance_factor = np.sqrt((x-center_x)**2 + (y-center_y)**2 + (z-center_z)**2) / outer_radius
-            point_energy = energy_per_point * 0.8 * (1.0 - 0.5 * distance_factor)
-            
-            # Add structure point
-            point_index = len(self.structure_points)
-            self.structure_points.append([x, y, z, point_energy])
-            
-            # Connect to nearest points
-            nearest_distance = float('inf')
-            nearest_index = 0
-            
-            for j in range(1, point_index):
-                px, py, pz, _ = self.structure_points[j]
-                dist = np.sqrt((x-px)**2 + (y-py)**2 + (z-pz)**2)
-                
-                if dist < nearest_distance:
-                    nearest_distance = dist
-                    nearest_index = j
-            
-            # Connect to nearest point and to center
-            self.structure_edges.append([point_index, nearest_index, 0.8])
-            self.structure_edges.append([point_index, 0, 0.7])
-        
-        # Identify energy centers (high-energy areas)
-        energy_threshold = center_energy * 0.3
-        self.energy_centers = []
-        
-        for i, point in enumerate(self.structure_points):
-            if point[3] >= energy_threshold:
-                self.energy_centers.append({
-                    'position': point[:3],
-                    'energy': point[3],
-                    'index': i
-                })
-        
-        logger.info(f"Generated structure with {len(self.structure_points)} points and {len(self.structure_edges)} edges")
-    
-    def generate_harmonic_structure(self):
-        """
-        Generate the harmonic frequency structure of the soul spark.
-        
-        This defines the resonance patterns and frequency relationships
-        that characterize the soul spark.
-        
-        Returns:
-            dict: Updated frequency signature
-        """
-        # Start with base frequency
-        base_freq = self.frequency_signature['base_frequency']
-        
-        # Clear existing frequency data
-        self.frequency_signature['frequencies'] = []
-        self.frequency_signature['amplitudes'] = []
-        self.frequency_signature['phases'] = []
-        
-        # Generate harmonic frequencies based on sacred ratios
-        # Define golden ratio first
-        phi = (1 + np.sqrt(5)) / 2  # Golden ratio
-        
-        harmonic_ratios = [
-            1.0,      # Unison (fundamental)
-            1.5,      # Perfect fifth
-            1.2,      # Major third
-            1.33333,  # Perfect fourth
-            1.66667,  # Major sixth
-            1.25,     # Minor third
-            2.0,      # Octave
-            0.66667,  # Perfect fifth below
-            0.75,     # Perfect fourth below
-            phi       # Golden ratio
-        ]
-        
-        # Generate harmonics
-        for ratio in harmonic_ratios:
-            # Calculate harmonic frequency
-            freq = base_freq * ratio
-            
-            # Calculate amplitude (highest for fundamental, decreasing for others)
-            if ratio == 1.0:
-                amplitude = 1.0  # Fundamental
-            else:
-                # Amplitude decreases with distance from fundamental
-                # Stronger for Fibonacci-related harmonics
-                fibonacci_factor = 1.0
-                if abs(ratio - phi) < 0.1 or abs(ratio - 2.0) < 0.01:
-                    fibonacci_factor = 1.2
-                
-                amplitude = 0.9 / (abs(1.0 - ratio) + 0.5) * fibonacci_factor
-                amplitude = min(0.9, amplitude)  # Cap at 0.9
-            
-            # Calculate phase (slightly offset for richer harmonics)
-            phase = (ratio * np.pi * 0.5) % (2 * np.pi)
-            
-            # Add to frequency signature
-            self.frequency_signature['frequencies'].append(freq)
-            self.frequency_signature['amplitudes'].append(amplitude)
-            self.frequency_signature['phases'].append(phase)
-        
-        # Add creator resonance frequency with amplitude based on creator_alignment
-        creator_freq = 963.0  # Hz - Crown/highest chakra
-        creator_amplitude = self.creator_alignment * 0.8
-        creator_phase = 0.0  # In phase with base frequency
-        
-        self.frequency_signature['frequencies'].append(creator_freq)
-        self.frequency_signature['amplitudes'].append(creator_amplitude)
-        self.frequency_signature['phases'].append(creator_phase)
-        
-        # Update frequency count
-        self.frequency_signature['num_frequencies'] = len(self.frequency_signature['frequencies'])
-        
-        # Calculate coherence of the frequency structure
-        self._calculate_frequency_coherence()
-        
-        return self.frequency_signature
-    
-    def _calculate_frequency_coherence(self):
-        """
-        Calculate the coherence of the frequency structure.
-        
-        This affects both stability and resonance properties.
-        
-        Returns:
-            float: Coherence value (0-1)
-        """
-        if not self.frequency_signature['frequencies']:
-            return 0.0
-        
-        # Calculate coherence based on frequency relationships
-        frequencies = np.array(self.frequency_signature['frequencies'])
-        amplitudes = np.array(self.frequency_signature['amplitudes'])
-        phases = np.array(self.frequency_signature['phases'])
-        
-        # Frequency coherence based on harmonic relationships
-        harmonic_coherence = 0.0
-        base_freq = self.frequency_signature['base_frequency']
-        
-        # Check how well frequencies align with harmonic series
-        for i, freq in enumerate(frequencies):
-            ratio = freq / base_freq
-            # Closer to integer or simple fraction = more coherent
-            harmonic_factor = 1.0 / (min(abs(ratio - round(ratio)), abs(ratio * 2 - round(ratio * 2))) + 0.1)
-            harmonic_coherence += harmonic_factor * amplitudes[i]
-        
-        # Normalize
-        if len(frequencies) > 0:
-            harmonic_coherence /= sum(amplitudes)
-        
-        # Phase coherence
-        phase_differences = []
-        for i in range(len(phases)):
-            for j in range(i+1, len(phases)):
-                # Calculate minimum phase difference in circle
-                diff = abs(phases[i] - phases[j]) % (2 * np.pi)
-                if diff > np.pi:
-                    diff = 2 * np.pi - diff
-                phase_differences.append(diff)
-        
-        # Phase coherence is higher when phase differences are consistent
-        if phase_differences:
-            phase_coherence = 1.0 - np.std(phase_differences) / np.pi
-        else:
-            phase_coherence = 0.5
-        
-        # Combine for overall frequency coherence
-        freq_coherence = 0.7 * harmonic_coherence + 0.3 * phase_coherence
-        
-        # Update resonance based on frequency coherence
-        resonance_contribution = freq_coherence * 0.3
-        self.resonance = 0.7 * self.resonance + resonance_contribution
-        self.resonance = min(1.0, max(0.0, self.resonance))
-        
-        return freq_coherence
-    
-    def evolve_quantum_state(self, time_step=0.01, iterations=10):
-        """
-        Evolve the quantum state of the soul spark over time.
-        
-        This simulates the natural evolution of the spark's wave function
-        according to quantum principles.
-        
-        Args:
-            time_step (float): Size of each time step
-            iterations (int): Number of evolution iterations
-            
-        Returns:
-            tuple: (evolved quantum state, evolved wave function)
-        """
-        # Initialize quantum state if not already done
-        if self.quantum_state is None:
-            self._initialize_quantum_state()
-        
-        # Evolve the quantum state through time steps
-        for _ in range(iterations):
-            # Apply time evolution operator
-            # This is a simplified quantum evolution that preserves key quantum properties
-            
-            # Phase rotation based on frequencies
-            for i, freq in enumerate(self.frequency_signature['frequencies']):
-                amp = self.frequency_signature['amplitudes'][i]
-                
-                # Phase factor based on frequency and time step
-                phase_factor = 2 * np.pi * freq * time_step
-                
-                # Apply phase rotation using complex multiplication
-                phase_term = amp * np.exp(1j * phase_factor)
-                self.quantum_state = self.quantum_state * (1.0 + 0.05 * phase_term)
-            
-            # Apply stability factor to prevent excessive fluctuations
-            stability_factor = 0.95 + 0.05 * self.stability
-            self.quantum_state = stability_factor * self.quantum_state
-            
-            # Normalize the quantum state
-            norm = np.sum(np.abs(self.quantum_state) ** 2)
-            if norm > 0:
-                self.quantum_state /= np.sqrt(norm)
-        
-        # Update the wave function (probability amplitude)
-        self.wave_function = np.abs(self.quantum_state) ** 2
-        
-        # Calculate probability distribution
-        self.probability_distribution = self.wave_function / np.sum(self.wave_function)
-        
-        return self.quantum_state, self.wave_function
-    
-    def _initialize_quantum_state(self):
-        """
-        Initialize the quantum state of the soul spark.
-        
-        This creates the initial wave function based on the spark's
-        structure and frequency signature.
-        
-        Returns:
-            ndarray: Initialized quantum state
-        """
-        # Create a 3D grid for the quantum state
-        grid_size = 16  # Small grid for efficiency
-        
-        # Initialize with random complex values
-        self.quantum_state = np.random.normal(0, 1, (grid_size, grid_size, grid_size)) + \
-                            1j * np.random.normal(0, 1, (grid_size, grid_size, grid_size))
-        
-        # Apply structure pattern based on structure points
-        for point in self.structure_points:
-            x, y, z, energy = point
-            
-            # Convert to grid coordinates
-            grid_x = int((x + 8) % grid_size)
-            grid_y = int((y + 8) % grid_size)
-            grid_z = int((z + 8) % grid_size)
-            
-            # Add energy peak at this point
-            self.quantum_state[grid_x, grid_y, grid_z] += np.sqrt(energy) * (1.0 + 0.5j)
-            
-            # Add Gaussian spread around the point
-            for dx in range(-2, 3):
-                for dy in range(-2, 3):
-                    for dz in range(-2, 3):
-                        if dx == 0 and dy == 0 and dz == 0:
-                            continue
-                            
-                        px = (grid_x + dx) % grid_size
-                        py = (grid_y + dy) % grid_size
-                        pz = (grid_z + dz) % grid_size
-                        
-                        # Distance-based falloff
-                        dist = np.sqrt(dx**2 + dy**2 + dz**2)
-                        falloff = np.exp(-dist)
-                        
-                        # Add contribution to this point
-                        self.quantum_state[px, py, pz] += \
-                            np.sqrt(energy) * falloff * (0.7 + 0.3j)
-        
-        # Apply frequency modulations
-        base_freq = self.frequency_signature['base_frequency']
-        
-        # Modulate along z-axis with base frequency
-        for i in range(grid_size):
-            phase_factor = 2 * np.pi * i / grid_size
-            self.quantum_state[:, :, i] *= np.exp(1j * phase_factor)
-        
-        # Normalize the quantum state
-        norm = np.sum(np.abs(self.quantum_state) ** 2)
-        if norm > 0:
-            self.quantum_state /= np.sqrt(norm)
-        
-        # Calculate initial wave function
-        self.wave_function = np.abs(self.quantum_state) ** 2
-        
-        # Calculate probability distribution
-        self.probability_distribution = self.wave_function / np.sum(self.wave_function)
-        
-        return self.quantum_state
-    
-    def calculate_dimensional_stability(self):
-        """
-        Calculate the stability of the soul spark across different dimensions.
-        
-        The dimensional stability affects how well the spark can transition
-        between the Void, Guff, and Sephiroth dimensions.
-        
-        Returns:
-            dict: Updated dimensional stability metrics
-        """
-        # Base stability is determined by the spark's coherence and structure
-        base_stability = 0.5 * self.stability + 0.3 * self.resonance + 0.2 * self.creator_alignment
-        
-        # Calculate stability in Void dimension
-        # Void stability relies more on quantum coherence and energy
-        freq_coherence = self._calculate_frequency_coherence()
-        energy_factor = min(1.0, self.total_energy / 2000.0)
-        void_stability = 0.4 * base_stability + 0.4 * freq_coherence + 0.2 * energy_factor
-        
-        # Calculate stability in Guff dimension
-        # Guff stability relies more on creator alignment and resonance
-        guff_stability = 0.3 * base_stability + 0.3 * self.resonance + 0.4 * self.creator_alignment
-        
-        # Calculate stability in Kether dimension
-        # Kether stability relies heavily on creator alignment
-        kether_stability = 0.2 * base_stability + 0.2 * self.resonance + 0.6 * self.creator_alignment
-        
-        # Calculate overall dimensional stability
-        overall_stability = 0.5 * void_stability + 0.3 * guff_stability + 0.2 * kether_stability
-        
-        # Update dimensional stability dictionary
-        self.dimensional_stability = {
-            'void': void_stability,
-            'guff': guff_stability,
-            'kether': kether_stability,
-            'overall': overall_stability
-        }
-        
-        # Round values for cleaner display
-        for key in self.dimensional_stability:
-            self.dimensional_stability[key] = round(self.dimensional_stability[key], 6)
-        
-        return self.dimensional_stability
-    
-    def strengthen(self, aspect, amount=0.05):
-        """
-        Strengthen a specific aspect of the soul spark.
-        
-        Args:
-            aspect (str): The aspect to strengthen ('stability', 'resonance', 'creator_alignment')
-            amount (float): Amount to strengthen by
-            
-        Returns:
-            float: New value of the aspect
-        """
-        if aspect == 'stability':
-            self.stability = min(1.0, self.stability + amount)
-            return self.stability
-        elif aspect == 'resonance':
-            self.resonance = min(1.0, self.resonance + amount)
-            return self.resonance
-        elif aspect == 'creator_alignment':
-            self.creator_alignment = min(1.0, self.creator_alignment + amount)
-            return self.creator_alignment
-        else:
-            return None
-    
-    def get_spark_metrics(self):
-        """
-        Get comprehensive metrics about the soul spark.
-        
-        Returns:
-            dict: Metrics about all aspects of the soul spark
-        """
-        # Ensure dimensional stability is up to date
-        self.calculate_dimensional_stability()
-        
-        # Organize metrics into categories
-        metrics = {
-            'formation': {
-                'stability': self.stability,
-                'resonance': self.resonance,
-                'creator_alignment': self.creator_alignment,
-                'formation_potential': self.formation_potential,
-                'total_energy': self.total_energy
-            },
-            'harmonic': {
-                'base_frequency': self.frequency_signature['base_frequency'],
-                'num_frequencies': self.frequency_signature['num_frequencies'],
-                'richness': np.mean(self.frequency_signature['amplitudes']) if self.frequency_signature['amplitudes'] else 0,
-                'coherence': self._calculate_frequency_coherence()
-            },
-            'structure': {
-                'num_points': len(self.structure_points),
-                'num_edges': len(self.structure_edges),
-                'energy_centers': len(self.energy_centers)
-            },
-            'stability': self.dimensional_stability
-        }
-        
-        # Add additional derived metrics
-        metrics['overall'] = {
-            'viability': (metrics['formation']['stability'] * 0.4 + 
-                         metrics['formation']['resonance'] * 0.3 + 
-                         metrics['stability']['overall'] * 0.3),
-            'complexity': min(1.0, len(self.structure_points) / 20.0),
-            'potential': metrics['formation']['creator_alignment'] * metrics['stability']['overall']
-        }
-        
-        return metrics
-    
-def visualize_spark(self, show=True, save_path=None):
-        """
-        Create a 3D visualization of the soul spark.
-        
-        Args:
-            show (bool): Whether to display the visualization
-            save_path (str): Path to save the visualization
-            
-        Returns:
-            Figure: Matplotlib figure
-        """
-        # Create 3D figure
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        
-        # Plot structure points
-        for point in self.structure_points:
-            x, y, z, energy = point
-            size = max(20, energy / 10)
-            
-            # Calculate color based on energy
-            # Higher energy = more red/orange, lower energy = more blue
-            normalized_energy = min(1.0, energy / 200.0)
-            color = plt.cm.plasma(normalized_energy)
-            
-            ax.scatter(x, y, z, c=[color], s=size, alpha=min(1.0, energy / 100.0))
-        
-        # Plot structure edges
-        for edge in self.structure_edges:
-            start_idx, end_idx, strength = edge
-            
-            if start_idx >= len(self.structure_points) or end_idx >= len(self.structure_points):
-                continue
-                
-            start_point = self.structure_points[start_idx]
-            end_point = self.structure_points[end_idx]
-            
-            # Extract coordinates
-            x1, y1, z1 = start_point[:3]
-            x2, y2, z2 = end_point[:3]
-            
-            # Calculate line color based on strength
-            color = plt.cm.viridis(strength)
-            
-            # Plot line with alpha based on strength
-            ax.plot([x1, x2], [y1, y2], [z1, z2], c=color, alpha=0.7*strength, linewidth=1.5*strength)
-        
-        # Highlight energy centers
-        for center in self.energy_centers:
-            x, y, z = center['position']
-            energy = center['energy']
-            
-            # Plot energy center with distinct color
-            ax.scatter(x, y, z, c='yellow', s=energy/5, alpha=0.9, edgecolors='white')
-        
-        # Set labels and title
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        
-        # Get metrics for title
-        metrics = self.get_spark_metrics()
-        title = f"Soul Spark (S: {metrics['formation']['stability']:.2f}, " + \
-                f"R: {metrics['formation']['resonance']:.2f}, " + \
-                f"A: {metrics['formation']['creator_alignment']:.2f})"
-        ax.set_title(title)
-        
-        # Set equal aspect ratio for all axes
-        max_range = max([
-            max(ax.get_xlim()) - min(ax.get_xlim()),
-            max(ax.get_ylim()) - min(ax.get_ylim()),
-            max(ax.get_zlim()) - min(ax.get_zlim())
-        ])
-        
-        mid_x = np.mean(ax.get_xlim())
-        mid_y = np.mean(ax.get_ylim())
-        mid_z = np.mean(ax.get_zlim())
-        
-        ax.set_xlim(mid_x - max_range/2, mid_x + max_range/2)
-        ax.set_ylim(mid_y - max_range/2, mid_y + max_range/2)
-        ax.set_zlim(mid_z - max_range/2, mid_z + max_range/2)
-        
-        # Add frequency signature visualization
-        ax_inset = fig.add_axes([0.15, 0.02, 0.25, 0.1], facecolor='whitesmoke')
-        ax_inset.set_title('Frequency Signature', fontsize=8)
-        
-        # Plot frequency bars
-        if len(self.frequency_signature['frequencies']) > 0:
-            freqs = self.frequency_signature['frequencies']
-            amps = self.frequency_signature['amplitudes']
-            
-            # Normalize frequencies for display
-            norm_freqs = [(f - min(freqs)) / (max(freqs) - min(freqs) + 0.001) 
-                         for f in freqs[:min(len(freqs), 10)]]  # Show at most 10 frequencies
-            
-            # Plot bars
-            ax_inset.bar(range(len(norm_freqs)), amps[:len(norm_freqs)], 
-                       width=0.7, color=plt.cm.rainbow(norm_freqs))
-            
-            ax_inset.set_ylim(0, 1.05)
-            ax_inset.set_xticks([])
-            ax_inset.set_yticks([])
-        else:
-            ax_inset.text(0.5, 0.5, "No frequencies", ha='center', fontsize=8)
-        
-        # Add dimensional stability visualization
-        ax_stability = fig.add_axes([0.6, 0.02, 0.25, 0.1], facecolor='whitesmoke')
-        ax_stability.set_title('Dimensional Stability', fontsize=8)
-        
-        # Plot stability bars
-        stabilities = [
-            self.dimensional_stability['void'],
-            self.dimensional_stability['guff'],
-            self.dimensional_stability['kether'],
-            self.dimensional_stability['overall']
-        ]
-        
-        colors = ['#3498db', '#9b59b6', '#f1c40f', '#2ecc71']
-        ax_stability.bar(range(len(stabilities)), stabilities, 
-                      width=0.7, color=colors)
-        
-        ax_stability.set_ylim(0, 1.05)
-        ax_stability.set_xticks([])
-        ax_stability.set_yticks([])
-        
-        # Save if requested
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            logger.info(f"Visualization saved to {save_path}")
-        
-        # Show if requested
-        if show:
-            plt.show()
-        else:
-            plt.close()
-        
-        return fig
-    
-def visualize_energy_signature(self, show=True, save_path=None):
-    """
-    Create a visualization of the energy signature of the soul spark.
-    
-    This shows the frequency spectrum and energy distribution.
-    
-    Args:
-        show (bool): Whether to display the visualization
-        save_path (str): Path to save the visualization
-        
-    Returns:
-        Figure: Matplotlib figure
-    """
-    # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-    
-    # Plot frequency spectrum
-    ax1.set_title('Frequency Spectrum')
-    
-    if len(self.frequency_signature['frequencies']) > 0:
-        freqs = np.array(self.frequency_signature['frequencies'])
-        amps = np.array(self.frequency_signature['amplitudes'])
-        
-        # Sort by frequency
-        sorted_indices = np.argsort(freqs)
-        sorted_freqs = freqs[sorted_indices]
-        sorted_amps = amps[sorted_indices]
-        
-        # Plot frequency spectrum
-        ax1.stem(sorted_freqs, sorted_amps, basefmt=' ', use_line_collection=True)
-        ax1.set_xlabel('Frequency (Hz)')
-        ax1.set_ylabel('Amplitude')
-        
-        # Highlight base frequency
-        base_freq = self.frequency_signature['base_frequency']
-        ax1.axvline(x=base_freq, color='r', linestyle='--', alpha=0.5)
-        ax1.text(base_freq, 0.5, f"Base: {base_freq:.1f} Hz", 
-                rotation=90, verticalalignment='center')
-        
-        # Highlight creator resonance
-        creator_freq = 963.0  # Hz - Crown chakra
-        if creator_freq in freqs:
-            creator_idx = np.where(freqs == creator_freq)[0][0]
-            creator_amp = amps[creator_idx]
-            ax1.plot(creator_freq, creator_amp, 'r*', markersize=10)
-            ax1.text(creator_freq, creator_amp, "Creator", ha='center', va='bottom')
-    else:
-        ax1.text(0.5, 0.5, "No frequency data", ha='center', transform=ax1.transAxes)
-    
-    # Plot energy distribution across structure
-    ax2.set_title('Energy Distribution')
-    
-    if self.structure_points:
-        # Extract point energies
-        point_energies = [p[3] for p in self.structure_points]
-        
-        # Sort for better visualization
-        point_energies.sort(reverse=True)
-        
-        # Plot energy distribution
-        ax2.bar(range(len(point_energies)), point_energies, alpha=0.7)
-        ax2.set_xlabel('Structure Points (sorted)')
-        ax2.set_ylabel('Energy')
-        
-        # Add metrics
-        total_energy = sum(point_energies)
-        max_energy = max(point_energies)
-        ax2.text(0.02, 0.9, f"Total: {total_energy:.1f}", transform=ax2.transAxes)
-        ax2.text(0.02, 0.85, f"Peak: {max_energy:.1f}", transform=ax2.transAxes)
-        
-        # Calculate and show energy distribution metrics
-        energy_std = np.std(point_energies)
-        energy_mean = np.mean(point_energies)
-        energy_ratio = energy_std / energy_mean if energy_mean > 0 else 0
-        ax2.text(0.02, 0.8, f"Distribution: {energy_ratio:.2f}", transform=ax2.transAxes)
-    else:
-        ax2.text(0.5, 0.5, "No structure data", ha='center', transform=ax2.transAxes)
-    
-    # Add overall metrics
-    plt.figtext(0.5, 0.01, f"Stability: {self.stability:.2f} | " +
-                f"Resonance: {self.resonance:.2f} | " +
-                f"Creator Alignment: {self.creator_alignment:.2f}",
-                ha='center', fontsize=10, bbox=dict(facecolor='whitesmoke'))
-    
-    plt.tight_layout()
-    
-    # Save if requested
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Energy signature visualization saved to {save_path}")
-    
-    # Show if requested
-    if show:
-        plt.show()
-    else:
-        plt.close()
-    
-    return fig
+            logger.error(f"Error loading soul spark data from {file_path}: {e}", exc_info=True)
+            raise RuntimeError(f"Failed to load spark data: {e}") from e
 
-def save_spark_data(self, file_path):
-    """
-    Save the soul spark data to a file.
-    
-    Args:
-        file_path (str): Path to save the data
-        
-    Returns:
-        bool: True if save was successful
-    """
-    try:
-        # Create data structure for saving
-        data = {
-            'spark_id': self.spark_id,
-            'creation_time': self.creation_time,
-            'stability': self.stability,
-            'resonance': self.resonance,
-            'creator_alignment': self.creator_alignment,
-            'formation_potential': self.formation_potential,
-            'total_energy': self.total_energy,
-            'frequency_signature': self.frequency_signature,
-            'dimensional_stability': self.dimensional_stability
-        }
-        
-        # Add structure points (convert numpy arrays if needed)
-        structure_points = []
-        for point in self.structure_points:
-            structure_points.append([float(point[0]), float(point[1]), 
-                                    float(point[2]), float(point[3])])
-        data['structure_points'] = structure_points
-        
-        # Add structure edges
-        structure_edges = []
-        for edge in self.structure_edges:
-            structure_edges.append([int(edge[0]), int(edge[1]), float(edge[2])])
-        data['structure_edges'] = structure_edges
-        
-        # Add energy centers
-        energy_centers = []
-        for center in self.energy_centers:
-            energy_centers.append({
-                'position': [float(center['position'][0]), 
-                            float(center['position'][1]), 
-                            float(center['position'][2])],
-                'energy': float(center['energy']),
-                'index': int(center['index'])
-            })
-        data['energy_centers'] = energy_centers
-        
-        # Add metrics for convenience
-        data['metrics'] = self.get_spark_metrics()
-        
-        # Save to file
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
-        
-        logger.info(f"Soul spark data saved to {file_path}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error saving soul spark data: {str(e)}")
-        return False
+    def _validate_attributes(self):
+         """Internal helper to validate numeric attributes after init/load."""
+         logger.debug(f"Validating attributes for soul {self.spark_id}...")
+         for attr in ['stability', 'resonance', 'coherence', 'creator_alignment', 'frequency', 'phi_resonance', 'pattern_coherence', 'cord_integrity', 'earth_resonance', 'planetary_resonance', 'gaia_connection', 'elemental_alignment', 'cycle_synchronization', 'crystallization_level', 'attribute_coherence', 'name_resonance', 'voice_frequency', 'response_level', 'heartbeat_entrainment', 'color_frequency', 'soul_frequency', 'yin_yang_balance', 'physical_integration', 'physical_energy', 'spiritual_energy', 'consciousness_frequency', 'state_stability']:
+              val = getattr(self, attr, None)
+              if val is None: continue # Skip attributes not yet set
+              if not isinstance(val, (int, float)):
+                  raise TypeError(f"Attribute '{attr}' must be numeric, found {type(val)}.")
+              if not np.isfinite(val):
+                  raise ValueError(f"Attribute '{attr}' has non-finite value {val}.")
+              # Apply clamping (0-1 for most, positive for frequencies)
+              if 'frequency' in attr:
+                   if val <= FLOAT_EPSILON: raise ValueError(f"Frequency attribute '{attr}' ({val}) must be positive.")
+              elif 'level' not in attr and 'count' not in attr and attr != 'gematria_value' and attr != 'field_radius': # Clamp most metrics 0-1
+                   setattr(self, attr, max(0.0, min(1.0, val)))
+         logger.debug("Attribute validation complete.")
 
-def __str__(self):
-    """String representation of the soul spark."""
-    metrics = self.get_spark_metrics()
-    
-    return (f"Soul Spark (ID: {self.spark_id[:8]})\n"
-            f"Stability: {self.stability:.4f}\n"
-            f"Resonance: {self.resonance:.4f}\n"
-            f"Creator Alignment: {self.creator_alignment:.4f}\n"
-            f"Total Energy: {self.total_energy:.2f}\n"
-            f"Base Frequency: {self.frequency_signature['base_frequency']:.2f} Hz\n"
-            f"Dimensional Stability: {self.dimensional_stability['overall']:.4f}\n"
-            f"Structure: {len(self.structure_points)} points, {len(self.structure_edges)} edges\n"
-            f"Energy Centers: {len(self.energy_centers)}")
+
+    def __str__(self) -> str:
+        """String representation of the soul spark."""
+        name = getattr(self, 'name', self.spark_id[:8])
+        state = getattr(self, 'consciousness_state', 'N/A')
+        stab = getattr(self, 'stability', 0.0)
+        res = getattr(self, 'resonance', 0.0)
+        coh = getattr(self, 'coherence', 0.0)
+        align = getattr(self, 'creator_alignment', 0.0)
+        cryst = getattr(self, 'identity_crystallized', False)
+        return (f"SoulSpark(Name: {name}, ID: {self.spark_id[:8]}, State: {state}, "
+                f"Stab:{stab:.2f}, Res:{res:.2f}, Coh:{coh:.2f}, Align:{align:.2f}, Cryst:{cryst})")
+
+    def __repr__(self) -> str:
+        """Detailed representation."""
+        return f"<SoulSpark id='{self.spark_id}' name='{getattr(self, 'name', None)}' stability={self.stability:.4f} resonance={self.resonance:.4f}>"
+
+# --- END OF FILE soul_spark.py ---
 
 

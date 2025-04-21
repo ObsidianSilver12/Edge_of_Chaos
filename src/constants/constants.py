@@ -708,3 +708,364 @@ CORD_INTEGRITY_FACTOR_CONN_STR = 0.3
 CORD_INTEGRITY_FACTOR_STABILITY = 0.3
 CORD_INTEGRITY_FACTOR_EARTH_CONN = 0.4
 FINAL_STABILITY_BONUS_FACTOR = 0.1 # How much cord integrity boosts final soul stability
+
+# --- Harmonic Strengthening Constants ---
+HARMONIC_STRENGTHENING_PREREQ_STABILITY: float = 0.70 # Min soul stability needed
+HARMONIC_STRENGTHENING_PREREQ_COHERENCE: float = 0.70 # Min soul coherence needed
+HARMONIC_STRENGTHENING_TARGET_FREQS: List[float] = [432.0] + list(SOLFEGGIO_FREQUENCIES.values()) # Frequencies to tune towards
+HARMONIC_STRENGTHENING_TUNING_INTENSITY_FACTOR: float = 0.7 # Factor for frequency adjustment speed
+HARMONIC_STRENGTHENING_TUNING_TARGET_REACH_HZ: float = 1.0 # Hz threshold to consider target reached
+HARMONIC_STRENGTHENING_HARMONIC_COUNT: int = 5 # Default number of harmonics to update/use
+HARMONIC_STRENGTHENING_PHI_AMP_INTENSITY_FACTOR: float = 0.15 # Factor for phi resonance increase per intensity
+HARMONIC_STRENGTHENING_PHI_AMP_DURATION_FACTOR: float = 1.0 # Factor linking duration to phi resonance increase (already present in original code implicitly, making explicit)
+HARMONIC_STRENGTHENING_PHI_STABILITY_BOOST_FACTOR: float = 0.4 # How much phi resonance increase boosts stability
+HARMONIC_STRENGTHENING_PATTERN_STAB_INTENSITY_FACTOR: float = 0.10 # Base increase factor
+HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_FACTOR: float = 0.02 # Factor per aspect count influencing stabilization
+HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_CAP: float = 0.4 # Max influence from aspects
+HARMONIC_STRENGTHENING_PATTERN_STAB_STABILITY_BOOST: float = 0.6 # How much pattern stability increase boosts overall stability
+HARMONIC_STRENGTHENING_COHERENCE_INTENSITY_FACTOR: float = 0.12 # Base increase factor
+HARMONIC_STRENGTHENING_COHERENCE_DURATION_FACTOR: float = 1.0 # Factor linking duration to coherence increase
+HARMONIC_STRENGTHENING_COHERENCE_HARMONIC_FACTOR: float = 0.08 # Bonus from harmonic richness
+HARMONIC_STRENGTHENING_COHERENCE_HARMONIC_COUNT_NORM: float = 10.0 # Count used for normalizing richness factor
+HARMONIC_STRENGTHENING_COHERENCE_HARMONY_BOOST: float = 0.9 # How much coherence increase boosts harmony
+HARMONIC_STRENGTHENING_EXPANSION_INTENSITY_FACTOR: float = 1.5 # Base radius increase factor
+HARMONIC_STRENGTHENING_EXPANSION_STATE_FACTOR: float = 1.0 # Combined stability/coherence influence (e.g., (stab+coh)/2 * THIS)
+HARMONIC_STRENGTHENING_EXPANSION_STR_INTENSITY_FACTOR: float = 0.15 # Base strength increase factor
+HARMONIC_STRENGTHENING_EXPANSION_STR_STATE_FACTOR: float = 1.0 # Combined stability/coherence influence on strength increase
+
+# --- Earth Harmonization Constants ---
+CORD_INTEGRITY_THRESHOLD_EARTH: float = 0.75 # Min cord integrity for harmonization
+HARMONY_TARGET_BASE: float = 0.6 # Weighting factor towards Schumann in target freq calc (0 to 1)
+HARMONY_INTENSITY_FACTOR: float = 0.7 # Base factor for frequency adjustment speed
+ELEMENTAL_TARGET_EARTH: float = 0.8 # Target strength for primary Earth element (Malkuth's)
+ELEMENTAL_TARGET_OTHER: float = 0.5 # Target strength for other Earth elements
+ELEMENTAL_ALIGN_INTENSITY_FACTOR: float = 0.7 # Base factor for element adjustment speed
+CYCLE_SYNC_TARGET_BASE: float = 0.8 # Base target synchronization level for cycles
+CYCLE_SYNC_IMPORTANCE_WEIGHT: Dict[str, float] = {"diurnal": 0.9, "lunar": 0.7, "annual": 0.8} # Relative importance
+CYCLE_SYNC_INTENSITY_FACTOR: float = 0.8 # Base factor for sync adjustment speed
+CYCLE_SYNC_DURATION_FACTOR: float = 0.8 # Factor linking duration to sync adjustment
+PLANETARY_RESONANCE_TARGET: float = 0.7 # Target planetary resonance level
+PLANETARY_RESONANCE_INTENSITY_FACTOR: float = 0.9 # Base factor for planetary resonance adjustment speed
+GAIA_CONNECTION_TARGET: float = 0.65 # Target Gaia connection level
+GAIA_CONNECTION_INTENSITY_FACTOR: float = 1.0 # Base factor for Gaia connection speed
+GAIA_CONNECTION_DURATION_FACTOR: float = 1.0 # Factor linking duration to Gaia connection speed
+HARMONY_STABILITY_BONUS_FACTOR: float = 0.15 # How much final Earth resonance boosts stability
+HARMONY_COHERENCE_BONUS_FACTOR: float = 0.10 # How much final Earth resonance boosts coherence
+EARTH_ELEMENTS: List[str] = ["earth", "water", "air", "fire", "aether"] # Define Earth elements used
+
+# --- Identity Crystallization Constants ---
+IDENTITY_CRYSTALLIZATION_THRESHOLD: float = 0.88 # Min overall score for full crystallization
+# Name Generation/Resonance
+NAME_LENGTH_BASE: int = 4
+NAME_LENGTH_FACTOR: float = 6.0 # e.g., 4 + int(conn_strength * 6)
+NAME_VOWEL_RATIO_BASE: float = 0.3
+NAME_VOWEL_RATIO_FACTOR: float = 0.4 # e.g., 0.3 + 0.4 * ascending_flow
+NAME_RESONANCE_BASE: float = 0.5
+NAME_RESONANCE_WEIGHT_VOWEL: float = 0.3
+NAME_RESONANCE_WEIGHT_LETTER: float = 0.2
+NAME_RESONANCE_WEIGHT_GEMATRIA: float = 0.3
+NAME_GEMATRIA_RESONANT_NUMBERS: List[int] = [3, 6, 9, 12, 21, 33, 108] # Example resonant numbers
+NAME_RESPONSE_PATTERN_DURATION: float = 3.0 # seconds
+NAME_RESPONSE_PATTERN_POINTS: int = 300
+NAME_RESPONSE_HEARTBEAT_INTERVAL: float = 0.8 # seconds (for 75 BPM)
+NAME_RESPONSE_HEARTBEAT_LUB_DUR: int = 10 # points
+NAME_RESPONSE_HEARTBEAT_DUB_DUR: int = 10 # points
+NAME_RESPONSE_HEARTBEAT_DUB_OFFSET: int = 15 # points
+NAME_RESPONSE_NAME_MOD_AMP: float = 0.3
+NAME_RESPONSE_NAME_MOD_FREQ_BASE: float = 8.0 # Hz (alpha base)
+NAME_RESPONSE_NAME_MOD_FREQ_RANGE: float = 4.0 # Hz (alpha range)
+# Voice Frequency
+VOICE_FREQ_BASE: float = 432.0
+VOICE_FREQ_ADJ_LENGTH_FACTOR: float = 20.0
+VOICE_FREQ_ADJ_VOWEL_FACTOR: float = 15.0
+VOICE_FREQ_ADJ_GEMATRIA_FACTOR: float = 25.0
+VOICE_FREQ_ADJ_RESONANCE_FACTOR: float = 30.0
+VOICE_FREQ_ADJ_YINYANG_FACTOR: float = 20.0
+VOICE_FREQ_SOLFEGGIO_SNAP_HZ: float = 10.0 # Snap to solfeggio if within this Hz
+VOICE_FREQ_MIN_HZ: float = 396.0 # Solfeggio UT
+VOICE_FREQ_MAX_HZ: float = 963.0 # Solfeggio SI
+# Name Calling/Response
+NAME_RESPONSE_STATE_FACTORS: Dict[str, float] = {'dream': 0.3, 'liminal': 0.7, 'aware': 1.0, 'default': 0.5}
+NAME_RESPONSE_BASE: float = 0.2
+NAME_RESPONSE_STATE_WEIGHT: float = 0.3
+NAME_RESPONSE_VOICE_RES_WEIGHT: float = 0.5
+NAME_RESPONSE_CALL_COUNT_FACTOR: float = 5.0 # Max contribution reached after this many calls
+NAME_RESPONSE_TRAIN_BASE_INC: float = 0.10 # Base increase per cycle
+NAME_RESPONSE_TRAIN_CYCLE_INC: float = 0.02 # Additional increase per cycle
+NAME_RESPONSE_TRAIN_NAME_FACTOR: float = 0.5 # Weight of name resonance
+NAME_RESPONSE_TRAIN_STATE_WEIGHT: float = 0.5 # Weight of state factor
+NAME_RESPONSE_TRAIN_HEARTBEAT_FACTOR: float = 0.5 # Weight of heartbeat entrainment
+NAME_RESPONSE_TRAIN_HB_ENTRAIN_WEIGHT: float = 0.5 # Weight of heartbeat entrainment
+# Heartbeat Entrainment
+HEARTBEAT_ENTRAINMENT_DURATION_CAP: float = 300.0 # seconds (5 mins)
+HEARTBEAT_ENTRAINMENT_INC_FACTOR: float = 0.2
+# Soul Color
+COLOR_AFFINITY_GEMATRIA_WEIGHT: float = 0.7
+COLOR_AFFINITY_VOWEL_WEIGHT_FACTOR: float = 0.1
+COLOR_AFFINITY_STATE_WEIGHT: float = 0.5
+COLOR_AFFINITY_YINYANG_WEIGHT: float = 0.6
+COLOR_AFFINITY_BALANCE_WEIGHT: float = 0.6
+COLOR_FREQ_DEFAULT: float = 528.0 # Default if lookup fails
+# Soul Frequency
+SOUL_FREQ_DEFAULT: float = 528.0 # Default if calculation fails
+SOUL_FREQ_RESONANCE_THRESHOLD: float = 0.7 # Threshold for strong resonance with Solfeggio
+# Sephiroth Aspect Identification
+SEPHIROTH_AFFINITY_GEMATRIA_RANGES: Dict[range, str] = { range(1, 10): 'kether', range(10, 20): 'chokmah', range(20, 30): 'binah', range(30, 40): 'chesed', range(40, 50): 'geburah', range(50, 70): 'tiphareth', range(70, 90): 'netzach', range(90, 110): 'hod', range(110, 140): 'yesod', range(140, 300): 'malkuth' }
+SEPHIROTH_AFFINITY_GEMATRIA_WEIGHT: float = 0.8
+SEPHIROTH_AFFINITY_COLOR_MAP: Dict[str, str] = { 'white': 'kether', 'grey': 'chokmah', 'black': 'binah', 'blue': 'chesed', 'red': 'geburah', 'yellow': 'tiphareth', 'green': 'netzach', 'orange': 'hod', 'purple': 'yesod', 'brown': 'malkuth', 'gold': 'tiphareth', 'silver': 'chokmah', 'indigo': 'yesod', 'citrine':'malkuth', 'olive':'malkuth'} # Map variations
+SEPHIROTH_AFFINITY_COLOR_WEIGHT: float = 0.7
+SEPHIROTH_AFFINITY_STATE_MAP: Dict[str, str] = {'dream': 'yesod', 'liminal': 'hod', 'aware': 'tiphareth'}
+SEPHIROTH_AFFINITY_STATE_WEIGHT: float = 0.5
+SEPHIROTH_AFFINITY_FREQ_RESONANCE_THRESHOLD: float = 0.7
+SEPHIROTH_AFFINITY_YINYANG_LOW_THRESHOLD: float = 0.4
+SEPHIROTH_AFFINITY_YINYANG_HIGH_THRESHOLD: float = 0.6
+SEPHIROTH_AFFINITY_YIN_SEPHIROTH: List[str] = ['binah', 'hod', 'yesod', 'geburah']
+SEPHIROTH_AFFINITY_YANG_SEPHIROTH: List[str] = ['chokmah', 'netzach', 'chesed']
+SEPHIROTH_AFFINITY_BALANCED_SEPHIROTH: List[str] = ['tiphareth', 'kether', 'malkuth']
+SEPHIROTH_AFFINITY_YINYANG_WEIGHT: float = 0.4
+SEPHIROTH_AFFINITY_BALANCE_WEIGHT: float = 0.4
+SEPHIROTH_ASPECT_DEFAULT: str = 'tiphareth' # Default if calc fails
+# Elemental Affinity
+ELEMENTAL_AFFINITY_VOWEL_THRESHOLD: float = 0.6
+ELEMENTAL_AFFINITY_CONSONANT_THRESHOLD: float = 0.7
+ELEMENTAL_AFFINITY_VOWEL_MAP: Dict[str, float] = {'air': 0.7, 'earth': 0.7, 'water': 0.6, 'fire': 0.5} # Weights based on ratios
+ELEMENTAL_AFFINITY_SEPHIROTH_WEIGHT: float = 0.6
+ELEMENTAL_AFFINITY_COLOR_MAP: Dict[str, str] = {'red': 'fire', 'orange': 'fire', 'yellow': 'air', 'green': 'earth', 'blue': 'water', 'indigo': 'water', 'violet': 'aether', 'white': 'aether', 'gold': 'fire', 'silver': 'water', 'brown': 'earth', 'black':'earth', 'grey':'air', 'purple':'aether'} # Comprehensive map
+ELEMENTAL_AFFINITY_COLOR_WEIGHT: float = 0.5
+ELEMENTAL_AFFINITY_STATE_MAP: Dict[str, str] = {'dream': 'water', 'liminal': 'aether', 'aware': 'fire'}
+ELEMENTAL_AFFINITY_STATE_WEIGHT: float = 0.4
+ELEMENTAL_AFFINITY_FREQ_RANGES: List[Tuple[float, str]] = [(440.0, 'earth'), (528.0, 'water'), (639.0, 'fire'), (741.0, 'air')] # Upper bounds for element ranges
+ELEMENTAL_AFFINITY_FREQ_WEIGHT: float = 0.3
+ELEMENTAL_AFFINITY_DEFAULT: str = 'aether' # Default if calc fails
+# Platonic Symbol
+PLATONIC_ELEMENT_MAP: Dict[str, str] = {'fire': 'tetrahedron', 'earth': 'hexahedron', 'air': 'octahedron', 'water': 'icosahedron', 'aether': 'dodecahedron', 'quintessence': 'dodecahedron', 'spirit':'dodecahedron'}
+PLATONIC_DEFAULT_GEMATRIA_RANGE: int = 30 # Value used to cycle through symbols
+# Love Resonance
+LOVE_RESONANCE_FREQ: float = SOLFEGGIO_FREQUENCIES.get('MI', 528.0)
+LOVE_RESONANCE_CYCLE_FACTOR_DECAY: float = 0.5 # How much effect diminishes per cycle
+LOVE_RESONANCE_BASE_INC: float = 0.15
+LOVE_RESONANCE_STATE_WEIGHT: Dict[str, float] = {'dream': 0.7, 'liminal': 0.9, 'aware': 0.8, 'default': 0.7}
+LOVE_RESONANCE_FREQ_RES_WEIGHT: float = 1.0 # Weighting of freq resonance
+LOVE_RESONANCE_HEARTBEAT_WEIGHT: float = 0.7 # Base factor for heartbeat influence
+LOVE_RESONANCE_HEARTBEAT_SCALE: float = 0.3 # Scale factor for heartbeat influence
+LOVE_RESONANCE_EMOTION_BOOST_FACTOR: float = 0.3 # How much love boosts other emotions
+# Sacred Geometry Application
+SACRED_GEOMETRY_STAGES: List[str] = ['circle', 'vesica_piscis', 'seed_of_life', 'flower_of_life', 'metatrons_cube']
+SACRED_GEOMETRY_STAGE_FACTOR_BASE: float = 0.5
+SACRED_GEOMETRY_STAGE_FACTOR_SCALE: float = 0.5
+SACRED_GEOMETRY_BASE_INC_BASE: float = 0.10
+SACRED_GEOMETRY_BASE_INC_SCALE: float = 0.05
+SACRED_GEOMETRY_SYMBOL_MATCH_WEIGHT: Dict[str,float] = { 'point': 0.7, 'line': 0.7, 'triangle': 0.7, 'square': 0.7, 'pentagon': 0.7, 'hexagon': 0.7, 'default': 0.5 } # Base resonance if geo matches sephirah symbol
+SACRED_GEOMETRY_ELEMENT_MATCH_WEIGHT: Dict[str, float] = {'fire': 0.8, 'earth': 0.8, 'air': 0.8, 'water': 0.8, 'aether': 0.8, 'default': 0.5} # Base resonance if geo matches element
+SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_BASE: float = 0.5
+SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_SCALE: float = 0.5
+SACRED_GEOMETRY_FIB_MAX_IDX: int = 4 # Index in FIBONACCI_SEQUENCE used for scaling name factor
+# Attribute Coherence
+ATTRIBUTE_COHERENCE_STD_DEV_SCALE: float = 2.0 # Factor to scale std dev when calculating coherence
+# Crystallization Verification
+CRYSTALLIZATION_REQUIRED_ATTRIBUTES: List[str] = [ 'name', 'voice_frequency', 'consciousness_state', 'response_level', 'soul_color', 'soul_frequency', 'sephiroth_aspect', 'elemental_affinity', 'platonic_symbol' ]
+CRYSTALLIZATION_COMPONENT_WEIGHTS: Dict[str, float] = { 'name_resonance': 0.15, 'response_level': 0.15, 'state_stability': 0.10, 'crystallization_level': 0.20, 'attribute_coherence': 0.15, 'attribute_presence': 0.10, 'emotional_resonance': 0.15 }
+CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD: float = 0.9 # Minimum fraction of required attributes needed
+
+# --- Birth Process Constants ---
+# ##############################################
+# ## Identity Crystallization Constants       ##
+# ##############################################
+IDENTITY_CRYSTALLIZATION_THRESHOLD: float = 0.88 # Min overall score for full crystallization
+# # Name Generation/Resonance
+NAME_LENGTH_BASE: int = 4
+NAME_LENGTH_FACTOR: float = 6.0 # e.g., 4 + int(conn_strength * 6)
+NAME_VOWEL_RATIO_BASE: float = 0.3
+NAME_VOWEL_RATIO_FACTOR: float = 0.4 # e.g., 0.3 + 0.4 * ascending_flow
+NAME_RESONANCE_BASE: float = 0.5
+NAME_RESONANCE_WEIGHT_VOWEL: float = 0.3
+NAME_RESONANCE_WEIGHT_LETTER: float = 0.2
+NAME_RESONANCE_WEIGHT_GEMATRIA: float = 0.3
+NAME_GEMATRIA_RESONANT_NUMBERS: List[int] = [3, 6, 9, 12, 21, 33, 108] # Example resonant numbers
+NAME_RESPONSE_PATTERN_DURATION: float = 3.0 # seconds
+NAME_RESPONSE_PATTERN_POINTS: int = 300
+NAME_RESPONSE_HEARTBEAT_INTERVAL: float = 0.8 # seconds (for 75 BPM)
+NAME_RESPONSE_HEARTBEAT_LUB_DUR: int = 10 # points
+NAME_RESPONSE_HEARTBEAT_DUB_DUR: int = 10 # points
+NAME_RESPONSE_HEARTBEAT_DUB_OFFSET: int = 15 # points
+NAME_RESPONSE_NAME_MOD_AMP: float = 0.3
+NAME_RESPONSE_NAME_MOD_FREQ_BASE: float = 8.0 # Hz (alpha base)
+NAME_RESPONSE_NAME_MOD_FREQ_RANGE: float = 4.0 # Hz (alpha range)
+# # Voice Frequency
+VOICE_FREQ_BASE: float = 432.0
+VOICE_FREQ_ADJ_LENGTH_FACTOR: float = 20.0
+VOICE_FREQ_ADJ_VOWEL_FACTOR: float = 15.0
+VOICE_FREQ_ADJ_GEMATRIA_FACTOR: float = 25.0
+VOICE_FREQ_ADJ_RESONANCE_FACTOR: float = 30.0
+VOICE_FREQ_ADJ_YINYANG_FACTOR: float = 20.0
+VOICE_FREQ_SOLFEGGIO_SNAP_HZ: float = 10.0 # Snap to solfeggio if within this Hz
+VOICE_FREQ_MIN_HZ: float = 396.0 # Solfeggio UT
+VOICE_FREQ_MAX_HZ: float = 963.0 # Solfeggio SI
+# # Name Calling/Response
+NAME_RESPONSE_STATE_FACTORS: Dict[str, float] = {'dream': 0.3, 'liminal': 0.7, 'aware': 1.0, 'default': 0.5}
+NAME_RESPONSE_BASE: float = 0.2
+NAME_RESPONSE_STATE_WEIGHT: float = 0.3
+NAME_RESPONSE_VOICE_RES_WEIGHT: float = 0.5
+NAME_RESPONSE_CALL_COUNT_FACTOR: float = 5.0 # Max contribution reached after this many calls
+NAME_RESPONSE_TRAIN_BASE_INC: float = 0.10 # Base increase per cycle
+NAME_RESPONSE_TRAIN_CYCLE_INC: float = 0.02 # Additional increase per cycle
+NAME_RESPONSE_TRAIN_NAME_FACTOR: float = 0.5 # Weight of name resonance
+NAME_RESPONSE_TRAIN_STATE_WEIGHT: float = 0.5 # Weight of state factor
+NAME_RESPONSE_TRAIN_HEARTBEAT_FACTOR: float = 0.5 # Weight of heartbeat entrainment
+NAME_RESPONSE_TRAIN_HB_ENTRAIN_WEIGHT: float = 0.5 # Weight of heartbeat entrainment
+# # Heartbeat Entrainment
+HEARTBEAT_ENTRAINMENT_DURATION_CAP: float = 300.0 # seconds (5 mins)
+HEARTBEAT_ENTRAINMENT_INC_FACTOR: float = 0.2
+# # Soul Color
+COLOR_AFFINITY_GEMATRIA_WEIGHT: float = 0.7
+COLOR_AFFINITY_VOWEL_WEIGHT_FACTOR: float = 0.1
+COLOR_AFFINITY_STATE_WEIGHT: float = 0.5
+COLOR_AFFINITY_YINYANG_WEIGHT: float = 0.6
+COLOR_AFFINITY_BALANCE_WEIGHT: float = 0.6
+COLOR_FREQ_DEFAULT: float = 528.0 # Default if lookup fails
+# # Soul Frequency
+SOUL_FREQ_DEFAULT: float = 528.0 # Default if calculation fails
+SOUL_FREQ_RESONANCE_THRESHOLD: float = 0.7 # Threshold for strong resonance with Solfeggio
+# # Sephiroth Aspect Identification
+SEPHIROTH_AFFINITY_GEMATRIA_RANGES: Dict[range, str] = { range(1, 10): 'kether', range(10, 20): 'chokmah', range(20, 30): 'binah', range(30, 40): 'chesed', range(40, 50): 'geburah', range(50, 70): 'tiphareth', range(70, 90): 'netzach', range(90, 110): 'hod', range(110, 140): 'yesod', range(140, 300): 'malkuth' }
+SEPHIROTH_AFFINITY_GEMATRIA_WEIGHT: float = 0.8
+SEPHIROTH_AFFINITY_COLOR_MAP: Dict[str, str] = { 'white': 'kether', 'grey': 'chokmah', 'black': 'binah', 'blue': 'chesed', 'red': 'geburah', 'yellow': 'tiphareth', 'green': 'netzach', 'orange': 'hod', 'purple': 'yesod', 'brown': 'malkuth', 'gold': 'tiphareth', 'silver': 'chokmah', 'indigo': 'yesod', 'citrine':'malkuth', 'olive':'malkuth'} # Map variations
+SEPHIROTH_AFFINITY_COLOR_WEIGHT: float = 0.7
+SEPHIROTH_AFFINITY_STATE_MAP: Dict[str, str] = {'dream': 'yesod', 'liminal': 'hod', 'aware': 'tiphareth'}
+SEPHIROTH_AFFINITY_STATE_WEIGHT: float = 0.5
+SEPHIROTH_AFFINITY_FREQ_RESONANCE_THRESHOLD: float = 0.7
+SEPHIROTH_AFFINITY_YINYANG_LOW_THRESHOLD: float = 0.4
+SEPHIROTH_AFFINITY_YINYANG_HIGH_THRESHOLD: float = 0.6
+SEPHIROTH_AFFINITY_YIN_SEPHIROTH: List[str] = ['binah', 'hod', 'yesod', 'geburah']
+SEPHIROTH_AFFINITY_YANG_SEPHIROTH: List[str] = ['chokmah', 'netzach', 'chesed']
+SEPHIROTH_AFFINITY_BALANCED_SEPHIROTH: List[str] = ['tiphareth', 'kether', 'malkuth']
+SEPHIROTH_AFFINITY_YINYANG_WEIGHT: float = 0.4
+SEPHIROTH_AFFINITY_BALANCE_WEIGHT: float = 0.4
+SEPHIROTH_ASPECT_DEFAULT: str = 'tiphareth' # Default if calc fails
+# # Elemental Affinity
+ELEMENTAL_AFFINITY_VOWEL_THRESHOLD: float = 0.6
+ELEMENTAL_AFFINITY_CONSONANT_THRESHOLD: float = 0.7
+ELEMENTAL_AFFINITY_VOWEL_MAP: Dict[str, float] = {'air': 0.7, 'earth': 0.7, 'water': 0.6, 'fire': 0.5} # Weights based on ratios
+ELEMENTAL_AFFINITY_SEPHIROTH_WEIGHT: float = 0.6
+ELEMENTAL_AFFINITY_COLOR_MAP: Dict[str, str] = {'red': 'fire', 'orange': 'fire', 'yellow': 'air', 'green': 'earth', 'blue': 'water', 'indigo': 'water', 'violet': 'aether', 'white': 'aether', 'gold': 'fire', 'silver': 'water', 'brown': 'earth', 'black':'earth', 'grey':'air', 'purple':'aether'} # Comprehensive map
+ELEMENTAL_AFFINITY_COLOR_WEIGHT: float = 0.5
+ELEMENTAL_AFFINITY_STATE_MAP: Dict[str, str] = {'dream': 'water', 'liminal': 'aether', 'aware': 'fire'}
+ELEMENTAL_AFFINITY_STATE_WEIGHT: float = 0.4
+ELEMENTAL_AFFINITY_FREQ_RANGES: List[Tuple[float, str]] = [(440.0, 'earth'), (528.0, 'water'), (639.0, 'fire'), (741.0, 'air')] # Upper bounds for element ranges
+ELEMENTAL_AFFINITY_FREQ_WEIGHT: float = 0.3
+ELEMENTAL_AFFINITY_DEFAULT: str = 'aether' # Default if calc fails
+# # Platonic Symbol
+PLATONIC_ELEMENT_MAP: Dict[str, str] = {'fire': 'tetrahedron', 'earth': 'hexahedron', 'air': 'octahedron', 'water': 'icosahedron', 'aether': 'dodecahedron', 'quintessence': 'dodecahedron', 'spirit':'dodecahedron'}
+PLATONIC_DEFAULT_GEMATRIA_RANGE: int = 30 # Value used to cycle through symbols
+# # Love Resonance
+LOVE_RESONANCE_FREQ: float = SOLFEGGIO_FREQUENCIES.get('MI', 528.0)
+LOVE_RESONANCE_CYCLE_FACTOR_DECAY: float = 0.5 # How much effect diminishes per cycle
+LOVE_RESONANCE_BASE_INC: float = 0.15
+LOVE_RESONANCE_STATE_WEIGHT: Dict[str, float] = {'dream': 0.7, 'liminal': 0.9, 'aware': 0.8, 'default': 0.7}
+LOVE_RESONANCE_FREQ_RES_WEIGHT: float = 1.0 # Weighting of freq resonance
+LOVE_RESONANCE_HEARTBEAT_WEIGHT: float = 0.7 # Base factor for heartbeat influence
+LOVE_RESONANCE_HEARTBEAT_SCALE: float = 0.3 # Scale factor for heartbeat influence
+LOVE_RESONANCE_EMOTION_BOOST_FACTOR: float = 0.3 # How much love boosts other emotions
+# # Sacred Geometry Application
+SACRED_GEOMETRY_STAGES: List[str] = ['circle', 'vesica_piscis', 'seed_of_life', 'flower_of_life', 'metatrons_cube']
+SACRED_GEOMETRY_STAGE_FACTOR_BASE: float = 0.5
+SACRED_GEOMETRY_STAGE_FACTOR_SCALE: float = 0.5
+SACRED_GEOMETRY_BASE_INC_BASE: float = 0.10
+SACRED_GEOMETRY_BASE_INC_SCALE: float = 0.05
+SACRED_GEOMETRY_SYMBOL_MATCH_WEIGHT: Dict[str,float] = { 'point': 0.7, 'line': 0.7, 'triangle': 0.7, 'square': 0.7, 'pentagon': 0.7, 'hexagon': 0.7, 'default': 0.5 } # Base resonance if geo matches sephirah symbol
+SACRED_GEOMETRY_ELEMENT_MATCH_WEIGHT: Dict[str, float] = {'fire': 0.8, 'earth': 0.8, 'air': 0.8, 'water': 0.8, 'aether': 0.8, 'default': 0.5} # Base resonance if geo matches element
+SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_BASE: float = 0.5
+SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_SCALE: float = 0.5
+SACRED_GEOMETRY_FIB_MAX_IDX: int = 4 # Index in FIBONACCI_SEQUENCE used for scaling name factor
+# # Attribute Coherence
+ATTRIBUTE_COHERENCE_STD_DEV_SCALE: float = 2.0 # Factor to scale std dev when calculating coherence
+# # Crystallization Verification
+CRYSTALLIZATION_REQUIRED_ATTRIBUTES: List[str] = [ 'name', 'voice_frequency', 'consciousness_state', 'response_level', 'soul_color', 'soul_frequency', 'sephiroth_aspect', 'elemental_affinity', 'platonic_symbol' ]
+CRYSTALLIZATION_COMPONENT_WEIGHTS: Dict[str, float] = { 'name_resonance': 0.15, 'response_level': 0.15, 'state_stability': 0.10, 'crystallization_level': 0.20, 'attribute_coherence': 0.15, 'attribute_presence': 0.10, 'emotional_resonance': 0.15 }
+CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD: float = 0.9 # Minimum fraction of required attributes needed
+
+# ##############################################
+# ## Birth Process Constants                  ##
+# ##############################################
+BIRTH_PREREQ_EARTH_HARMONIZED: bool = True # Must the earth_harmonized flag be True?
+BIRTH_PREREQ_READY_FOR_BIRTH: bool = True # Must the ready_for_birth flag be True?
+BIRTH_PREREQ_CORD_INTEGRITY_MIN: float = 0.80 # Min cord integrity for birth (higher than harmony)
+BIRTH_PREREQ_EARTH_RESONANCE_MIN: float = 0.70 # Min earth resonance for birth
+BIRTH_CONN_WEIGHT_RESONANCE: float = 0.4
+BIRTH_CONN_WEIGHT_INTEGRITY: float = 0.6
+BIRTH_CONN_TRAUMA_FACTOR: float = 0.3 # How much intensity contributes to trauma
+BIRTH_CONN_STRENGTH_FACTOR: float = 0.7 # How much intensity contributes to connection strength
+BIRTH_CONN_STRENGTH_CAP: float = 0.98 # Max connection strength achievable
+BIRTH_ACCEPTANCE_TRAUMA_FACTOR: float = 0.7 # How much trauma reduces acceptance
+BIRTH_ACCEPTANCE_MIN: float = 0.4 # Minimum form acceptance
+BIRTH_CORD_TRANSFER_INTENSITY_FACTOR: float = 0.4 # How much intensity reduces transfer efficiency
+BIRTH_CORD_INTEGRATION_CONN_FACTOR: float = 0.8 # How much physical connection affects cord integration
+BIRTH_VEIL_STRENGTH_BASE: float = 0.65
+BIRTH_VEIL_STRENGTH_INTENSITY_FACTOR: float = 0.30 # e.g., 0.65 + intensity * 0.30
+BIRTH_VEIL_PERMANENCE_BASE: float = 0.75
+BIRTH_VEIL_PERMANENCE_INTENSITY_FACTOR: float = 0.20
+BIRTH_VEIL_RETENTION_BASE: float = 0.15 # Base % memory retained
+BIRTH_VEIL_RETENTION_INTENSITY_FACTOR: float = -0.12 # Negative factor: higher intensity = less retention
+BIRTH_VEIL_RETENTION_MIN: float = 0.005 # Minimum 0.5% retention
+BIRTH_VEIL_MEMORY_RETENTION_MODS: Dict[str, float] = { "emotional": 0.3, "sensory": 0.2, "conceptual": 0.1, "specific": 0.05 } # Additive modifiers
+BIRTH_BREATH_AMP_BASE: float = 0.6
+BIRTH_BREATH_AMP_INTENSITY_FACTOR: float = 0.4
+BIRTH_BREATH_DEPTH_BASE: float = 0.5
+BIRTH_BREATH_DEPTH_INTENSITY_FACTOR: float = 0.5
+BIRTH_BREATH_SYNC_RESONANCE_FACTOR: float = 0.9 # How much earth resonance affects sync
+BIRTH_BREATH_INTEGRATION_CONN_FACTOR: float = 1.0 # How much physical connection affects integration
+BIRTH_BREATH_RESONANCE_BOOST_FACTOR: float = 0.2 # Base factor for how much breath boosts earth resonance
+BIRTH_BREATH_ENERGY_SHIFT_FACTOR: float = 1.0 # How much breath integration affects energy shift
+BIRTH_BREATH_PHYSICAL_ENERGY_BASE: float = 0.5
+BIRTH_BREATH_PHYSICAL_ENERGY_SCALE: float = 0.5
+BIRTH_BREATH_SPIRITUAL_ENERGY_BASE: float = 1.0
+BIRTH_BREATH_SPIRITUAL_ENERGY_SCALE: float = -0.7 # Negative scale: shift reduces spiritual
+BIRTH_BREATH_SPIRITUAL_ENERGY_MIN: float = 0.05 # Minimum spiritual energy remaining
+BIRTH_FINAL_INTEGRATION_WEIGHT_CONN: float = 0.4
+BIRTH_FINAL_INTEGRATION_WEIGHT_ACCEPT: float = 0.3
+BIRTH_FINAL_INTEGRATION_WEIGHT_BREATH: float = 0.3
+BIRTH_FINAL_FREQ_FACTOR: float = 0.6 # Factor to reduce frequency upon birth
+BIRTH_FINAL_STABILITY_FACTOR: float = 0.85 # Factor to reduce stability upon birth
+
+# --- SoulSpark Constants ---
+SOUL_SPARK_DEFAULT_FREQ: float = 432.0
+SOUL_SPARK_DEFAULT_STABILITY: float = 0.6
+SOUL_SPARK_DEFAULT_RESONANCE: float = 0.6
+SOUL_SPARK_DEFAULT_ALIGNMENT: float = 0.1
+SOUL_SPARK_DEFAULT_ENERGY: float = 1000.0
+SOUL_SPARK_VIABILITY_WEIGHT_STABILITY: float = 0.4
+SOUL_SPARK_VIABILITY_WEIGHT_RESONANCE: float = 0.3
+SOUL_SPARK_VIABILITY_WEIGHT_DIM_STABILITY: float = 0.3
+SOUL_SPARK_COMPLEXITY_DIVISOR: float = 20.0 # For calculating complexity metric
+SOUL_SPARK_POTENTIAL_WEIGHT_ALIGNMENT: float = 0.6
+SOUL_SPARK_POTENTIAL_WEIGHT_DIM_STABILITY: float = 0.4
+# Visualization Defaults (if needed)
+SOUL_SPARK_VIZ_POINT_SIZE_FACTOR: float = 0.05 # energy * THIS + base
+SOUL_SPARK_VIZ_POINT_SIZE_BASE: float = 10.0
+SOUL_SPARK_VIZ_POINT_ALPHA_FACTOR: float = 0.001 # energy * THIS
+SOUL_SPARK_VIZ_POINT_ALPHA_MAX: float = 0.8
+SOUL_SPARK_VIZ_EDGE_ALPHA_FACTOR: float = 0.7
+SOUL_SPARK_VIZ_EDGE_WIDTH_FACTOR: float = 1.5
+SOUL_SPARK_VIZ_CENTER_COLOR: str = 'yellow'
+SOUL_SPARK_VIZ_CENTER_SIZE_FACTOR: float = 0.05 # energy * THIS
+SOUL_SPARK_VIZ_CENTER_EDGE_COLOR: str = 'white'
+SOUL_SPARK_VIZ_FREQ_SIG_BARS: int = 10 # Max bars to show
+SOUL_SPARK_VIZ_FREQ_SIG_XLABEL: str = 'Harmonic Frequencies (Sorted)'
+SOUL_SPARK_VIZ_FREQ_SIG_YLABEL: str = 'Amplitude'
+SOUL_SPARK_VIZ_ENERGY_DIST_XLABEL: str = 'Structure Points (Sorted by Energy)'
+SOUL_SPARK_VIZ_ENERGY_DIST_YLABEL: str = 'Energy'
+SOUL_SPARK_VIZ_DIM_STAB_LABELS: List[str] = ['Void', 'Guff', 'Kether', 'Overall']
+SOUL_SPARK_VIZ_DIM_STAB_COLORS: List[str] = ['#3498db', '#9b59b6', '#f1c40f', '#2ecc71']
+
+# --- Sephiroth Journey Processing Constants ---
+SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_FREQ: float = 0.4 # Weight of frequency match in resonance calc
+SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_ASPECT: float = 0.4 # Weight of aspect match in resonance calc
+SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_PHI: float = 0.2 # Weight of phi resonance in resonance calc
+SEPHIROTH_JOURNEY_ASPECT_GAIN_THRESHOLD: float = 0.4 # Min strength needed to gain aspect initially
+SEPHIROTH_JOURNEY_ASPECT_STRENGTHEN_FACTOR: float = 0.25 # Factor applied to resonance for strengthening existing aspects
+SEPHIROTH_JOURNEY_DIVINE_QUALITY_IMPART_FACTOR: float = 0.8 # Factor scaling Sephiroth quality strength transferred
+SEPHIROTH_JOURNEY_ELEMENTAL_IMPART_FACTOR: float = 0.3 # Factor scaling elemental influence transfer
+SEPHIROTH_JOURNEY_STABILITY_BOOST_FACTOR: float = 0.1 # Base factor for stability boost per interaction
+SEPHIROTH_JOURNEY_STABILITY_MOD_FACTOR: float = 1.0 # Multiplier using Sephiroth's stability modifier
+SEPHIROTH_JOURNEY_STRENGTH_GAIN_FACTOR: float = 0.05 # How much gaining aspects increases soul strength
+SEPHIROTH_JOURNEY_STRENGTH_RESONANCE_FACTOR: float = 0.03 # How much resonance increases soul strength

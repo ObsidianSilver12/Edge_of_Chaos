@@ -1,9 +1,11 @@
-"""
-Earth Harmonization
+# --- START OF FILE earth_harmonisation.py ---
 
-This module implements the process of harmonizing the soul with Earth's frequencies
-and energetic patterns, preparing it for physical incarnation. The process attunes
-the soul to Earth's natural rhythms, elements, and planetary vibrations.
+"""
+Earth Harmonization Functions (Refactored - Operates on SoulSpark Object, Uses Constants)
+
+Provides functions for harmonizing the soul spark with Earth's frequencies,
+elements, and cycles, preparing it for physical incarnation. Modifies the
+SoulSpark object instance directly. Uses centrally defined constants.
 
 Author: Soul Development Framework Team
 """
@@ -12,689 +14,592 @@ import logging
 import numpy as np
 import os
 import sys
-from typing import Dict, List, Any, Tuple, Optional
+from datetime import datetime
 import time
+from typing import Dict, List, Any, Tuple, Optional
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='earth_harmonisation.log'
-)
-logger = logging.getLogger('earth_harmonisation')
+# --- Logging ---
+logger = logging.getLogger(__name__)
 
-# Add parent directory to path to import from parent directories
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-
-# Import required modules
+# --- Constants ---
 try:
-    from void.soul_spark import SoulSpark
-    from sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
-    import metrics_tracking as metrics
-    from constants import EARTH_FREQUENCIES
+    # Import necessary constants FROM THE CENTRAL FILE
+    from src.constants import * # Import all for convenience
+    # Extract specific Earth freq if needed
+    SCHUMANN_FREQUENCY = EARTH_FREQUENCIES.get("schumann", 7.83)
 except ImportError as e:
-    logger.error(f"Failed to import required modules: {e}")
-    # Define fallback constants
-    EARTH_FREQUENCIES = {
-        "schumann": 7.83,    # Schumann resonance first harmonic
-        "geomagnetic": 11.3, # Earth's geomagnetic field
-        "diurnal": 1.0 / 24.0, # Daily cycle (Hz - cycles per hour)
-        "lunar": 1.0 / (24.0 * 29.5), # Lunar cycle (Hz)
-        "annual": 1.0 / (24.0 * 365.25) # Annual cycle (Hz)
-    }
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. Earth Harmonization cannot function correctly.")
+    raise ImportError(f"Essential constants missing: {e}") from e
 
-# Constants
-EARTH_ELEMENTS = ["earth", "water", "air", "fire", "ether"]
+# --- Dependency Imports ---
+try:
+    from stage_1.void.soul_spark import SoulSpark
+    from stage_1.sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
+    DEPENDENCIES_AVAILABLE = True
+    if aspect_dictionary is None: raise ImportError("Aspect Dictionary failed to initialize.")
+except ImportError as e:
+    logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark or aspect_dictionary: {e}. Earth Harmonization cannot function.")
+    raise ImportError(f"Core dependencies missing: {e}") from e
 
-
-class EarthHarmonization:
-    """
-    Earth Harmonization Process
-    
-    This class implements the process of harmonizing a soul with Earth's frequencies
-    and energetic patterns, preparing it for physical incarnation.
-    """
-    
-    def __init__(self, soul_spark):
-        """
-        Initialize the Earth harmonization process.
-        
-        Args:
-            soul_spark: The soul spark to harmonize with Earth
-        """
-        self.soul_spark = soul_spark
-        
-        # Process state tracking
-        self.harmonization_complete = False
-        self.current_phase = None
-        self.phase_results = {}
-        
-        # Harmonization metrics
-        self.metrics = {
-            "initial_resonance": 0.0,
-            "phase_metrics": {},
-            "final_resonance": 0.0,
-            "process_duration": 0.0
-        }
-        
-        # Earth attunements
-        self.attunements = {
-            "frequency": 0.0,
-            "elemental": {},
-            "cycles": {},
-            "planetary": 0.0,
-            "gaia_connection": 0.0
-        }
-        
-        logger.info(f"Earth Harmonization initialized for soul spark {getattr(soul_spark, 'id', 'unknown')}")
-    
-    def harmonize(self, intensity=0.7, duration=1.0):
-        """
-        Perform the complete Earth harmonization process.
-        
-        Args:
-            intensity (float): Intensity of harmonization (0.1-1.0)
-            duration (float): Relative duration of the process (0.1-2.0)
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info(f"Beginning Earth harmonization with intensity={intensity}, duration={duration}")
-        start_time = time.time()
-        
-        # Check prerequisites
-        if not self._check_prerequisites():
-            logger.error("Prerequisites not met for Earth harmonization")
-            return False
-        
-        # Calculate initial Earth resonance
-        initial_resonance = self._calculate_earth_resonance()
-        self.metrics["initial_resonance"] = initial_resonance
-        
-        logger.info(f"Initial Earth resonance: {initial_resonance:.2f}")
-        
-        # Phase 1: Frequency Attunement
-        self.current_phase = "frequency_attunement"
-        success = self._perform_frequency_attunement(intensity, duration)
-        if not success:
-            logger.error("Frequency attunement phase failed")
-            return False
-            
-        # Phase 2: Elemental Alignment
-        self.current_phase = "elemental_alignment"
-        success = self._perform_elemental_alignment(intensity)
-        if not success:
-            logger.error("Elemental alignment phase failed")
-            return False
-            
-        # Phase 3: Cycle Synchronization
-        self.current_phase = "cycle_synchronization"
-        success = self._perform_cycle_synchronization(intensity, duration)
-        if not success:
-            logger.error("Cycle synchronization phase failed")
-            return False
-            
-        # Phase 4: Planetary Resonance
-        self.current_phase = "planetary_resonance"
-        success = self._perform_planetary_resonance(intensity)
-        if not success:
-            logger.error("Planetary resonance phase failed")
-            return False
-            
-        # Phase 5: Gaia Connection
-        self.current_phase = "gaia_connection"
-        success = self._perform_gaia_connection(intensity, duration)
-        if not success:
-            logger.error("Gaia connection phase failed")
-            return False
-        
-        # Complete harmonization
-        self.harmonization_complete = True
-        process_duration = time.time() - start_time
-        self.metrics["process_duration"] = process_duration
-        
-        # Calculate final Earth resonance
-        final_resonance = self._calculate_earth_resonance()
-        self.metrics["final_resonance"] = final_resonance
-        
-        # Record metrics
-        self._record_metrics()
-        
-        # Update soul
-        self._update_soul_properties()
-        
-        logger.info(f"Earth harmonization completed in {process_duration:.2f} seconds")
-        logger.info(f"Final Earth resonance: {final_resonance:.2f}")
-        
-        return True
-    
-    def _check_prerequisites(self):
-        """
-        Check if prerequisites for Earth harmonization are met.
-        
-        Returns:
-            bool: True if prerequisites are met
-        """
-        # Check for life cord
-        if not getattr(self.soul_spark, "cord_formation_complete", False):
-            logger.warning("Life cord formation not complete")
-            return False
-            
-        # Check if ready for Earth
-        if not getattr(self.soul_spark, "ready_for_earth", False):
-            logger.warning("Soul not ready for Earth harmonization")
-            return False
-            
-        # Check for sufficient cord integrity
-        cord_integrity = getattr(self.soul_spark, "cord_integrity", 0.0)
-        if cord_integrity < 0.5:
-            logger.warning(f"Life cord integrity too low: {cord_integrity:.2f}")
-            return False
-            
-        return True
-    
-    def _calculate_earth_resonance(self):
-        """
-        Calculate the soul's current resonance with Earth.
-        
-        Returns:
-            float: Earth resonance level (0.0-1.0)
-        """
-        # Get soul properties
-        soul_freq = getattr(self.soul_spark, "frequency", 528.0)
-        soul_elements = getattr(self.soul_spark, "elements", {})
-        
-        # Calculate frequency resonance component
-        freq_factors = []
-        for name, earth_freq in EARTH_FREQUENCIES.items():
-            # Calculate harmonic relationship
-            if earth_freq > 0 and soul_freq > 0:
-                # Use the smaller ratio to get a value between 0-1
-                ratio = min(earth_freq / soul_freq, soul_freq / earth_freq)
-                freq_factors.append(ratio)
-        
-        # Average frequency resonance
-        if freq_factors:
-            freq_resonance = sum(freq_factors) / len(freq_factors)
-        else:
-            freq_resonance = 0.3  # Default value
-        
-        # Calculate elemental resonance component
-        elem_resonance = 0.0
-        earth_element_count = len(EARTH_ELEMENTS)
-        
-        if soul_elements:
-            # Sum up soul's earth element strengths
-            total_strength = 0.0
-            for elem in EARTH_ELEMENTS:
-                if elem in soul_elements:
-                    total_strength += soul_elements[elem]
-            
-            # Calculate average elemental resonance
-            if earth_element_count > 0:
-                elem_resonance = total_strength / earth_element_count
-        
-        # Calculate overall resonance (weighted)
-        overall_resonance = freq_resonance * 0.6 + elem_resonance * 0.4
-        
-        return overall_resonance
-    
-    def _perform_frequency_attunement(self, intensity, duration):
-        """
-        Attune the soul's frequency to Earth's primary frequencies.
-        
-        Args:
-            intensity (float): Intensity of attunement
-            duration (float): Relative duration factor
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info("Beginning frequency attunement phase")
-        
-        # Get current soul frequency
-        soul_freq = getattr(self.soul_spark, "frequency", 528.0)
-        
-        # Calculate weighted Earth frequency target
-        # The Schumann resonance is most important, but we blend with others
-        target_freq = (
-            EARTH_FREQUENCIES["schumann"] * 0.5 +
-            EARTH_FREQUENCIES["geomagnetic"] * 0.3 +
-            soul_freq * 0.2  # Keep some of the soul's original frequency
-        )
-        
-        # Calculate attunement amount based on intensity and duration
-        attunement_factor = intensity * duration * 0.5
-        freq_shift = (target_freq - soul_freq) * attunement_factor
-        
-        # Apply frequency shift
-        new_freq = soul_freq + freq_shift
-        
-        # Calculate attunement level - avoid division by zero
-        if abs(target_freq - soul_freq) > 0.001:
-            attunement_level = attunement_factor * min(1.0, abs(freq_shift) / abs(target_freq - soul_freq))
-        else:
-            attunement_level = attunement_factor
-        
-        # Store results
-        self.attunements["frequency"] = attunement_level
-        self.phase_results["frequency_attunement"] = {
-            "original_frequency": soul_freq,
-            "target_frequency": target_freq,
-            "new_frequency": new_freq,
-            "attunement_level": attunement_level
-        }
-        
-        # Update soul frequency
-        setattr(self.soul_spark, "frequency", new_freq)
-        
-        # Update harmonics
-        if hasattr(self.soul_spark, "harmonics"):
-            harmonics = getattr(self.soul_spark, "harmonics")
-            new_harmonics = [new_freq * (i+1) for i in range(len(harmonics))]
-            setattr(self.soul_spark, "harmonics", new_harmonics)
-        
-        # Record phase metrics
-        self.metrics["phase_metrics"]["frequency_attunement"] = {
-            "frequency_shift": freq_shift,
-            "attunement_level": attunement_level
-        }
-        
-        logger.info(f"Frequency attunement complete: {soul_freq:.2f} Hz → {new_freq:.2f} Hz")
-        logger.info(f"Attunement level: {attunement_level:.2f}")
-        
-        return True
-    
-    def _perform_elemental_alignment(self, intensity):
-        """
-        Align the soul with Earth's elemental forces.
-        
-        Args:
-            intensity (float): Intensity of alignment
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info("Beginning elemental alignment phase")
-        
-        # Get current soul elements
-        soul_elements = getattr(self.soul_spark, "elements", {})
-        
-        # Copy to avoid modifying during iteration
-        soul_elements = soul_elements.copy() if soul_elements else {}
-        
-        # Calculate alignment for each element
-        alignment_results = {}
-        
-        # Get malkuth aspect for its element
-        try:
-            malkuth_aspects = aspect_dictionary.get_aspects("malkuth")
-            malkuth_element = malkuth_aspects.get("element", "earth").lower() if malkuth_aspects else "earth"
-        except (NameError, AttributeError):
-            # Fall back if aspect_dictionary not available
-            malkuth_element = "earth"
-        
-        for element in EARTH_ELEMENTS:
-            # Get current element strength or default to 0
-            current_strength = soul_elements.get(element, 0.0)
-            
-            # Calculate target strength - emphasize Earth's primary element
-            if element == malkuth_element:
-                target_strength = 0.8  # Primary element
-            else:
-                target_strength = 0.5  # Other elements
-            
-            # Calculate adjustment amount
-            adjustment = (target_strength - current_strength) * intensity * 0.7
-            
-            # Apply adjustment
-            new_strength = current_strength + adjustment
-            new_strength = max(0.1, min(1.0, new_strength))
-            
-            # Store new strength
-            soul_elements[element] = new_strength
-            
-            # Calculate alignment level for this element
-            alignment_level = 1.0 - abs(target_strength - new_strength) / max(0.1, target_strength)
-            
-            # Store results
-            alignment_results[element] = {
-                "original_strength": current_strength,
-                "target_strength": target_strength,
-                "new_strength": new_strength,
-                "alignment_level": alignment_level
-            }
-        
-        # Calculate overall elemental alignment
-        overall_alignment = sum(r["alignment_level"] for r in alignment_results.values()) / len(EARTH_ELEMENTS)
-        
-        # Store results
-        self.attunements["elemental"] = {
-            "elements": soul_elements,
-            "overall_alignment": overall_alignment
-        }
-        
-        self.phase_results
-
-        self.phase_results["elemental_alignment"] = {
-            "element_results": alignment_results,
-            "overall_alignment": overall_alignment
-        }
-        
-        # Update soul elements
-        setattr(self.soul_spark, "elements", soul_elements)
-        
-        # Record phase metrics
-        self.metrics["phase_metrics"]["elemental_alignment"] = {
-            "overall_alignment": overall_alignment,
-            "element_alignments": {e: r["alignment_level"] for e, r in alignment_results.items()}
-        }
-        
-        logger.info(f"Elemental alignment complete with overall level: {overall_alignment:.2f}")
-        return True
-    
-    def _perform_cycle_synchronization(self, intensity, duration):
-        """
-        Synchronize the soul with Earth's natural cycles.
-        
-        Args:
-            intensity (float): Intensity of synchronization
-            duration (float): Relative duration factor
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info("Beginning cycle synchronization phase")
-        
-        # Get current soul cycles or initialize
-        soul_cycles = getattr(self.soul_spark, "earth_cycles", {})
-        
-        # Copy to avoid modifying during iteration
-        soul_cycles = soul_cycles.copy() if soul_cycles else {}
-        
-        # Calculate synchronization for each cycle
-        sync_results = {}
-        earth_cycles = {
-            "diurnal": {"freq": EARTH_FREQUENCIES["diurnal"], "importance": 0.9},
-            "lunar": {"freq": EARTH_FREQUENCIES["lunar"], "importance": 0.7},
-            "annual": {"freq": EARTH_FREQUENCIES["annual"], "importance": 0.8}
-        }
-        
-        for cycle_name, cycle_info in earth_cycles.items():
-            # Get current synchronization or default
-            current_sync = soul_cycles.get(cycle_name, 0.3)
-            
-            # Calculate target synchronization - based on importance
-            target_sync = cycle_info["importance"]
-            
-            # Calculate adjustment amount
-            adjustment = (target_sync - current_sync) * intensity * duration * 0.8
-            
-            # Apply adjustment
-            new_sync = current_sync + adjustment
-            new_sync = max(0.1, min(1.0, new_sync))
-            
-            # Store new synchronization
-            soul_cycles[cycle_name] = new_sync
-            
-            # Calculate sync level for this cycle
-            if target_sync > 0:
-                sync_level = 1.0 - abs(target_sync - new_sync) / target_sync
-            else:
-                sync_level = 0.5  # Default if target is zero
-            
-            # Store results
-            sync_results[cycle_name] = {
-                "original_sync": current_sync,
-                "target_sync": target_sync,
-                "new_sync": new_sync,
-                "sync_level": sync_level
-            }
-        
-        # Calculate overall cycle synchronization
-        overall_sync = sum(r["sync_level"] for r in sync_results.values()) / len(earth_cycles)
-        
-        # Store results
-        self.attunements["cycles"] = {
-            "cycle_syncs": soul_cycles,
-            "overall_sync": overall_sync
-        }
-        
-        self.phase_results["cycle_synchronization"] = {
-            "cycle_results": sync_results,
-            "overall_sync": overall_sync
-        }
-        
-        # Update soul cycles
-        setattr(self.soul_spark, "earth_cycles", soul_cycles)
-        
-        # Record phase metrics
-        self.metrics["phase_metrics"]["cycle_synchronization"] = {
-            "overall_sync": overall_sync,
-            "cycle_syncs": {c: r["sync_level"] for c, r in sync_results.items()}
-        }
-        
-        logger.info(f"Cycle synchronization complete with overall level: {overall_sync:.2f}")
-        return True
-    
-    def _perform_planetary_resonance(self, intensity):
-        """
-        Attune the soul to planetary resonance.
-        
-        Args:
-            intensity (float): Intensity of attunement
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info("Beginning planetary resonance phase")
-        
-        # Get current planetary resonance or initialize
-        current_resonance = getattr(self.soul_spark, "planetary_resonance", 0.3)
-        
-        # Calculate target resonance
-        target_resonance = 0.7  # Moderate-high planetary connection
-        
-        # Get malkuth aspects to enhance planetary connection
-        try:
-            malkuth_aspects = aspect_dictionary.get_aspects("malkuth")
-        except (NameError, AttributeError):
-            malkuth_aspects = None
-        
-        # Calculate adjustment based on soul and malkuth aspects
-        adjustment = (target_resonance - current_resonance) * intensity * 0.9
-        
-        # Apply adjustment
-        new_resonance = current_resonance + adjustment
-        new_resonance = max(0.1, min(1.0, new_resonance))
-        
-        # Calculate resonance level
-        if target_resonance > 0:
-            resonance_level = 1.0 - abs(target_resonance - new_resonance) / target_resonance
-        else:
-            resonance_level = 0.5  # Default if target is zero
-        
-        # Store results
-        self.attunements["planetary"] = resonance_level
-        
-        self.phase_results["planetary_resonance"] = {
-            "original_resonance": current_resonance,
-            "target_resonance": target_resonance,
-            "new_resonance": new_resonance,
-            "resonance_level": resonance_level
-        }
-        
-        # Update soul planetary resonance
-        setattr(self.soul_spark, "planetary_resonance", new_resonance)
-        
-        # Record phase metrics
-        self.metrics["phase_metrics"]["planetary_resonance"] = {
-            "resonance_level": resonance_level,
-            "adjustment": adjustment
-        }
-        
-        logger.info(f"Planetary resonance complete with level: {resonance_level:.2f}")
-        return True
-    
-    def _perform_gaia_connection(self, intensity, duration):
-        """
-        Establish connection with Gaia consciousness.
-        
-        Args:
-            intensity (float): Intensity of connection
-            duration (float): Relative duration factor
-            
-        Returns:
-            bool: Success status
-        """
-        logger.info("Beginning Gaia connection phase")
-        
-        # Get current Gaia connection or initialize
-        current_connection = getattr(self.soul_spark, "gaia_connection", 0.2)
-        
-        # Calculate target connection
-        target_connection = 0.6  # Moderate Gaia connection
-        
-        # Calculate adjustment based on intensity and duration
-        adjustment = (target_connection - current_connection) * intensity * duration
-        
-        # Apply adjustment
-        new_connection = current_connection + adjustment
-        new_connection = max(0.1, min(0.9, new_connection))  # Cap at 0.9
-        
-        # Calculate connection level
-        if target_connection > 0:
-            connection_level = 1.0 - abs(target_connection - new_connection) / target_connection
-        else:
-            connection_level = 0.5  # Default if target is zero
-        
-        # Store results
-        self.attunements["gaia_connection"] = connection_level
-        
-        self.phase_results["gaia_connection"] = {
-            "original_connection": current_connection,
-            "target_connection": target_connection,
-            "new_connection": new_connection,
-            "connection_level": connection_level
-        }
-        
-        # Update soul Gaia connection
-        setattr(self.soul_spark, "gaia_connection", new_connection)
-        
-        # Record phase metrics
-        self.metrics["phase_metrics"]["gaia_connection"] = {
-            "connection_level": connection_level,
-            "adjustment": adjustment
-        }
-        
-        logger.info(f"Gaia connection established with level: {connection_level:.2f}")
-        return True
-    
-    def _update_soul_properties(self):
-        """Update the soul with Earth harmonization properties."""
-        # Set Earth harmonization properties
-        setattr(self.soul_spark, "earth_harmonized", True)
-        setattr(self.soul_spark, "earth_resonance", self.metrics["final_resonance"])
-        setattr(self.soul_spark, "earth_attunements", self.attunements.copy())
-        
-        # Adjust soul properties based on harmonization
-        
-        # Stability increase
-        current_stability = getattr(self.soul_spark, "stability", 0.7)
-        stability_bonus = self.metrics["final_resonance"] * 0.15
-        new_stability = min(1.0, current_stability + stability_bonus)
-        setattr(self.soul_spark, "stability", new_stability)
-        
-        # Coherence increase
-        current_coherence = getattr(self.soul_spark, "coherence", 0.7)
-        coherence_bonus = self.metrics["final_resonance"] * 0.1
-        new_coherence = min(1.0, current_coherence + coherence_bonus)
-        setattr(self.soul_spark, "coherence", new_coherence)
-        
-        # Mark as ready for birth
-        setattr(self.soul_spark, "ready_for_birth", True)
-        
-        logger.info(f"Soul updated with Earth harmonization properties")
-        logger.info(f"New stability: {new_stability:.2f}, New coherence: {new_coherence:.2f}")
-    
-    def _record_metrics(self):
-        """Record final metrics after Earth harmonization."""
-        try:
-            # Record to central metrics system
-            metrics.record_metrics(
-                "earth_harmonization",
-                "initial_resonance",
-                self.metrics["initial_resonance"]
-            )
-            
-            metrics.record_metrics(
-                "earth_harmonization",
-                "final_resonance",
-                self.metrics["final_resonance"]
-            )
-            
-            metrics.record_metrics(
-                "earth_harmonization",
-                "process_duration",
-                self.metrics["process_duration"]
-            )
-            
-            # Record attunements
-            for attunement_type, value in self.attunements.items():
-                if isinstance(value, dict) and "overall_alignment" in value:
-                    # Record overall alignment/sync for complex attunements
-                    metrics.record_metrics(
-                        "earth_harmonization",
-                        f"{attunement_type}_alignment",
-                        value["overall_alignment"]
-                    )
-                elif not isinstance(value, dict):
-                    # Record simple attunement values
-                    metrics.record_metrics(
-                        "earth_harmonization",
-                        f"{attunement_type}_attunement",
-                        value
-                    )
-        except Exception as e:
-            logger.error(f"Error recording metrics: {e}")
-        
-        logger.info("Final metrics recorded for Earth harmonization")
+try:
+    import metrics_tracking as metrics
+    METRICS_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
+    METRICS_AVAILABLE = False
+    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    metrics = MetricsPlaceholder()
 
 
-# Example usage
-if __name__ == "__main__":
-    # Create a simple test class if SoulSpark is not available
+# --- Helper Functions ---
+
+def _check_prerequisites(soul_spark: SoulSpark) -> bool:
+    """Checks if the soul meets prerequisites for Earth harmonization using constants."""
+    logger.debug(f"Checking Earth harmonization prerequisites for soul {soul_spark.spark_id}...")
+    # Requires life cord formation completion flag using constant
+    if HARMONY_PREREQ_CORD_COMPLETE and not getattr(soul_spark, "cord_formation_complete", False):
+        logger.error("Prerequisite failed: Life cord formation not complete.")
+        return False
+    # Requires sufficient cord integrity using constant
+    cord_integrity = getattr(soul_spark, "cord_integrity", 0.0)
+    if cord_integrity < HARMONY_PREREQ_CORD_INTEGRITY_MIN:
+        logger.error(f"Prerequisite failed: Life cord integrity ({cord_integrity:.3f}) below threshold ({HARMONY_PREREQ_CORD_INTEGRITY_MIN}).")
+        return False
+    # Requires minimum stability and coherence using constants
+    stability = getattr(soul_spark, "stability", 0.0)
+    if stability < HARMONY_PREREQ_STABILITY_MIN:
+        logger.error(f"Prerequisite failed: Soul stability ({stability:.3f}) below threshold ({HARMONY_PREREQ_STABILITY_MIN}).")
+        return False
+    coherence = getattr(soul_spark, "coherence", 0.0)
+    if coherence < HARMONY_PREREQ_COHERENCE_MIN:
+        logger.error(f"Prerequisite failed: Soul coherence ({coherence:.3f}) below threshold ({HARMONY_PREREQ_COHERENCE_MIN}).")
+        return False
+    # Optionally check if already harmonized
+    if getattr(soul_spark, "earth_harmonized", False):
+        logger.warning(f"Soul {soul_spark.spark_id} is already marked as earth_harmonized. Proceeding with re-harmonization.")
+
+    logger.debug("Earth harmonization prerequisites met.")
+    return True
+
+def _ensure_soul_properties(soul_spark: SoulSpark):
+    """Ensure soul has necessary numeric properties for harmonization. Fails hard."""
+    logger.debug(f"Ensuring properties exist for soul {soul_spark.spark_id}...")
+    attributes_to_check = [
+        ("frequency", SOUL_SPARK_DEFAULT_FREQ),
+        ("stability", SOUL_SPARK_DEFAULT_STABILITY),
+        ("coherence", SOUL_SPARK_DEFAULT_COHERENCE),
+        ("elements", {}), # Dict expected
+        ("earth_cycles", {}), # Dict expected
+        ("planetary_resonance", 0.3), # Default low
+        ("gaia_connection", 0.2) # Default low
+    ]
+    for attr, default in attributes_to_check:
+        if not hasattr(soul_spark, attr) or getattr(soul_spark, attr) is None:
+            logger.warning(f"Soul {soul_spark.spark_id} missing '{attr}'. Initializing to default: {default}")
+            setattr(soul_spark, attr, default)
+
+    # Validate numerical types and ranges
+    for attr, _ in attributes_to_check:
+        val = getattr(soul_spark, attr)
+        if attr in ['elements', 'earth_cycles']:
+             if not isinstance(val, dict):
+                  raise TypeError(f"Soul attribute '{attr}' must be a dictionary, found {type(val)}.")
+        elif not isinstance(val, (int, float)):
+             raise TypeError(f"Soul attribute '{attr}' must be numeric, found {type(val)}.")
+        elif not np.isfinite(val):
+             raise ValueError(f"Soul attribute '{attr}' has non-finite value {val}.")
+        elif attr == 'frequency' and val <= FLOAT_EPSILON:
+             raise ValueError(f"Soul frequency ({val}) must be positive.")
+        elif attr != 'frequency' and not (0.0 <= val <= 1.0):
+             logger.warning(f"Clamping soul attribute '{attr}' ({val}) to 0-1 range.")
+             setattr(soul_spark, attr, max(0.0, min(1.0, val)))
+    logger.debug("Soul properties ensured for Earth Harmonization.")
+
+
+def _calculate_earth_resonance(soul_spark: SoulSpark) -> float:
+    """Calculates the soul's current resonance with Earth using constants."""
+    logger.debug(f"Calculating initial Earth resonance for soul {soul_spark.spark_id}...")
     try:
-        from void.soul_spark import SoulSpark
-        soul = SoulSpark()
-    except ImportError:
-        # Create a simple test object
-        class TestSoulSpark:
-            def __init__(self):
-                self.id = "test-soul-1"
-                self.frequency = 528.0
-                self.stability = 0.75
-                self.coherence = 0.75
-                self.cord_formation_complete = True
-                self.ready_for_earth = True
-                self.cord_integrity = 0.7
-                self.elements = {}
-        
-        soul = TestSoulSpark()
-    
-    # Initialize Earth harmonization
-    harmonization = EarthHarmonization(soul)
-    
-    # Perform harmonization
-    harmonization.harmonize(intensity=0.8, duration=1.2)
-    
-    # Print results
-    print(f"Soul ID: {getattr(soul, 'id', 'unknown')}")
-    print(f"Earth Resonance: {soul.earth_resonance:.2f}")
-    print(f"Frequency: {soul.frequency:.2f} Hz")
-    print(f"Elements: {soul.elements}")
-    print(f"Earth Cycles: {getattr(soul, 'earth_cycles', {})}")
-    print(f"Gaia Connection: {soul.gaia_connection:.2f}")
-    print(f"Ready for Birth: {soul.ready_for_birth}")
+        _ensure_soul_properties(soul_spark) # Make sure needed attrs exist
+        soul_freq = getattr(soul_spark, "frequency")
+        soul_elements = getattr(soul_spark, "elements")
+
+        # --- Frequency Resonance Component ---
+        freq_factors = []
+        valid_earth_freqs = {k:v for k,v in EARTH_FREQUENCIES.items() if v > FLOAT_EPSILON}
+        for name, earth_freq in valid_earth_freqs.items():
+            ratio = min(earth_freq / soul_freq, soul_freq / earth_freq)
+            freq_factors.append(max(0.0, 1.0 - abs(1.0 - ratio))**2) # Squared closeness to 1
+
+        schumann_res = 0.0; other_res = []
+        for i, name in enumerate(valid_earth_freqs.keys()):
+             if i < len(freq_factors): # Safety check
+                  if name == "schumann": schumann_res = freq_factors[i]
+                  else: other_res.append(freq_factors[i])
+        avg_other_res = np.mean(other_res) if other_res else 0.0
+        # Use constants for weighting
+        freq_resonance = (HARMONY_FREQ_RES_WEIGHT_SCHUMANN * schumann_res +
+                          HARMONY_FREQ_RES_WEIGHT_OTHER * avg_other_res)
+        logger.debug(f"  Frequency Resonance component: {freq_resonance:.4f}")
+
+        # --- Elemental Resonance Component ---
+        elem_resonance = 0.0
+        if soul_elements:
+            try: malkuth_element = aspect_dictionary.get_aspects("malkuth").get("element", "earth").lower()
+            except Exception: malkuth_element = "earth"
+
+            total_strength = 0.0; earth_strength = 0.0; valid_elements_count = 0
+            for elem in EARTH_ELEMENTS:
+                 strength = soul_elements.get(elem.lower(), 0.0)
+                 if isinstance(strength, (int, float)):
+                      total_strength += strength
+                      if elem.lower() == malkuth_element: earth_strength = strength
+                      valid_elements_count += 1
+            if valid_elements_count > 0:
+                 avg_strength = total_strength / valid_elements_count
+                 # Use constants for weighting
+                 elem_resonance = (HARMONY_ELEM_RES_WEIGHT_PRIMARY * earth_strength +
+                                   HARMONY_ELEM_RES_WEIGHT_AVERAGE * avg_strength)
+        logger.debug(f"  Elemental Resonance component: {elem_resonance:.4f}")
+
+        # Calculate overall resonance (keep 60/40 weighting or make constants?)
+        overall_resonance = freq_resonance * 0.6 + elem_resonance * 0.4
+        overall_resonance = max(0.0, min(1.0, overall_resonance))
+        logger.debug(f"  Overall Earth Resonance calculated: {overall_resonance:.4f}")
+        return float(overall_resonance)
+
+    except Exception as e:
+        logger.error(f"Error calculating Earth resonance for soul {soul_spark.spark_id}: {e}", exc_info=True)
+        return 0.1 # Return default low resonance on error
+
+
+def _perform_frequency_attunement(soul_spark: SoulSpark, intensity: float, duration_factor: float) -> Dict[str, Any]:
+    """Attunes frequency towards Earth using constants. Modifies SoulSpark. Fails hard."""
+    logger.info(f"Starting frequency attunement for soul {soul_spark.spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f})...")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
+    _ensure_soul_properties(soul_spark) # Ensure attributes exist
+
+    try:
+        current_freq = getattr(soul_spark, "frequency")
+        logger.debug(f"  Current frequency: {current_freq:.2f} Hz")
+
+        # Target frequency blends Schumann and current soul state using constants
+        target_freq = (SCHUMANN_FREQUENCY * HARMONY_FREQ_TARGET_SCHUMANN_WEIGHT +
+                       current_freq * HARMONY_FREQ_TARGET_SOUL_WEIGHT)
+        logger.debug(f"  Target harmonic frequency: {target_freq:.2f} Hz")
+
+        # Calculate tuning amount using constants
+        freq_diff = target_freq - current_freq
+        tuning_amount = freq_diff * intensity * HARMONY_FREQ_TUNING_FACTOR * duration_factor # Include duration factor
+        new_freq = current_freq + tuning_amount
+        new_freq = max(SCHUMANN_FREQUENCY * 0.5, new_freq) # Ensure positive and not too low
+        logger.debug(f"  Calculated frequency shift: {tuning_amount:.2f} Hz, New frequency: {new_freq:.2f} Hz")
+
+        # --- Update SoulSpark ---
+        setattr(soul_spark, "frequency", float(new_freq))
+        h_count = getattr(soul_spark, 'harmonic_count', HARMONY_FREQ_UPDATE_HARMONIC_COUNT) # Use constant
+        harmonics_list = [new_freq * n for n in range(1, h_count + 1)]
+        setattr(soul_spark, "harmonics", harmonics_list)
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        # --- Calculate & Record Metrics ---
+        attunement_level = 0.0; target_reached = False
+        if abs(freq_diff) > FLOAT_EPSILON: attunement_level = abs(tuning_amount) / abs(freq_diff)
+        target_reached = abs(new_freq - target_freq) < HARMONY_FREQ_TUNING_TARGET_REACH_HZ # Use constant
+
+        phase_metrics = {
+            "original_frequency": float(current_freq), "target_frequency": float(target_freq), "new_frequency": float(new_freq),
+            "frequency_shift": float(tuning_amount), "attunement_level": float(attunement_level), "target_reached": target_reached,
+            "timestamp": getattr(soul_spark, 'last_modified') }
+        try: metrics.record_metrics('earth_harmony_frequency', phase_metrics)
+        except Exception as e: logger.error(f"Failed to record frequency attunement metrics: {e}")
+
+        logger.info(f"Frequency attunement complete. New Frequency: {new_freq:.2f} Hz (Level: {attunement_level:.2f}, TargetReached: {target_reached})")
+        return phase_metrics
+
+    except Exception as e: logger.error(f"Error during frequency attunement: {e}", exc_info=True); raise RuntimeError("Frequency attunement failed.") from e
+
+
+def _perform_elemental_alignment(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
+    """Aligns elements towards Earth using constants. Modifies SoulSpark. Fails hard."""
+    logger.info(f"Starting elemental alignment for soul {soul_spark.spark_id} (Intensity={intensity:.2f})...")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    _ensure_soul_properties(soul_spark) # Ensures 'elements' dict exists
+
+    try:
+        soul_elements = getattr(soul_spark, "elements")
+        try: malkuth_element = aspect_dictionary.get_aspects("malkuth").get("element", "earth").lower()
+        except Exception: malkuth_element = "earth"
+
+        alignment_results = {}
+        logger.debug(f"  Initial elements: {soul_elements}")
+
+        for element in EARTH_ELEMENTS: # Use constant list
+            element_lower = element.lower()
+            current_strength = soul_elements.get(element_lower, 0.0)
+            # Use constants for targets
+            target_strength = ELEMENTAL_TARGET_EARTH if element_lower == malkuth_element else ELEMENTAL_TARGET_OTHER
+
+            # Use constant factor for adjustment
+            adjustment = (target_strength - current_strength) * intensity * ELEMENTAL_ALIGN_INTENSITY_FACTOR
+            new_strength = max(0.0, min(1.0, current_strength + adjustment)) # Clamp 0-1
+
+            soul_elements[element_lower] = float(new_strength) # Update soul's dict
+
+            alignment_level = 1.0 - abs(target_strength - new_strength) / max(FLOAT_EPSILON, target_strength)
+            alignment_results[element_lower] = {"original": float(current_strength), "target": float(target_strength),
+                                               "final": float(new_strength), "alignment": float(alignment_level)}
+
+        overall_alignment = np.mean([r["alignment"] for r in alignment_results.values()]) if alignment_results else 0.0
+        logger.debug(f"  Final elements: {soul_elements}")
+        logger.debug(f"  Overall alignment: {overall_alignment:.4f}")
+
+        # --- Update SoulSpark ---
+        setattr(soul_spark, "elemental_alignment", float(overall_alignment))
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        # --- Calculate & Record Metrics ---
+        phase_metrics = {
+            "overall_alignment": float(overall_alignment), "element_details": alignment_results,
+            "timestamp": getattr(soul_spark, 'last_modified') }
+        try: metrics.record_metrics('earth_harmony_elements', phase_metrics)
+        except Exception as e: logger.error(f"Failed to record elemental alignment metrics: {e}")
+
+        logger.info(f"Elemental alignment complete. Overall Level: {overall_alignment:.4f}")
+        return phase_metrics
+
+    except Exception as e: logger.error(f"Error during elemental alignment: {e}", exc_info=True); raise RuntimeError("Elemental alignment failed.") from e
+
+
+def _perform_cycle_synchronization(soul_spark: SoulSpark, intensity: float, duration_factor: float) -> Dict[str, Any]:
+    """Synchronizes soul with Earth cycles using constants. Modifies SoulSpark. Fails hard."""
+    logger.info(f"Starting cycle synchronization for soul {soul_spark.spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f})...")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
+    _ensure_soul_properties(soul_spark) # Ensures 'earth_cycles' dict exists
+
+    try:
+        soul_cycles = getattr(soul_spark, "earth_cycles")
+        sync_results = {}
+        logger.debug(f"  Initial cycles sync: {soul_cycles}")
+
+        # Use constants for cycles and importance
+        for cycle_name in HARMONY_CYCLE_NAMES:
+            if cycle_name not in EARTH_FREQUENCIES: logger.warning(f"Cycle '{cycle_name}' not in EARTH_FREQUENCIES. Skipping."); continue
+
+            current_sync = soul_cycles.get(cycle_name, 0.3)
+            target_sync = HARMONY_CYCLE_SYNC_TARGET_BASE * HARMONY_CYCLE_IMPORTANCE.get(cycle_name, 0.7)
+
+            # Use constants for adjustment factors
+            adjustment = (target_sync - current_sync) * intensity * duration_factor * HARMONY_CYCLE_SYNC_INTENSITY_FACTOR * HARMONY_CYCLE_SYNC_DURATION_FACTOR
+            new_sync = max(0.0, min(1.0, current_sync + adjustment)) # Clamp 0-1
+
+            soul_cycles[cycle_name] = float(new_sync) # Update soul's dict
+
+            sync_level = 1.0 - abs(target_sync - new_sync) / max(FLOAT_EPSILON, target_sync)
+            sync_results[cycle_name] = {"original": float(current_sync), "target": float(target_sync),
+                                        "final": float(new_sync), "sync_level": float(sync_level)}
+
+        overall_sync = np.mean([r["sync_level"] for r in sync_results.values()]) if sync_results else 0.0
+        logger.debug(f"  Final cycles sync: {soul_cycles}")
+        logger.debug(f"  Overall sync level: {overall_sync:.4f}")
+
+        # --- Update SoulSpark ---
+        setattr(soul_spark, "cycle_synchronization", float(overall_sync))
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        # --- Calculate & Record Metrics ---
+        phase_metrics = { "overall_sync": float(overall_sync), "cycle_details": sync_results, "timestamp": getattr(soul_spark, 'last_modified') }
+        try: metrics.record_metrics('earth_harmony_cycles', phase_metrics)
+        except Exception as e: logger.error(f"Failed to record cycle synchronization metrics: {e}")
+
+        logger.info(f"Cycle synchronization complete. Overall Level: {overall_sync:.4f}")
+        return phase_metrics
+
+    except Exception as e: logger.error(f"Error during cycle synchronization: {e}", exc_info=True); raise RuntimeError("Cycle synchronization failed.") from e
+
+
+def _perform_planetary_resonance(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
+    """Attunes soul to planetary resonance using constants. Modifies SoulSpark. Fails hard."""
+    logger.info(f"Starting planetary resonance for soul {soul_spark.spark_id} (Intensity={intensity:.2f})...")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    _ensure_soul_properties(soul_spark) # Ensures attr exists
+
+    try:
+        current_resonance = getattr(soul_spark, "planetary_resonance")
+        logger.debug(f"  Initial Planetary Resonance: {current_resonance:.4f}")
+
+        # Use constants
+        target_resonance = HARMONY_PLANETARY_RESONANCE_TARGET
+        adjustment = (target_resonance - current_resonance) * intensity * HARMONY_PLANETARY_RESONANCE_FACTOR
+        new_resonance = max(0.0, min(1.0, current_resonance + adjustment))
+        logger.debug(f"  Calculated Adjustment: {adjustment:.4f}, New Planetary Resonance: {new_resonance:.4f}")
+
+        resonance_level = 1.0 - abs(target_resonance - new_resonance) / max(FLOAT_EPSILON, target_resonance)
+
+        # --- Update SoulSpark ---
+        setattr(soul_spark, "planetary_resonance", float(new_resonance))
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        # --- Calculate & Record Metrics ---
+        phase_metrics = {
+            "original_resonance": float(current_resonance), "target_resonance": float(target_resonance),
+            "new_resonance": float(new_resonance), "resonance_level": float(resonance_level),
+            "adjustment": float(adjustment), "timestamp": getattr(soul_spark, 'last_modified') }
+        try: metrics.record_metrics('earth_harmony_planetary', phase_metrics)
+        except Exception as e: logger.error(f"Failed to record planetary resonance metrics: {e}")
+
+        logger.info(f"Planetary resonance complete. New Level: {new_resonance:.4f} (Attainment: {resonance_level:.2f})")
+        return phase_metrics
+
+    except Exception as e: logger.error(f"Error during planetary resonance: {e}", exc_info=True); raise RuntimeError("Planetary resonance failed.") from e
+
+
+def _perform_gaia_connection(soul_spark: SoulSpark, intensity: float, duration_factor: float) -> Dict[str, Any]:
+    """Establishes Gaia connection using constants. Modifies SoulSpark. Fails hard."""
+    logger.info(f"Starting Gaia connection for soul {soul_spark.spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f})...")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
+    _ensure_soul_properties(soul_spark) # Ensures attr exists
+
+    try:
+        current_connection = getattr(soul_spark, "gaia_connection")
+        logger.debug(f"  Initial Gaia Connection: {current_connection:.4f}")
+
+        # Use constants
+        target_connection = HARMONY_GAIA_CONNECTION_TARGET
+        adjustment = (target_connection - current_connection) * intensity * duration_factor * HARMONY_GAIA_CONNECTION_FACTOR
+        new_connection = max(0.0, min(1.0, current_connection + adjustment))
+        logger.debug(f"  Calculated Adjustment: {adjustment:.4f}, New Gaia Connection: {new_connection:.4f}")
+
+        connection_level = 1.0 - abs(target_connection - new_connection) / max(FLOAT_EPSILON, target_connection)
+
+        # --- Update SoulSpark ---
+        setattr(soul_spark, "gaia_connection", float(new_connection))
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        # --- Calculate & Record Metrics ---
+        phase_metrics = {
+            "original_connection": float(current_connection), "target_connection": float(target_connection),
+            "new_connection": float(new_connection), "connection_level": float(connection_level),
+            "adjustment": float(adjustment), "timestamp": getattr(soul_spark, 'last_modified') }
+        try: metrics.record_metrics('earth_harmony_gaia', phase_metrics)
+        except Exception as e: logger.error(f"Failed to record Gaia connection metrics: {e}")
+
+        logger.info(f"Gaia connection complete. New Level: {new_connection:.4f} (Attainment: {connection_level:.2f})")
+        return phase_metrics
+
+    except Exception as e: logger.error(f"Error during Gaia connection: {e}", exc_info=True); raise RuntimeError("Gaia connection failed.") from e
+
+
+def _update_soul_final_properties(soul_spark: SoulSpark, final_earth_resonance: float):
+    """Updates soul with final harmonization properties using constants. Fails hard."""
+    logger.info(f"Updating soul {soul_spark.spark_id} with final harmonization properties...")
+    _ensure_soul_properties(soul_spark) # Ensure base attrs exist
+
+    try:
+        setattr(soul_spark, "earth_harmonized", True)
+        setattr(soul_spark, "earth_resonance", float(final_earth_resonance))
+
+        # Adjust stability and coherence using constants
+        current_stability = getattr(soul_spark, "stability")
+        current_coherence = getattr(soul_spark, "coherence")
+        stability_bonus = final_earth_resonance * HARMONY_FINAL_STABILITY_BONUS
+        coherence_bonus = final_earth_resonance * HARMONY_FINAL_COHERENCE_BONUS
+        new_stability = min(1.0, current_stability + stability_bonus)
+        new_coherence = min(1.0, current_coherence + coherence_bonus)
+
+        setattr(soul_spark, "stability", float(new_stability))
+        setattr(soul_spark, "coherence", float(new_coherence))
+        setattr(soul_spark, "ready_for_birth", True) # Mark ready for next stage
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+
+        logger.info(f"Soul updated. Final Earth Resonance: {final_earth_resonance:.4f}, New Stability: {new_stability:.4f}, New Coherence: {new_coherence:.4f}")
+        # Log memory echo
+        logger.info(f"Memory echo created: Earth harmonization complete for soul {soul_spark.spark_id}.")
+        if hasattr(soul_spark, 'memory_echoes') and isinstance(soul_spark.memory_echoes, list):
+            soul_spark.memory_echoes.append(f"Earth harmonization complete @ {getattr(soul_spark, 'last_modified')}")
+
+
+    except Exception as e:
+        logger.error(f"Error updating final soul properties after harmonization: {e}", exc_info=True)
+        raise RuntimeError("Failed to update final soul properties.") from e
+
+
+# --- Orchestration Function ---
+
+def perform_earth_harmonization(soul_spark: SoulSpark, intensity: float = 0.7, duration_factor: float = 1.0) -> Tuple[SoulSpark, Dict[str, Any]]:
+    """
+    Performs the complete Earth harmonization process. Modifies SoulSpark. Fails hard. Uses constants.
+
+    Args:
+        soul_spark (SoulSpark): The soul spark object (will be modified).
+        intensity (float): Intensity of harmonization (0.1-1.0).
+        duration_factor (float): Relative duration multiplier (0.1-2.0).
+
+    Returns:
+        Tuple[SoulSpark, Dict[str, Any]]: A tuple containing:
+            - The modified SoulSpark object.
+            - overall_metrics (Dict): Summary metrics for the harmonization process.
+
+    Raises:
+        TypeError: If soul_spark is not a SoulSpark instance.
+        ValueError: If parameters invalid or prerequisites not met.
+        RuntimeError: If any phase fails critically.
+    """
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark must be a SoulSpark instance.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity must be between 0.1 and 1.0")
+    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor must be between 0.1 and 2.0")
+
+    spark_id = getattr(soul_spark, 'spark_id', 'unknown')
+    logger.info(f"--- Starting Earth Harmonization for Soul {spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f}) ---")
+    start_time_iso = datetime.now().isoformat()
+    start_time_dt = datetime.fromisoformat(start_time_iso)
+    process_metrics_summary = {'steps': {}}
+
+    try:
+        # --- Check Prerequisites (raises ValueError if failed) ---
+        if not _check_prerequisites(soul_spark):
+            # This path should not be reached if _check raises ValueError
+            raise ValueError("Soul prerequisites for Earth harmonization not met.")
+        logger.info("Prerequisites checked successfully.")
+
+        # --- Store Initial State ---
+        initial_resonance = _calculate_earth_resonance(soul_spark)
+        initial_state = {
+            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
+            'frequency': getattr(soul_spark, 'frequency', 0.0), 'earth_resonance': initial_resonance,
+            'elemental_alignment': getattr(soul_spark, 'elemental_alignment', 0.0),
+            'cycle_synchronization': getattr(soul_spark, 'cycle_synchronization', 0.0),
+            'planetary_resonance': getattr(soul_spark, 'planetary_resonance', 0.0),
+            'gaia_connection': getattr(soul_spark, 'gaia_connection', 0.0) }
+        logger.info(f"Initial State: EarthRes={initial_state['earth_resonance']:.4f}, Freq={initial_state['frequency']:.2f}, Stab={initial_state['stability']:.4f}, Coh={initial_state['coherence']:.4f}")
+
+        # --- Run Phases (Fail hard within each) ---
+        logger.info("Step 1: Frequency Attunement...")
+        metrics1 = _perform_frequency_attunement(soul_spark, intensity, duration_factor)
+        process_metrics_summary['steps']['frequency'] = metrics1
+
+        logger.info("Step 2: Elemental Alignment...")
+        metrics2 = _perform_elemental_alignment(soul_spark, intensity)
+        process_metrics_summary['steps']['elements'] = metrics2
+
+        logger.info("Step 3: Cycle Synchronization...")
+        metrics3 = _perform_cycle_synchronization(soul_spark, intensity, duration_factor)
+        process_metrics_summary['steps']['cycles'] = metrics3
+
+        logger.info("Step 4: Planetary Resonance...")
+        metrics4 = _perform_planetary_resonance(soul_spark, intensity)
+        process_metrics_summary['steps']['planetary'] = metrics4
+
+        logger.info("Step 5: Gaia Connection...")
+        metrics5 = _perform_gaia_connection(soul_spark, intensity, duration_factor)
+        process_metrics_summary['steps']['gaia'] = metrics5
+
+        # --- Final Update & Metrics ---
+        final_earth_resonance = _calculate_earth_resonance(soul_spark) # Recalculate final value
+        _update_soul_final_properties(soul_spark, final_earth_resonance) # Apply final bonuses, flags
+
+        end_time_iso = datetime.now().isoformat(); end_time_dt = datetime.fromisoformat(end_time_iso)
+        final_state = { # Capture relevant final state metrics
+            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
+            'frequency': getattr(soul_spark, 'frequency', 0.0), 'earth_resonance': final_earth_resonance,
+            'elemental_alignment': getattr(soul_spark, 'elemental_alignment', 0.0),
+            'cycle_synchronization': getattr(soul_spark, 'cycle_synchronization', 0.0),
+            'planetary_resonance': getattr(soul_spark, 'planetary_resonance', 0.0),
+            'gaia_connection': getattr(soul_spark, 'gaia_connection', 0.0),
+            'earth_harmonized': getattr(soul_spark, 'earth_harmonized', False),
+            'ready_for_birth': getattr(soul_spark, 'ready_for_birth', False) }
+
+        overall_metrics = {
+            'action': 'earth_harmonization', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
+            'duration_seconds': (end_time_dt - start_time_dt).total_seconds(), 'intensity_setting': intensity, 'duration_factor': duration_factor,
+            'initial_state': initial_state, 'final_state': final_state,
+            'earth_resonance_change': final_earth_resonance - initial_resonance, 'success': True, }
+        try: metrics.record_metrics('earth_harmonization_summary', overall_metrics)
+        except Exception as e: logger.error(f"Failed to record summary metrics for earth harmonization: {e}")
+
+        logger.info(f"--- Earth Harmonization Completed Successfully for Soul {spark_id} ---")
+        logger.info(f"Duration: {overall_metrics['duration_seconds']:.2f}s")
+        logger.info(f"Final Earth Resonance: {final_state['earth_resonance']:.4f} (Change: {overall_metrics['earth_resonance_change']:.4f})")
+
+        return soul_spark, overall_metrics
+
+    except Exception as e:
+        end_time_iso = datetime.now().isoformat()
+        logger.critical(f"Earth harmonization process failed critically for soul {spark_id}: {e}", exc_info=True)
+        failed_step = "unknown"; steps_completed = list(process_metrics_summary['steps'].keys())
+        if steps_completed: failed_step = steps_completed[-1]
+        # Mark soul as failed this stage
+        setattr(soul_spark, "earth_harmonized", False); setattr(soul_spark, "ready_for_birth", False)
+        if METRICS_AVAILABLE:
+             try: metrics.record_metrics('earth_harmonization_summary', {
+                  'action': 'earth_harmonization', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
+                  'duration_seconds': (datetime.fromisoformat(end_time_iso) - datetime.fromisoformat(start_time_iso)).total_seconds(),
+                  'intensity_setting': intensity, 'duration_factor': duration_factor, 'success': False, 'error': str(e), 'failed_step': failed_step })
+             except Exception as metric_e: logger.error(f"Failed to record failure metrics: {metric_e}")
+        raise RuntimeError(f"Earth harmonization process failed at step '{failed_step}'.") from e
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    print("Running Earth Harmonization Module Example (with Constants)...")
+    if not DEPENDENCIES_AVAILABLE:
+         print("ERROR: Core dependencies not available. Cannot run example.")
+    else:
+        test_soul = SoulSpark()
+        test_soul.spark_id="test_earthharm_const_002"
+        # Set state *after* life cord formation
+        test_soul.stability = 0.85
+        test_soul.coherence = 0.88
+        test_soul.frequency = 432.0
+        test_soul.formation_complete = True
+        test_soul.harmonically_strengthened = True
+        test_soul.cord_formation_complete = True # Prerequisite
+        test_soul.cord_integrity = 0.88 # Prerequisite (must meet CORD_INTEGRITY_THRESHOLD_EARTH)
+        test_soul.elements = {'earth': 0.7, 'water': 0.6, 'aether': 0.5}
+        test_soul.last_modified = datetime.now().isoformat()
+        test_soul.memory_echoes = []
+
+        print(f"\nInitial Soul State ({test_soul.spark_id}):")
+        print(f"  Stability: {test_soul.stability:.4f}")
+        print(f"  Coherence: {test_soul.coherence:.4f}")
+        print(f"  Cord Integrity: {test_soul.cord_integrity:.4f}")
+        print(f"  Cord Formed: {getattr(test_soul, 'cord_formation_complete', False)}")
+
+        try:
+            print("\n--- Running Earth Harmonization Process ---")
+            modified_soul, summary_metrics_result = perform_earth_harmonization(
+                soul_spark=test_soul,
+                intensity=0.8,
+                duration_factor=1.0
+            )
+
+            print("\n--- Harmonization Complete ---")
+            print(f"  Earth Harmonized Flag: {getattr(modified_soul, 'earth_harmonized', False)}")
+            print(f"  Earth Resonance: {getattr(modified_soul, 'earth_resonance', 'N/A'):.4f}")
+            print(f"  Ready for Birth Flag: {getattr(modified_soul, 'ready_for_birth', False)}")
+            print(f"  Final Stability: {getattr(modified_soul, 'stability', 'N/A'):.4f}")
+            print(f"  Final Coherence: {getattr(modified_soul, 'coherence', 'N/A'):.4f}")
+            print(f"  Final Frequency: {getattr(modified_soul, 'frequency', 'N/A'):.2f} Hz")
+            print(f"  Final Elements: {getattr(modified_soul, 'elements', {})}")
+            print(f"  Memory Echoes: {getattr(modified_soul, 'memory_echoes', [])}")
+
+            print("\nOverall Process Metrics:")
+            print(f"  Duration: {summary_metrics_result.get('duration_seconds', 'N/A'):.2f}s")
+            print(f"  Success: {summary_metrics_result.get('success')}")
+            print(f"  Earth Resonance Change: {summary_metrics_result.get('earth_resonance_change', 'N/A'):.4f}")
+
+        except (ValueError, TypeError, RuntimeError, ImportError, AttributeError) as e:
+            print(f"\n--- ERROR during Earth Harmonization Example ---")
+            print(f"An error occurred: {type(e).__name__}: {e}")
+            import traceback; traceback.print_exc()
+        except Exception as e:
+            print(f"\n--- UNEXPECTED ERROR during Earth Harmonization Example ---")
+            print(f"An unexpected error occurred: {type(e).__name__}: {e}")
+            import traceback; traceback.print_exc()
+
+    print("\nEarth Harmonization Module Example Finished.")
+
+# --- END OF FILE earth_harmonisation.py ---
