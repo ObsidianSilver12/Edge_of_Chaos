@@ -24,23 +24,8 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    from src.constants import (
-        GOLDEN_RATIO, FLOAT_EPSILON, LOG_LEVEL,
-        SOUL_SPARK_DEFAULT_FREQ, SOUL_SPARK_DEFAULT_STABILITY, SOUL_SPARK_DEFAULT_RESONANCE,
-        SOUL_SPARK_DEFAULT_ALIGNMENT, SOUL_SPARK_DEFAULT_ENERGY,
-        SOUL_SPARK_VIABILITY_WEIGHT_STABILITY, SOUL_SPARK_VIABILITY_WEIGHT_RESONANCE,
-        SOUL_SPARK_VIABILITY_WEIGHT_DIM_STABILITY, SOUL_SPARK_COMPLEXITY_DIVISOR,
-        SOUL_SPARK_POTENTIAL_WEIGHT_ALIGNMENT, SOUL_SPARK_POTENTIAL_WEIGHT_DIM_STABILITY,
-        # Visualization Constants (Imported for use within the class)
-        SOUL_SPARK_VIZ_POINT_SIZE_FACTOR, SOUL_SPARK_VIZ_POINT_SIZE_BASE,
-        SOUL_SPARK_VIZ_POINT_ALPHA_FACTOR, SOUL_SPARK_VIZ_POINT_ALPHA_MAX,
-        SOUL_SPARK_VIZ_EDGE_ALPHA_FACTOR, SOUL_SPARK_VIZ_EDGE_WIDTH_FACTOR,
-        SOUL_SPARK_VIZ_CENTER_COLOR, SOUL_SPARK_VIZ_CENTER_SIZE_FACTOR,
-        SOUL_SPARK_VIZ_CENTER_EDGE_COLOR, SOUL_SPARK_VIZ_FREQ_SIG_BARS,
-        SOUL_SPARK_VIZ_FREQ_SIG_XLABEL, SOUL_SPARK_VIZ_FREQ_SIG_YLABEL,
-        SOUL_SPARK_VIZ_ENERGY_DIST_XLABEL, SOUL_SPARK_VIZ_ENERGY_DIST_YLABEL,
-        SOUL_SPARK_VIZ_DIM_STAB_LABELS, SOUL_SPARK_VIZ_DIM_STAB_COLORS
-    )
+    from src.constants.constants import *
+
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. SoulSpark may use fallback defaults.")
@@ -67,6 +52,28 @@ class SoulSpark:
     Represents the evolving soul entity throughout its formation process.
     Holds attributes modified by various stage functions.
     """
+
+    def generate_harmonic_structure(self) -> None:
+        """
+        Generate the harmonic frequency structure based on base frequency.
+        Initializes or regenerates frequency_signature with base harmonics.
+        """
+        base_freq = self.frequency
+        # Generate first 7 harmonics (can be adjusted)
+        harmonics = [base_freq * (n + 1) for n in range(7)]
+        # Amplitudes decrease with harmonic number
+        amplitudes = [1.0 / (n + 1) for n in range(7)]
+        # Random phases
+        phases = [np.random.uniform(0, 2 * np.pi) for _ in range(7)]
+        
+        self.frequency_signature = {
+            'base_frequency': base_freq,
+            'frequencies': np.array(harmonics),
+            'amplitudes': np.array(amplitudes),
+            'phases': np.array(phases),
+            'num_frequencies': 7
+        }
+        logger.debug(f"Generated harmonic structure for soul {self.spark_id} with base frequency {base_freq}")
 
     def __init__(self, initial_data: Optional[Dict[str, Any]] = None, spark_id: Optional[str] = None):
         """

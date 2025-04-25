@@ -25,30 +25,7 @@ logger = logging.getLogger(__name__)
 # --- Constants ---
 try:
     # Import necessary constants FROM THE CENTRAL FILE
-    from src.constants import (
-        GOLDEN_RATIO, SILVER_RATIO, EARTH_FREQUENCIES,
-        FLOAT_EPSILON, LOG_LEVEL, # Basic utils
-        # Life Cord Specific Constants (Ensure these are defined in src.constants.py)
-        CORD_STABILITY_THRESHOLD, CORD_COHERENCE_THRESHOLD,
-        MAX_CORD_CHANNELS, ANCHOR_STRENGTH_MODIFIER,
-        EARTH_ANCHOR_STRENGTH, EARTH_ANCHOR_RESONANCE,
-        PRIMARY_CHANNEL_BANDWIDTH_FACTOR,
-        PRIMARY_CHANNEL_STABILITY_FACTOR_CONN, PRIMARY_CHANNEL_STABILITY_FACTOR_COMPLEX,
-        PRIMARY_CHANNEL_INTERFERENCE_FACTOR_CONN, PRIMARY_CHANNEL_INTERFERENCE_FACTOR_COMPLEX,
-        PRIMARY_CHANNEL_ELASTICITY_BASE, PRIMARY_CHANNEL_ELASTICITY_FACTOR_COMPLEX,
-        HARMONIC_NODE_COUNT_BASE, HARMONIC_NODE_COUNT_FACTOR,
-        HARMONIC_NODE_AMP_BASE, HARMONIC_NODE_AMP_FACTOR_COMPLEX, HARMONIC_NODE_AMP_FALLOFF,
-        HARMONIC_NODE_BW_INCREASE_FACTOR, SECONDARY_CHANNEL_COUNT_FACTOR,
-        SECONDARY_CHANNEL_BW_EMOTIONAL, SECONDARY_CHANNEL_BW_MENTAL, SECONDARY_CHANNEL_BW_SPIRITUAL,
-        SECONDARY_CHANNEL_RESIST_EMOTIONAL, SECONDARY_CHANNEL_RESIST_MENTAL, SECONDARY_CHANNEL_RESIST_SPIRITUAL,
-        SECONDARY_CHANNEL_FREQ_FACTOR, FIELD_INTEGRATION_FACTOR_FIELD_STR,
-        FIELD_INTEGRATION_FACTOR_CONN_STR, FIELD_EXPANSION_FACTOR,
-        EARTH_CONN_FACTOR_CONN_STR, EARTH_CONN_FACTOR_ELASTICITY, EARTH_CONN_BASE_FACTOR,
-        CORD_INTEGRITY_FACTOR_CONN_STR, CORD_INTEGRITY_FACTOR_STABILITY,
-        CORD_INTEGRITY_FACTOR_EARTH_CONN, FINAL_STABILITY_BONUS_FACTOR,
-        # Other needed constants
-        PI
-    )
+    from src.constants.constants import *
     # Extract specific Earth freq if needed
     EARTH_FREQUENCY = EARTH_FREQUENCIES.get("schumann", 7.83) # Use Schumann as anchor freq
 except ImportError as e:
@@ -60,7 +37,7 @@ except ImportError as e:
 
 # --- Dependency Imports ---
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}. Life Cord formation cannot function.")
@@ -72,7 +49,9 @@ try:
 except ImportError as e:
     logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    class MetricsPlaceholder:
+        def record_metrics(self, *args, **kwargs):
+            pass
     metrics = MetricsPlaceholder()
 
 

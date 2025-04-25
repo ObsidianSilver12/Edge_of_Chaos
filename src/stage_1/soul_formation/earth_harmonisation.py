@@ -17,6 +17,9 @@ import sys
 from datetime import datetime
 import time
 from typing import Dict, List, Any, Tuple, Optional
+from src.stage_1.soul_formation.soul_spark import SoulSpark
+from src.constants.constants import *
+
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
@@ -24,7 +27,6 @@ logger = logging.getLogger(__name__)
 # --- Constants ---
 try:
     # Import necessary constants FROM THE CENTRAL FILE
-    from src.constants import * # Import all for convenience
     # Extract specific Earth freq if needed
     SCHUMANN_FREQUENCY = EARTH_FREQUENCIES.get("schumann", 7.83)
 except ImportError as e:
@@ -34,7 +36,7 @@ except ImportError as e:
 
 # --- Dependency Imports ---
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     from stage_1.sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
     DEPENDENCIES_AVAILABLE = True
     if aspect_dictionary is None: raise ImportError("Aspect Dictionary failed to initialize.")
@@ -48,7 +50,9 @@ try:
 except ImportError as e:
     logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    class MetricsPlaceholder:
+        def record_metrics(self, *args, **kwargs):
+            pass
     metrics = MetricsPlaceholder()
 
 

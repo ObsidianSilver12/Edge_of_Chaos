@@ -18,13 +18,14 @@ from datetime import datetime
 import time
 from typing import Dict, List, Any, Tuple, Optional
 
+
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
     # Import necessary constants FROM THE CENTRAL FILE
-    from src.constants import * # Import all for convenience
+    from src.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. Harmonic Strengthening cannot function correctly.")
@@ -32,7 +33,7 @@ except ImportError as e:
 
 # --- Dependency Imports ---
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}. Harmonic Strengthening cannot function.")
@@ -44,7 +45,8 @@ try:
 except ImportError as e:
     logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    class MetricsPlaceholder:
+        def record_metrics(*args, **kwargs): pass
     metrics = MetricsPlaceholder()
 
 

@@ -17,10 +17,7 @@ from datetime import datetime
 
 # --- Constants ---
 try:
-    from src.constants import (
-        PHI, FUNDAMENTAL_FREQUENCY_432, SAMPLE_RATE, MAX_AMPLITUDE, 
-        OUTPUT_DIR_BASE, PI
-    )
+    from src.constants.constants import *
 except ImportError:
     logging.warning("Could not import constants from src.constants. Using fallback values in SoundsOfSephiroth.")
     PHI = (1 + np.sqrt(5)) / 2
@@ -208,7 +205,7 @@ class SephirothFrequencies:
             return np.sqrt(freq1 * freq2)
 
 
-class SephirothSoundGenerator:
+class SephirothSoundIntegration:
     """
     Advanced generator for Sephiroth-specific sounds and tones.
     """

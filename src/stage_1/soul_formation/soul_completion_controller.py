@@ -9,7 +9,7 @@ identity crystallization, and the birth process.
 
 Author: Soul Development Framework Team
 """
-
+from src.stage_1.soul_formation.soul_visualization_enhanced import EnhancedSoulVisualizer
 import logging
 import os
 import sys
@@ -17,6 +17,10 @@ import uuid
 import json
 from datetime import datetime
 from typing import Optional, Tuple, Dict, Any, List
+# Add this with your other logging constants
+import logging
+LOG_LEVEL = logging.INFO  # Default logging level
+
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
@@ -24,15 +28,8 @@ logger = logging.getLogger(__name__)
 # --- Constants ---
 try:
     # Import necessary constants (mostly defaults for stages if not overridden)
-    from src.constants import (
-        LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE,
-        # Default parameters for stages (can be overridden)
-        HARMONIC_STRENGTHENING_INTENSITY_DEFAULT, HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT,
-        LIFE_CORD_COMPLEXITY_DEFAULT,
-        EARTH_HARMONY_INTENSITY_DEFAULT, EARTH_HARMONY_DURATION_FACTOR_DEFAULT,
-        IDENTITY_CRYSTALLIZATION_THRESHOLD, # Needed? Or rely on function default? Let's rely on func default.
-        BIRTH_INTENSITY_DEFAULT
-    )
+    from src.constants.constants import *
+
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.critical(f"CRITICAL ERROR: Could not import constants: {e}. SoulCompletionController cannot function correctly.")
@@ -42,7 +39,7 @@ except ImportError as e:
 # Import the primary functions from the refactored stage modules
 # Also import SoulSpark definition
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     from stage_1.soul_formation.harmonic_strengthening import perform_harmonic_strengthening
     from stage_1.soul_formation.life_cord import form_life_cord
     from stage_1.soul_formation.earth_harmonisation import perform_earth_harmonization
@@ -51,9 +48,11 @@ try:
     # Import metrics tracking
     import metrics_tracking as metrics
     DEPENDENCIES_AVAILABLE = True
+    METRICS_AVAILABLE = True
     if metrics is None: raise ImportError("Metrics tracking module failed load.") # Check explicit None if metrics fails init
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import stage modules or SoulSpark/metrics: {e}")
+    METRICS_AVAILABLE = False
     raise ImportError(f"Core stage dependencies missing: {e}") from e
 
 # Conditional import for visualization (only if controller invokes it)
@@ -197,7 +196,8 @@ class SoulCompletionController:
 
 
             # --- Finalization ---
-            end_time_iso = datetime.now().isoformat(); end_time_dt = datetime.fromisoformat(end_time_iso)
+            end_time_iso = datetime.now().isoformat()
+            end_time_dt = datetime.fromisoformat(end_time_iso)
             completion_summary['start_time'] = start_time_iso
             completion_summary['end_time'] = end_time_iso
             completion_summary['duration_seconds'] = (end_time_dt - start_time_dt).total_seconds()
@@ -212,14 +212,22 @@ class SoulCompletionController:
             # Save final soul state
             self._save_completed_soul(soul_spark)
 
-            # Record overall metric
-            try: metrics.record_metrics('soul_completion_summary', completion_summary)
-            except Exception as e: logger.error(f"Failed to record summary metrics for soul completion: {e}")
+            # Generate visualizations
+            visualizer = EnhancedSoulVisualizer(soul_spark, output_dir="completed_souls")
+            # Generate visualizations without storing unused return value
+            visualizer.generate_all_visualizations(show=True, save=True)
+
+            # Record overall metrics
+            try:
+                metrics.record_metrics('soul_completion_summary', completion_summary)
+            except Exception as e:
+                logger.error(f"Failed to record summary metrics for soul completion: {e}")
 
             logger.info(f"--- Soul Completion Process Finished Successfully for Soul {spark_id} ---")
             logger.info(f"Duration: {completion_summary['duration_seconds']:.2f}s")
             logger.info(f"Final Incarnated Status: {getattr(soul_spark, 'incarnated', False)}")
 
+            # Return the completed soul and summary
             return soul_spark, completion_summary
 
         except Exception as e:
@@ -326,7 +334,7 @@ class SoulCompletionController:
 # --- Example Usage ---
 if __name__ == "__main__":
     print("Running Soul Completion Controller Module Example...")
-    controller = None
+    soul_completion_controller = None
     if not DEPENDENCIES_AVAILABLE:
          print("ERROR: Core dependencies not available. Cannot run example.")
     else:
@@ -361,20 +369,22 @@ if __name__ == "__main__":
             print(f"  Aspects Count: {len(soul_after_journey.aspects)}")
 
             # --- Initialize Controller ---
-            controller = SoulCompletionController(
+            soul_completion_controller = SoulCompletionController(
                 data_dir="output/soul_completion_example"
             )
-            print(controller)
+            print(soul_completion_controller)
 
             # --- Run Completion Process ---
             print("\n--- Running Full Soul Completion Process ---")
-            final_soul_object, summary_metrics_result = controller.run_soul_completion(
+            final_soul_object, summary_metrics_result = soul_completion_controller.run_soul_completion(
                 soul_spark = soul_after_journey, # Pass the prepared soul object
                 harmony_intensity=0.7,
                 cord_complexity=0.6,
                 birth_intensity=0.7
                 # Add other kwargs to override stage defaults if needed
             )
+
+
 
             print("\n--- Soul Completion Process Finished ---")
             print("Final Soul State Summary:")
@@ -393,19 +403,23 @@ if __name__ == "__main__":
             print(f"  Success: {summary_metrics_result.get('success')}")
 
             # Save controller state
-            controller.save_controller_state()
+            soul_completion_controller.save_controller_state()
+
+
 
         except (ValueError, TypeError, RuntimeError, ImportError, AttributeError) as e:
             print(f"\n--- ERROR during Soul Completion Example ---")
             print(f"An error occurred: {type(e).__name__}: {e}")
-            if controller: print(f"Controller state at error: {controller}")
+            if soul_completion_controller: print(f"Controller state at error: {soul_completion_controller}")
             import traceback; traceback.print_exc()
         except Exception as e:
             print(f"\n--- UNEXPECTED ERROR during Soul Completion Example ---")
             print(f"An unexpected error occurred: {type(e).__name__}: {e}")
-            if controller: print(f"Controller state at error: {controller}")
+            if soul_completion_controller: print(f"Controller state at error: {soul_completion_controller}")
             import traceback; traceback.print_exc()
 
+
+        
     print("\nSoul Completion Controller Module Example Finished.")
 
 

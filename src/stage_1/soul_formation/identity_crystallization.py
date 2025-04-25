@@ -19,6 +19,7 @@ from datetime import datetime
 import time
 import random
 import string # For name generation
+import uuid
 from typing import Dict, List, Any, Tuple, Optional
 
 # --- Logging ---
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    from src.constants import * # Import all for convenience
+    from src.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. Identity Crystallization cannot function correctly.")
@@ -34,11 +35,11 @@ except ImportError as e:
 
 # --- Dependency Imports ---
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     from stage_1.sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
     # Import Edge of Chaos functions/classes if available
     try:
-        from shared.edge_of_chaos import get_chaos_state, apply_eoc_boost # Example function names
+        from src.stage_1.soul_formation.edge_of_chaos import * # Import all edge_of_chaos functionality for potential future use
         EDGE_OF_CHAOS_AVAILABLE = True
     except ImportError:
         logger.warning("edge_of_chaos module not found. Related boost features disabled.")
@@ -56,7 +57,8 @@ try:
 except ImportError as e:
     logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    class MetricsPlaceholder: 
+        def record_metrics(self, *args, **kwargs): pass
     metrics = MetricsPlaceholder()
 
 

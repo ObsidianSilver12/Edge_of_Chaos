@@ -30,9 +30,9 @@ sys.path.append(parent_dir)
 
 # Import required modules
 try:
-    from void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     import metrics_tracking as metrics
-    from constants import GOLDEN_RATIO, EDGE_OF_CHAOS_RATIO
+    from src.constants.constants import *
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     # Define fallback constants in case imports fail
@@ -394,7 +394,7 @@ class EdgeOfChaos:
 if __name__ == "__main__":
     # Create a soul spark
     try:
-        from void.soul_spark import SoulSpark
+        from src.stage_1.soul_formation.soul_spark import SoulSpark
         soul = SoulSpark()
     except ImportError:
         # Create a simple test object if SoulSpark is not available

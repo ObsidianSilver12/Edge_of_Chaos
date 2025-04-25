@@ -9,23 +9,27 @@ Author: Soul Development Framework Team - Refactored with Strict Error Handling
 """
 
 import logging
+# Import LOG_LEVEL from constants instead of defining it here
+# LOG_LEVEL = logging.INFO  # Define directly
+
 import os
 import json
 import numpy as np
 import time
 import threading
 import uuid
+from datetime import datetime # Added import
 from typing import Dict, List, Any, Union, Optional
 
 # --- Constants ---
 try:
     # Import necessary constants, e.g., logging config, base data dir
-    from src.constants import LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE
+    # Ensure this import path is correct relative to the project root
+    from src.constants.constants import LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE, PERSIST_INTERVAL_SECONDS
     METRICS_DIR = os.path.join(DATA_DIR_BASE, "metrics") # Define full path
     METRICS_FILE = os.path.join(METRICS_DIR, "soul_metrics.json")
-    # Constant for how often to attempt persistence (e.g., every N seconds)
-    PERSIST_INTERVAL_SECONDS = 60 # Persist roughly every minute if active
 except ImportError as e:
+    # Basic logging setup if constants failed
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. Metrics tracking may fail.")
     # Define fallbacks ONLY for script to load, but functionality will be impaired
@@ -38,7 +42,9 @@ except ImportError as e:
 # --- Logging Setup ---
 log_file_path = os.path.join("logs", "metrics_tracking.log")
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')
+# Use fileConfig or dictConfig if more complex setup is needed
+if not logging.getLogger().hasHandlers(): # Configure only if not already configured
+    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')
 logger = logging.getLogger('metrics_tracking')
 
 # --- Global Metrics Store ---
@@ -69,7 +75,8 @@ def record_metric(category: str, name: str, value: Any) -> None:
 
     # Basic check for JSON serializability (optional but good practice)
     try:
-        json.dumps({name: value}, default=str) # Use default=str as a fallback for common types
+        # Use default=str for common non-serializable types like numpy types
+        json.dumps({name: value}, default=str)
     except TypeError as e:
         logger.error(f"Metric value for {category}.{name} may not be JSON serializable: {e}. Value type: {type(value)}")
         # Decide whether to raise error or just log warning
@@ -134,7 +141,7 @@ def record_metrics(category: str, metrics_dict: Dict[str, Any]) -> None:
     current_time = time.time()
     if current_time - _last_persist_time > PERSIST_INTERVAL_SECONDS:
         try: persist_metrics(); _last_persist_time = current_time
-        except Exception: logger.error("Periodic persistence failed after recording multiple metrics."); _last_persist_time = current_time
+        except Exception as e: logger.error("Periodic persistence failed after recording multiple metrics."); _last_persist_time = current_time
 
 
 def get_metric(category: str, name: str, default: Optional[Any] = None) -> Optional[Any]:
@@ -234,7 +241,8 @@ def persist_metrics() -> bool:
 
         # Perform copy inside lock, release lock before file IO
         with _metrics_lock:
-            metrics_copy = json.loads(json.dumps(_metrics_store, default=str)) # Get deep copy first
+            # Use default=str to handle potential numpy types etc.
+            metrics_copy = json.loads(json.dumps(_metrics_store, default=str))
 
         # Write the deep copy to file
         with open(METRICS_FILE, 'w') as f:
@@ -308,16 +316,16 @@ def analyze_metrics(category: str) -> Optional[Dict[str, Any]]:
     Returns:
         dict: Analysis results (count, numeric stats), or None if category invalid/not found.
     """
-    metrics = get_category_metrics(category) # Safely gets metrics or {}
-    if not metrics:
+    metrics_data = get_category_metrics(category) # Safely gets metrics or {}
+    if not metrics_data:
         logger.warning(f"No metrics found for category '{category}' to analyze.")
         return None # Return None if no data
 
-    analysis = { "category": category, "metric_count": len(metrics) }
+    analysis = { "category": category, "metric_count": len(metrics_data) }
     numeric_values: Dict[str, Union[int, float]] = {}
     non_numeric_keys: List[str] = []
 
-    for name, value in metrics.items():
+    for name, value in metrics_data.items():
         if isinstance(value, (int, float)) and np.isfinite(value): # Check for finite numbers
             numeric_values[name] = value
         else:
@@ -347,7 +355,7 @@ def analyze_metrics(category: str) -> Optional[Dict[str, Any]]:
 # Try to load metrics when the module is imported. Failures here are logged but don't stop import.
 try:
     if os.path.exists(METRICS_FILE):
-        load_metrics() # Attempt load, which logs errors internally if it fails
+        load_metrics() # Attempt load, raises errors on failure now
     else:
         logger.info("Metrics file does not exist on initial load. Starting fresh.")
 except Exception as initial_load_e:
@@ -371,8 +379,8 @@ if __name__ == "__main__":
         record_metric("void_field", "last_spark_time", time.time())
         record_metric("errors", "initialization_errors", 0)
         record_metric("performance", "loop_time_ms", 15.3)
-        # Example of potentially non-serializable (will log error if strict check enabled)
-        # record_metric("debug", "numpy_array", np.array([1,2,3]))
+        # Example of unserializable (will now raise TypeError on persist if default=str doesn't handle it)
+        # record_metric("debug", "custom_object", object())
         print("Metrics recorded.")
     except Exception as e:
          print(f"ERROR recording metrics: {e}")
@@ -414,7 +422,7 @@ if __name__ == "__main__":
         clear_metrics("void_field")
         print(f"'void_field' metrics after clear: {get_category_metrics('void_field')}")
         print("Reloading metrics from file...")
-        load_metrics() # This should raise FileNotFoundError if persist failed earlier
+        load_metrics() # Will fail if file doesn't exist or persistence failed
         print(f"'void_field' metrics after reload: {get_category_metrics('void_field')}")
         print("\nClearing all metrics...")
         clear_metrics()
@@ -424,3 +432,4 @@ if __name__ == "__main__":
 
 
     print("\nMetrics Tracking Module Example Finished.")
+# --- END OF FILE metrics_tracking.py ---

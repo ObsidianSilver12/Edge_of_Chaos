@@ -1,0 +1,49 @@
+{
+  "void_controller": {
+    "status": "initialized",
+    "timestamp": "2025-04-25T11:57:25.767275",
+    "field_uuid": "317b6977-3596-4979-b6d0-e6119ae76435",
+    "dimensions": [
+      64,
+      64,
+      64
+    ],
+    "simulation_step": 0,
+    "action": "identify_wells",
+    "geometry_type": "flower_of_life",
+    "strength": 1.0,
+    "patterns_embedded": true,
+    "wells_identified_count": 0,
+    "wells_identified": true,
+    "threshold_factor_used": "field_default"
+  },
+  "guff_controller": {
+    "status": "initialized",
+    "controller_id": "aaf67fe6-35a0-4c6a-b707-ebec8bf33b50",
+    "timestamp": "2025-04-25T11:57:25.597522",
+    "field_uuid": "7d43e5d5-22c8-405c-a4d8-f28612496deb",
+    "dimensions": [
+      64,
+      64,
+      64
+    ],
+    "simulation_step": 0
+  },
+  "sephiroth_controller": {
+    "status": "initialized",
+    "controller_id": "aba08aad-0226-4603-b261-7e94e37bdfcb",
+    "timestamp": "2025-04-25T11:57:25.752736",
+    "dimensions": [
+      64,
+      64,
+      64
+    ],
+    "initialized_fields_count": 0,
+    "initialize_all": false
+  },
+  "soul_completion_controller": {
+    "status": "initialized",
+    "controller_id": "643f7809-759a-4c57-af0f-a5ebc3caf88d",
+    "timestamp": "2025-04-25T11:57:25.754742"
+  }
+}

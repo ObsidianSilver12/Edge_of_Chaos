@@ -18,24 +18,28 @@ from typing import Dict, List, Any, Tuple, Optional
 import time
 import uuid
 from datetime import datetime
+from src.constants.constants import *
+
+# Remove unused imports
+# PHI, GOLDEN_RATIO, EDGE_OF_CHAOS_RATIO
+
+# Extract specific Earth freq
+EARTH_BREATH_FREQUENCY = EARTH_FREQUENCIES.get("breath", 0.2)  # Default ~12 breaths/min
+
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    # Import necessary constants FROM THE CENTRAL FILE
-    from src.constants import * # Import all for convenience
-    # Extract specific Earth freq if needed
-    EARTH_BREATH_FREQUENCY = EARTH_FREQUENCIES.get("breath", 0.2) # Default ~12 breaths/min
-except ImportError as e:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.critical(f"CRITICAL ERROR: Could not import constants from src.constants: {e}. Birth process cannot function correctly.")
-    raise ImportError(f"Essential constants missing: {e}") from e
+    from src.constants.constants import EARTH_FREQUENCIES
+    print(f"EARTH_FREQUENCIES successfully imported: {EARTH_FREQUENCIES}")
+except Exception as e:
+    print(f"Failed to import EARTH_FREQUENCIES: {type(e).__name__}: {e}")
 
 # --- Dependency Imports ---
 try:
-    from stage_1.void.soul_spark import SoulSpark
+    from src.stage_1.soul_formation.soul_spark import SoulSpark
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}. Birth process cannot function.")
@@ -47,7 +51,9 @@ try:
 except ImportError as e:
     logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder: def record_metrics(*args, **kwargs): pass
+    class MetricsPlaceholder:
+        def record_metrics(*args, **kwargs):
+            pass
     metrics = MetricsPlaceholder()
 
 

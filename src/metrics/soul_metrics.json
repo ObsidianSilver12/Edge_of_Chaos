@@ -1,0 +1,13 @@
+{
+  "void_controller": {
+    "status": "initialized",
+    "timestamp": "2025-04-24T20:36:13.006584",
+    "field_uuid": "36f7870c-d66b-4f44-9add-8b818b5047ba",
+    "dimensions": [
+      256,
+      256,
+      256
+    ],
+    "simulation_step": 0
+  }
+}
