@@ -1,105 +1,114 @@
-"""
-Sephiroth Aspect Dictionary (Reimplemented)
+# --- START OF FILE sephiroth_aspect_dictionary.py ---
 
-This version extracts aspect information from the field classes instead of
-using separate aspect files.
+"""
+Sephiroth Aspect Dictionary (Refactored)
+
+Loads and provides access to the centrally defined Sephiroth aspect data
+from sephiroth_data.py.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Type
+from typing import Dict, Any, List, Optional
 
-# Import all Sephiroth field classes
-from stage_1.fields.kether_field import KetherField
-from stage_1.fields.chokmah_field import ChokmahField
-from stage_1.fields.binah_field import BinahField
-from stage_1.fields.chesed_field import ChesedField
-from stage_1.fields.geburah_field import GeburahField
-from stage_1.fields.tiphareth_field import TipharethField
-from stage_1.fields.netzach_field import NetzachField
-from stage_1.fields.hod_field import HodField
-from stage_1.fields.yesod_field import YesodField
-from stage_1.fields.malkuth_field import MalkuthField
-from stage_1.fields.daath_field import DaathField
-
+# --- Logging ---
 logger = logging.getLogger(__name__)
+
+# --- Data Import ---
+try:
+    # Import the data structure directly
+    from stage_1.fields.sephiroth_data import SEPHIROTH_ASPECT_DATA
+    DATA_LOADED = True
+except ImportError as e:
+    logger.critical(f"CRITICAL ERROR: Could not import SEPHIROTH_ASPECT_DATA from sephiroth_data.py: {e}")
+    SEPHIROTH_ASPECT_DATA = {} # Define as empty dict if import fails
+    DATA_LOADED = False
+except Exception as e:
+    # Catch other potential errors during import
+    logger.critical(f"CRITICAL ERROR: Unexpected error importing sephiroth_data: {e}", exc_info=True)
+    SEPHIROTH_ASPECT_DATA = {}
+    DATA_LOADED = False
+
 
 class AspectDictionary:
     """
-    Provides aspect information by extracting it from the field classes.
-    Acts as a replacement for the original aspect_dictionary.
+    Provides access to Sephiroth aspect information loaded from sephiroth_data.
+    Acts as the interface for retrieving Sephiroth definitions.
     """
 
     def __init__(self):
-        self.field_classes = {
-            'kether': KetherField,
-            'chokmah': ChokmahField,
-            'binah': BinahField,
-            'chesed': ChesedField,
-            'geburah': GeburahField,
-            'tiphareth': TipharethField, 
-            'netzach': NetzachField,
-            'hod': HodField,
-            'yesod': YesodField,
-            'malkuth': MalkuthField,
-            'daath': DaathField
-        }
-        self.sephiroth_names = list(self.field_classes.keys())
-        logger.info(f"AspectDictionary initialized with {len(self.sephiroth_names)} Sephiroth")
+        """
+        Initialize the AspectDictionary.
+        """
+        if not DATA_LOADED or not SEPHIROTH_ASPECT_DATA:
+            # Log critical error and potentially raise an exception or handle gracefully
+            err_msg = "SEPHIROTH_ASPECT_DATA failed to load. AspectDictionary cannot function."
+            logger.critical(err_msg)
+            # Depending on desired behavior, either raise an error or continue with empty data
+            raise RuntimeError(err_msg)
+            # self.aspect_data = {} # Alternative: Continue with empty data
+            # self.sephiroth_names = []
+        else:
+            self.aspect_data: Dict[str, Dict[str, Any]] = SEPHIROTH_ASPECT_DATA
+            self.sephiroth_names: List[str] = list(self.aspect_data.keys())
+            # Validate loaded data - basic check
+            if len(self.sephiroth_names) != 11:
+                 logger.warning(f"Expected 11 Sephiroth, but found {len(self.sephiroth_names)} in loaded data.")
+            logger.info(f"AspectDictionary initialized with {len(self.sephiroth_names)} Sephiroth from sephiroth_data.py")
 
     def get_aspects(self, sephirah_name: str) -> Dict[str, Any]:
         """
-        Gets aspect information for a specific Sephirah by creating
-        a temporary field instance.
-        
-        Args:
-            sephirah_name: Name of the Sephirah (lowercase)
-            
-        Returns:
-            Dictionary with aspect information
-        """
-        if sephirah_name.lower() not in self.field_classes:
-            return {}
-            
-        try:
-            # Create temporary field instance
-            field_class = self.field_classes[sephirah_name.lower()]
-            field = field_class()
-            
-            # Extract aspect information
-            aspects = {
-                'name': field.name,
-                'divine_attribute': getattr(field, 'divine_attribute', None),
-                'geometric_correspondence': getattr(field, 'geometric_correspondence', None),
-                'element': getattr(field, 'element', None),
-                'primary_color': getattr(field, 'primary_color', None),
-                'base_frequency': field.base_frequency,
-                'aspects': {name: data for name, data in field.aspects.items()}
-            }
-            return aspects
-            
-        except Exception as e:
-            logger.error(f"Error getting aspects for {sephirah_name}: {e}")
-            return {}
-    
-    def load_aspect_instance(self, sephirah_name: str) -> Any:
-        """
-        Creates a field instance to serve as an aspect instance.
-        
-        Args:
-            sephirah_name: Name of the Sephirah (lowercase)
-            
-        Returns:
-            Field instance
-        """
-        if sephirah_name.lower() not in self.field_classes:
-            return None
-        
-        try:
-            field_class = self.field_classes[sephirah_name.lower()]
-            return field_class()
-        except Exception as e:
-            logger.error(f"Error loading aspect instance for {sephirah_name}: {e}")
-            return None
+        Gets the aspect data dictionary for a specific Sephirah.
 
-# Create the singleton instance
-aspect_dictionary = AspectDictionary()
+        Args:
+            sephirah_name: Name of the Sephirah (lowercase recommended).
+
+        Returns:
+            Dictionary with aspect information, or an empty dictionary if not found.
+        """
+        sephirah_lower = sephirah_name.lower()
+        data = self.aspect_data.get(sephirah_lower)
+        if data is None:
+            logger.warning(f"No aspect data found for Sephirah: '{sephirah_name}'. Returning empty dictionary.")
+            return {}
+        return data.copy() # Return a copy to prevent modification of original data
+
+    # --- Helper Methods ---
+    def get_all_base_frequencies(self) -> Dict[str, float]:
+        """Returns a dictionary mapping Sephiroth names to their base frequencies."""
+        return {name: data.get('base_frequency', 0.0) for name, data in self.aspect_data.items()}
+
+    def get_all_elements(self) -> Dict[str, Optional[str]]:
+        """Returns a dictionary mapping Sephiroth names to their element."""
+        return {name: data.get('element') for name, data in self.aspect_data.items()}
+
+    def get_all_primary_colors(self) -> Dict[str, Optional[str]]:
+        """Returns a dictionary mapping Sephiroth names to their primary color."""
+        return {name: data.get('primary_color') for name, data in self.aspect_data.items()}
+
+    def get_geometric_correspondence(self, sephirah_name: str) -> Optional[str]:
+        """Gets the geometric correspondence for a specific Sephirah."""
+        return self.aspect_data.get(sephirah_name.lower(), {}).get('geometric_correspondence')
+
+    def get_platonic_affinity(self, sephirah_name: str) -> Optional[str]:
+        """Gets the Platonic solid affinity for a specific Sephirah."""
+        return self.aspect_data.get(sephirah_name.lower(), {}).get('platonic_affinity')
+
+    def get_harmonic_signature_params(self, sephirah_name: str) -> Optional[Dict[str, Any]]:
+        """Gets the harmonic signature parameters for a specific Sephirah."""
+        return self.aspect_data.get(sephirah_name.lower(), {}).get('harmonic_signature_params')
+
+# --- Create the singleton instance ---
+# This instance will be imported by other modules
+aspect_dictionary = None
+if DATA_LOADED and SEPHIROTH_ASPECT_DATA:
+    try:
+        aspect_dictionary = AspectDictionary()
+    except Exception as e:
+        logger.critical(f"Failed to instantiate AspectDictionary: {e}", exc_info=True)
+        # Ensure aspect_dictionary is None if instantiation fails
+        aspect_dictionary = None
+else:
+    logger.critical("Cannot create AspectDictionary instance because data loading failed.")
+
+
+# --- END OF FILE sephiroth_aspect_dictionary.py ---

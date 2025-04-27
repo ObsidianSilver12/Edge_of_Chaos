@@ -37,7 +37,7 @@ except ImportError as e:
 # --- Dependency Imports ---
 try:
     from stage_1.soul_formation.soul_spark import SoulSpark
-    from stage_1.sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
+    from stage_1.soul_formation.sephiroth_aspect_dictionary import aspect_dictionary
     DEPENDENCIES_AVAILABLE = True
     if aspect_dictionary is None: raise ImportError("Aspect Dictionary failed to initialize.")
 except ImportError as e:
@@ -291,20 +291,27 @@ def _perform_cycle_synchronization(soul_spark: SoulSpark, intensity: float, dura
 
         # Use constants for cycles and importance
         for cycle_name in HARMONY_CYCLE_NAMES:
-            if cycle_name not in EARTH_FREQUENCIES: logger.warning(f"Cycle '{cycle_name}' not in EARTH_FREQUENCIES. Skipping."); continue
+        
+            if cycle_name not in EARTH_FREQUENCIES:
+                logger.error(f"Cycle '{cycle_name}' not found in EARTH_FREQUENCIES!")
+                raise ValueError(f"Missing Earth frequency for cycle '{cycle_name}'")
+            else:
+                current_sync = soul_cycles.get(cycle_name, 0.3)
+                target_sync = HARMONY_CYCLE_SYNC_TARGET_BASE * HARMONY_CYCLE_IMPORTANCE.get(cycle_name, 0.7)
 
-            current_sync = soul_cycles.get(cycle_name, 0.3)
-            target_sync = HARMONY_CYCLE_SYNC_TARGET_BASE * HARMONY_CYCLE_IMPORTANCE.get(cycle_name, 0.7)
+                # Use constants for adjustment factors
+                adjustment = (target_sync - current_sync) * intensity * duration_factor * HARMONY_CYCLE_SYNC_INTENSITY_FACTOR * HARMONY_CYCLE_SYNC_DURATION_FACTOR
+                new_sync = max(0.0, min(1.0, current_sync + adjustment))  # Clamp 0-1
 
-            # Use constants for adjustment factors
-            adjustment = (target_sync - current_sync) * intensity * duration_factor * HARMONY_CYCLE_SYNC_INTENSITY_FACTOR * HARMONY_CYCLE_SYNC_DURATION_FACTOR
-            new_sync = max(0.0, min(1.0, current_sync + adjustment)) # Clamp 0-1
+                soul_cycles[cycle_name] = float(new_sync)  # Update soul's dict
 
-            soul_cycles[cycle_name] = float(new_sync) # Update soul's dict
-
-            sync_level = 1.0 - abs(target_sync - new_sync) / max(FLOAT_EPSILON, target_sync)
-            sync_results[cycle_name] = {"original": float(current_sync), "target": float(target_sync),
-                                        "final": float(new_sync), "sync_level": float(sync_level)}
+                sync_level = 1.0 - abs(target_sync - new_sync) / max(FLOAT_EPSILON, target_sync)
+                sync_results[cycle_name] = {
+                    "original": float(current_sync),
+                    "target": float(target_sync),
+                    "final": float(new_sync),
+                    "sync_level": float(sync_level)
+                }
 
         overall_sync = np.mean([r["sync_level"] for r in sync_results.values()]) if sync_results else 0.0
         logger.debug(f"  Final cycles sync: {soul_cycles}")

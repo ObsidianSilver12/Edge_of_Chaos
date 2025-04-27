@@ -21,7 +21,8 @@ import random
 import string # For name generation
 import uuid
 from typing import Dict, List, Any, Tuple, Optional
-from sephiroth_aspect_dictionary import aspect_dictionary
+from stage_1.soul_formation.sephiroth_aspect_dictionary import aspect_dictionary
+
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
