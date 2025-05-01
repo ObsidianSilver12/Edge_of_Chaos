@@ -16,18 +16,24 @@ from datetime import datetime
 from typing import List, Optional, Tuple, Union, Dict, Any # Added for type hinting
 
 # --- Constants ---
+# Default constants in case import fails
+OUTPUT_DIR_BASE = "output/sounds"  # Default output directory
+SAMPLE_RATE = 44100  # Default sample rate in Hz
+
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from src.constants.constants import *
+    from constants.constants import *
 except ImportError as e:
     # Basic logging setup if constants failed
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. SoundGenerator cannot function.")
-    raise ImportError(f"Essential constants missing: {e}") from e
+    logging.warning(f"Failed to import constants: {e}. Using default values.")
 
 # Configure logging
 log_file_path = os.path.join("logs", "sound_generator.log")
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+# Default values in case constants are not available
+LOG_LEVEL = getattr(logging, 'INFO') if not 'LOG_LEVEL' in globals() else LOG_LEVEL
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s' if not 'LOG_FORMAT' in globals() else LOG_FORMAT
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')
 logger = logging.getLogger('sound_generator')
 

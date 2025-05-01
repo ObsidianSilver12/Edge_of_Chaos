@@ -1,1233 +1,740 @@
-"""
-Enhanced Soul Visualization
+# --- START OF FILE soul_visualization_enhanced.py ---
 
-This module provides detailed visualization capabilities for fully formed souls,
-creating rich visual representations of the soul's properties, structure, and attributes.
+"""
+Enhanced Soul Visualization (Refactored)
+
+Provides detailed visualization capabilities for fully formed souls,
+creating rich visual representations based on current SoulSpark attributes.
 """
 
+import logging
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-import plotly.graph_objects as go
-import plotly.express as px
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from skimage.measure import marching_cubes
-import seaborn as sns
-from typing import Dict, List, Any, Optional, Tuple
+import os
+from typing import Dict, Any, Optional, Tuple, List
 
-from stage_1.soul_formation.soul_spark import SoulSpark
-from stage_1.soul_formation.sephiroth_aspect_dictionary import aspect_dictionary
-from constants.constants import *
+# --- Matplotlib/Plotly Imports ---
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+    from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    import plotly.graph_objects as go
+    import plotly.express as px
+    import seaborn as sns  # Keep for potential heatmap/pairplot use later
+    from matplotlib.colors import LinearSegmentedColormap
+    VISUALIZATION_ENABLED = True
+except ImportError as e:
+    logging.basicConfig(
+    level=logging.INFO,
+     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.warning(
+    f"Visualization libraries (matplotlib, plotly, seaborn) not found: {e}. Visualizer disabled.")
+    VISUALIZATION_ENABLED = False
+    # Define dummy classes/functions if needed to prevent downstream errors
+    class plt: pass
+    class go: pass
+    class px: pass
+    class sns: pass
+    class Axes3D: pass
+    class Poly3DCollection: pass
+    def LinearSegmentedColormap(): pass
+
+
+# --- Other Imports ---
+try:
+    from stage_1.soul_spark.soul_spark import SoulSpark
+    from constants.constants import *  # Import constants
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    # Basic log if plt failed too
+    if not VISUALIZATION_ENABLED: logging.basicConfig(level=logging.INFO)
+    logging.critical(
+    f"CRITICAL ERROR: Failed to import SoulSpark or constants: {e}. Visualizer cannot function.")
+    DEPENDENCIES_AVAILABLE = False
+    # Define SoulSpark placeholder if needed
+    class SoulSpark: pass
+
+
+logger = logging.getLogger(__name__)
+
 
 class EnhancedSoulVisualizer:
-    """
-    Creates detailed visualizations for a fully formed soul.
-    """
-    
-    def __init__(self, soul: SoulSpark, output_dir: str):
-        """
-        Initialize with a completed soul to visualize.
-        
-        Args:
-            soul: Fully formed SoulSpark object
-            output_dir: Directory to save visualizations
-        """
+    """ Creates detailed visualizations for a SoulSpark object. """
+
+    def __init__(
+    self,
+    soul: SoulSpark,
+     output_dir: str = "output/visualizations"):
+        if not VISUALIZATION_ENABLED or not DEPENDENCIES_AVAILABLE:
+            raise RuntimeError(
+                "Visualization dependencies or SoulSpark/constants are missing. Visualizer cannot be initialized.")
         if not isinstance(soul, SoulSpark):
-            raise TypeError("A SoulSpark object is required")
-            
+            raise TypeError("Input 'soul' must be a SoulSpark instance.")
+
         self.soul = soul
-        self.output_dir = output_dir
-        
-        # Create custom colormaps for soul visualization
-        self.stability_cmap = self._create_stability_colormap()
-        self.aspect_cmap = self._create_aspect_colormap()
-        
-    def _create_stability_colormap(self):
-        """Create a custom colormap for stability visualization."""
-        return LinearSegmentedColormap.from_list(
-            "stability", 
-            [(0.0, "red"), (0.5, "yellow"), (0.85, "lightblue"), (1.0, "purple")]
-        )
-        
-    def _create_aspect_colormap(self):
-        """Create a custom colormap for aspect visualization."""
-        return LinearSegmentedColormap.from_list(
-            "aspects", 
-            [(0.0, "blue"), (0.2, "cyan"), (0.4, "green"), 
-             (0.6, "gold"), (0.8, "orange"), (1.0, "magenta")]
-        )
-    
-    def generate_all_visualizations(self, show: bool = True, save: bool = True) -> Dict[str, Any]:
-        """
-        Generate all visualizations for the soul.
-        
-        Args:
-            show: Whether to display visualizations
-            save: Whether to save visualizations to files
-            
-        Returns:
-            Dictionary of visualization results
-        """
-        results = {}
-        
-        # Core structure visualization (3D)
-        results["core_structure"] = self.visualize_core_structure(show, save)
-        
-        # Energy and harmony visualization
-        results["energy_harmony"] = self.visualize_energy_harmony(show, save)
-        
-        # Frequency signature
-        results["frequency_signature"] = self.visualize_frequency_signature(show, save)
-        
-        # Aspects map
-        results["aspects_map"] = self.visualize_aspects_map(show, save)
-        
-        # Coherence patterns
-        results["coherence_patterns"] = self.visualize_frequency_signature(show, save)
-        
-        # Life cord structure
-        results["life_cord"] = self.visualize_life_cord(show, save)
-        
-        # Identity crystallization
-        results["identity"] = self.visualize_identity(show, save)
-        
-        # Create a dashboard
-        results["dashboard"] = self.create_soul_dashboard(show, save)
-        
-        return results
-    
-    def visualize_core_structure(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Create a 3D visualization of the soul's core structure.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(12, 10))
+        # Ensure output dir is specific to the soul ID
+        self.output_dir = os.path.join(
+    output_dir,
+    f"soul_{
+        getattr(
+            soul,
+            'spark_id',
+             'unknown')}")
+        try:
+            os.makedirs(self.output_dir, exist_ok=True)
+        except OSError as e:
+            logger.error(
+    f"Failed to create output directory {
+        self.output_dir}: {e}")
+            raise  # Fail if dir cannot be made
+
+        logger.info(
+    f"EnhancedSoulVisualizer initialized for Soul ID: {
+        getattr(
+            soul,
+            'spark_id',
+             'unknown')}")
+        # Define colormaps
+        self.stability_cmap = LinearSegmentedColormap.from_list(
+    "stability_cmap", [
+        "#FF4136", "#FFDC00", "#7FDBFF", "#0074D9"])  # Red-Yellow-LightBlue-Blue
+        self.coherence_cmap = LinearSegmentedColormap.from_list(
+    "coherence_cmap", [
+        "#AAAAAA", "#FF851B", "#FFDC00", "#FFFFFF"])  # Grey-Orange-Yellow-White
+        # Teal-Green-Yellow-Red (Low to High?) -> Let's reverse:
+        # Red-Yellow-Green-Teal (Low to High)
+        self.energy_cmap = LinearSegmentedColormap.from_list(
+            "energy_cmap", ["#3D9970", "#2ECC40", "#FFDC00", "#FF4136"])
+        self.energy_cmap = LinearSegmentedColormap.from_list(
+            "energy_cmap", ["#FF4136", "#FFDC00", "#2ECC40", "#3D9970"])
+        self.aspect_cmap = plt.get_cmap('viridis')
+
+    def _save_or_show(self, fig, filename: str, show: bool, save: bool):
+        """ Helper to save and/or show a matplotlib figure. """
+        if not VISUALIZATION_ENABLED: return
+        try:
+            if save:
+                full_path = os.path.join(self.output_dir, filename)
+                fig.savefig(full_path, dpi=300, bbox_inches='tight')
+                logger.info(f"Visualization saved to {full_path}")
+            if show:
+                # Check if running in interactive environment before showing
+                if hasattr(plt, 'isinteractive') and plt.isinteractive():
+                    plt.show()
+                else:
+                    logger.info(
+                        "Non-interactive environment detected, plot not shown automatically.")
+                    # Consider plt.draw() and plt.pause(0.001) if needed in
+                    # some backends
+            if not show:  # Close if not shown to free memory
+                plt.close(fig)
+        except Exception as e:
+            logger.error(
+    f"Error saving/showing plot {filename}: {e}",
+     exc_info=True)
+            if 'fig' in locals() and fig: plt.close(fig)
+
+    def _get_soul_color_rgb(self) -> List[float]:
+        """ Safely gets the soul's primary color as an RGB list. """
+        color_name = getattr(
+    self.soul,
+    'soul_color',
+     'grey')  # Default to grey
+        if not isinstance(color_name, str): color_name = 'grey'
+
+        # Reuse the color conversion logic from SephirothField (or move to a
+        # utility)
+        color_map = {
+            'white': [1.0, 1.0, 1.0], 'grey': [0.5, 0.5, 0.5], 'black': [0.05, 0.05, 0.05],
+            'blue': [0.1, 0.2, 0.9], 'red': [0.9, 0.1, 0.1], 'yellow': [0.9, 0.9, 0.1],
+            'gold': [1.0, 0.84, 0.0], 'green': [0.1, 0.9, 0.2], 'orange': [1.0, 0.65, 0.0],
+            'purple': [0.5, 0.1, 0.9], 'violet': [0.58, 0.0, 0.83], 'lavender': [0.9, 0.9, 1.0],
+            'earth_tones': [0.6, 0.4, 0.2], 'brown': [0.6, 0.3, 0.05], 'russet': [0.5, 0.2, 0.1],
+            'olive': [0.5, 0.5, 0.0], 'citrine': [0.9, 0.8, 0.2], 'silver': [0.75, 0.75, 0.75],
+            'magenta': [1.0, 0.0, 1.0], 'indigo': [0.29, 0.0, 0.51], 'sky_blue': [0.53, 0.81, 0.92]
+            # Add more colors as needed from constants/sephiroth_data
+        }
+        # Handle multi-colors like 'white/clear' -> 'white'
+        if '/' in color_name: color_name = color_name.split('/')[0]
+        return color_map.get(
+    color_name.lower(), [
+        0.5, 0.5, 0.5])  # Default grey
+
+    # --- START OF REPLACEMENT visualize_core_structure METHOD ---
+    def visualize_core_structure(self, show: bool = False, save: bool = True) -> Optional[plt.Figure]:
+        """ Visualize the 3D core structure using current attributes. """
+        if not VISUALIZATION_ENABLED: return None
+        fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
-        
-        # Extract core field representation (simplified if no detailed field)
-        energy_field = getattr(self.soul, 'energy_field', None)
-        if energy_field is None:
-            # Create approximate field from available metrics
-            field_size = 30
-            energy_field = np.zeros((field_size, field_size, field_size))
-            
-            # Use stability and resonance to shape the field
-            stability = self.soul.stability
-            resonance = self.soul.resonance
-            coherence = getattr(self.soul, 'coherence', 0.7)
-            
-            # Create a basic sphere with variations based on properties
-            x, y, z = np.indices((field_size, field_size, field_size))
-            center = field_size // 2
-            r = np.sqrt((x - center)**2 + (y - center)**2 + (z - center)**2)
-            
-            # Base sphere
-            sphere_mask = r < field_size/3
-            energy_field[sphere_mask] = 0.5
-            
-            # Add variations based on stability (more stable = smoother)
-            noise_level = max(0.1, 1.0 - stability)
-            energy_field += np.random.normal(0, noise_level, energy_field.shape)
-            
-            # Add coherence patterns (higher coherence = more structured patterns)
-            if coherence > 0.6:
-                for i in range(5):
-                    freq = 0.5 + i * 0.1
-                    pattern = np.sin(freq * x/5) * np.cos(freq * y/5) * np.sin(freq * z/5)
-                    energy_field += coherence * pattern * 0.2
-            
-            # Normalize the field
-            energy_field = (energy_field - np.min(energy_field)) / (np.max(energy_field) - np.min(energy_field))
-        
-        # Create threshold for isosurface visualization
-        threshold = 0.5
-        
-        # Extract soul properties we'll need for coloring
-        stability = self.soul.stability
-        resonance = self.soul.resonance
-        coherence = getattr(self.soul, 'coherence', 0.7)
 
-        # Create a mask for the isosurface
-        verts, faces, _, _ = marching_cubes(energy_field, threshold)
-        
-        # Scale to appropriate size
-        verts = verts / np.array(energy_field.shape)
-        
-        # Create colors based on soul properties
-        colors = np.zeros(verts.shape)
-        for i in range(verts.shape[0]):
-            # Calculate position-dependent colors based on soul metrics
-            height = verts[i, 2]
-            radius = np.sqrt(verts[i, 0]**2 + verts[i, 1]**2)
-            angle = np.arctan2(verts[i, 1], verts[i, 0])
-            
-            # Map properties to RGB (simplified approximation)
-            r = 0.5 + 0.5 * np.sin(height * 5)
-            g = 0.5 + 0.5 * np.sin(radius * 6)
-            b = 0.5 + 0.5 * np.sin(angle * 4)
-            
-            # Adjust colors based on soul stability and resonance
-            r = r * stability
-            g = g * resonance
-            b = b * coherence
-            
-            colors[i] = [r, g, b]
-        
-        # Plot the isosurface with colors
-        mesh = Poly3DCollection(verts[faces], alpha=0.8)
-        mesh.set_facecolor(colors[faces[:, 0]])
-        ax.add_collection3d(mesh)
-        
-        # Add annotations for key soul metrics
-        ax.text(0, 0, 1.2, f"Stability: {stability:.2f}", color='black', fontsize=12)
-        ax.text(0, 0, 1.1, f"Resonance: {resonance:.2f}", color='black', fontsize=12)
-        ax.text(0, 0, 1.0, f"Coherence: {coherence:.2f}", color='black', fontsize=12)
-        
-        # Add labels and title
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Soul Core Structure')
-        
-        # Set equal aspect ratio
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
-        ax.set_zlim(-1, 1)
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_core_structure.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
-    
-    def visualize_energy_harmony(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Visualize the soul's energy harmony patterns.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(15, 10))
-        
-        # Create a radial visualization of energy harmony
-        # Extract relevant metrics
-        stability = self.soul.stability
-        resonance = self.soul.resonance
-        coherence = getattr(self.soul, 'coherence', 0.7)
-        
-        # Get aspects if available
-        aspects = getattr(self.soul, 'aspects', {})
-        aspect_count = len(aspects)
-        
-        # Generate the plot
-        ax = fig.add_subplot(111, polar=True)
-        
-        # Create harmony metrics - if we don't have detailed ones, approximate them
-        harmony_metrics = getattr(self.soul, 'harmony_metrics', None)
-        if harmony_metrics is None:
-            # Create approximate metrics
-            num_metrics = 12
-            theta = np.linspace(0, 2*np.pi, num_metrics, endpoint=False)
-            
-            # Base values on stability, resonance, and add some variation
-            base_value = (stability + resonance + coherence) / 3
-            variation = 0.2
-            values = base_value + variation * np.sin(theta * 5)
-            
-            # Ensure values are in [0, 1] range
-            values = np.clip(values, 0, 1)
-            
-            # Create labels
-            labels = [
-                "Energy Flow", "Stability", "Resonance", "Coherence", 
-                "Creator Bond", "Aspect Integration", "Earth Attunement", 
-                "Sephiroth Harmony", "Identity Clarity", "Life Cord", 
-                "Vibrational State", "Divine Alignment"
-            ]
-        else:
-            # Use actual metrics
-            values = []
-            labels = []
-            for key, value in harmony_metrics.items():
-                labels.append(key)
-                values.append(value)
-            theta = np.linspace(0, 2*np.pi, len(labels), endpoint=False)
-        
-        # Create the radar chart
-        ax.fill(theta, values, alpha=0.25)
-        ax.plot(theta, values, marker='o', linewidth=2)
-        ax.set_thetagrids(theta * 180/np.pi, labels)
-        
-        # Set limits and title
-        ax.set_ylim(0, 1)
-        ax.set_title("Soul Energy Harmony")
-        
-        # Add overall harmony score in center
-        overall_harmony = np.mean(values)
-        ax.text(0, 0, f"{overall_harmony:.2f}", ha='center', va='center', 
-                fontsize=20, bbox=dict(facecolor='white', alpha=0.8))
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_energy_harmony.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
-    
-    def visualize_aspects_map(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Visualize the soul's aspects map.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(12, 10))
-        
-        # Get aspects or create placeholder
-        aspects = getattr(self.soul, 'aspects', {})
-        if not aspects:
-            aspects = {
-                'kether_light': {'strength': 0.85, 'integration': 0.82},
-                'chokmah_wisdom': {'strength': 0.78, 'integration': 0.73},
-                'binah_understanding': {'strength': 0.82, 'integration': 0.78},
-                'tiphareth_beauty': {'strength': 0.90, 'integration': 0.85},
-                'yesod_foundation': {'strength': 0.88, 'integration': 0.82},
-            }
-            
-        # Create aspects visualization
-        ax = fig.add_subplot(111, polar=True)
-        
-        # Extract aspect names and values
-        names = list(aspects.keys())
-        strengths = [aspects[name]['strength'] for name in names]
-        integrations = [aspects[name]['integration'] for name in names]
-        
-        # Number of aspects
-        N = len(names)
-        
-        # Compute angles for each aspect
-        angles = [n / float(N) * 2 * np.pi for n in range(N)]
-        angles += angles[:1]  # Complete the circle
-        
-        # Add strength values
-        strengths += strengths[:1]
-        ax.plot(angles, strengths, 'o-', linewidth=2, label='Strength')
-        
-        # Add integration values
-        integrations += integrations[:1]
-        ax.plot(angles, integrations, 'o-', linewidth=2, label='Integration')
-        
-        # Fill areas
-        ax.fill(angles, strengths, alpha=0.25)
-        ax.fill(angles, integrations, alpha=0.25)
-        
-        # Set aspect labels
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(names)
-        
-        # Set chart properties
-        ax.set_ylim(0, 1)
-        ax.set_title('Soul Aspects Map')
-        ax.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_aspects_map.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
+        try:
+            # --- Get Soul Attributes ---
+            name = getattr(self.soul, 'name', self.soul.spark_id[:8])
+            stability = getattr(self.soul, 'stability', 0.0)
+            coherence = getattr(self.soul, 'coherence', 0.0)
+            energy = getattr(self.soul, 'energy', 0.0)
+            resonance = getattr(self.soul, 'resonance', 0.0)
+            position = [float(p) for p in getattr(self.soul, 'position', [0.0, 0.0, 0.0])] # Ensure float
+            viz_radius = 0.3 + energy * 0.7 # Base radius
 
-    def visualize_frequency_signature(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Visualize the soul's frequency signature.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(14, 8))
-        
-        # Extract frequencies or generate them from soul properties
-        frequencies = getattr(self.soul, 'frequencies', None)
-        
-        if frequencies is None:
-            # Generate approximate frequencies based on soul properties
-            base_freq = getattr(self.soul, 'base_frequency', 432.0)
-            
-            # Generate harmonic series with variations based on soul properties
-            harmonics = 15
-            harmonic_series = np.arange(1, harmonics + 1)
-            
-            # Apply stability variations to harmonic amplitudes
-            stability = self.soul.stability
-            resonance = self.soul.resonance
-            phi = (1 + np.sqrt(5)) / 2  # Golden ratio
-            
-            # Frequencies using harmonics and phi variations
-            frequencies = base_freq * harmonic_series
-            
-            # Add phi-based variations to make it more "alive"
-            phi_variations = np.array([base_freq * phi**(i % 5) for i in range(harmonics)])
-            frequencies = np.concatenate((frequencies, phi_variations))
-            
-            # Amplitudes with exponential decay modified by stability
-            decay_factor = 0.9 - (stability * 0.2)  # More stable = slower decay
-            amplitudes = np.exp(-decay_factor * np.arange(len(frequencies)))
-            
-            # Add variations based on resonance
-            phase_shifts = resonance * np.sin(np.arange(len(frequencies)))
-            
-            # Create frequency dataframe
-            # Create plot
-            plt.figure(figsize=(10, 6))
-            ax = plt.gca()
+            # --- Create Sphere (Basic Representation) ---
+            u, v = np.linspace(0, 2 * PI, 40), np.linspace(0, PI, 20)
+            x = viz_radius * np.outer(np.cos(u), np.sin(v)) + position[0]
+            y = viz_radius * np.outer(np.sin(u), np.sin(v)) + position[1]
+            z = viz_radius * np.outer(np.ones(np.size(u)), np.cos(v)) + position[2]
 
-            # Plot each frequency point
-            for i in range(len(frequencies)):
-                ax.plot([frequencies[i]], [amplitudes[i]], 'bo', alpha=0.6)
-                # Add phase modulation
-                ax.plot([frequencies[i]-2, frequencies[i]+2], 
-                       [amplitudes[i]*np.cos(phase_shifts[i])]*2, 'b-', alpha=0.3)
-        else:
-            # Use actual frequencies if provided
-            for freq, amp in frequencies.items():
-                ax.plot([freq], [amp], 'bo', alpha=0.6)
-        
-        # Create the plot
-        ax = fig.add_subplot(111)
-        
-        # Extract coherence value from soul properties
-        coherence = getattr(self.soul, 'coherence', 0.7)  # Default to 0.7 if not found
-        ax.set_title(f'Soul Coherence Patterns (Coherence: {coherence:.2f})')
-        
-        # Add interpretive note
-        text = "Stable souls show regular patterns\n"
-        text += "Resonant souls show stronger patterns\n"
-        text += "Coherent souls show clear structure"
-        ax.text(0.02, 0.02, text, transform=ax.transAxes, 
-               bbox=dict(facecolor='white', alpha=0.8))
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_coherence_patterns.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
+            # --- Color/Texture based on Soul State ---
+            base_rgb = self._get_soul_color_rgb() # Shape (3,)
+            stability_colors = self.stability_cmap(stability * np.ones_like(x))[:, :, :3] # Shape (40, 20, 3)
+            alpha_channel = 0.3 + 0.6 * coherence # Scalar
+
+            texture_freq = 1.0 + resonance * 6.0
+            texture_pattern = 0.8 + 0.2 * np.sin(texture_freq * u[:, None]) * np.cos(texture_freq * v[None, :]) # Shape (40, 20)
+
+            # --- Corrected Calculation for final_rgb ---
+            # Multiply texture_pattern (broadcasted) with base_rgb
+            base_colored_texture = texture_pattern[..., np.newaxis] * base_rgb # Shape (40, 20, 3)
+
+            # Blend with stability color
+            final_rgb = (base_colored_texture * 0.6 + stability_colors * 0.4)
+            final_rgb = np.clip(final_rgb, 0.0, 1.0) # Shape is (40, 20, 3)
+            # --- End Corrected Calculation ---
+
+            # Assign to face_colors
+            face_colors = np.zeros((*x.shape, 4)) # RGBA
+            face_colors[..., :3] = final_rgb
+            face_colors[..., 3] = alpha_channel
+
+            # Plot the surface
+            ax.plot_surface(x, y, z, facecolors=face_colors, rstride=1, cstride=1, linewidth=0, antialiased=True)
+
+            # --- Add Connection Lines (Improved) ---
+            # Creator Connection
+            conn_strength = getattr(self.soul, 'creator_connection_strength', 0.0)
+            if conn_strength > 0.1:
+                line_len = 0.5 + 1.5 * conn_strength
+                line_end_z = position[2] + viz_radius + line_len
+                ax.plot([position[0], position[0]], [position[1], position[1]], [position[2] + viz_radius, line_end_z],
+                         color='gold', linestyle='--', linewidth=1.5 + conn_strength * 2, alpha=0.8, label=f'Creator ({conn_strength:.2f})')
+                ax.scatter([position[0]], [position[1]], [line_end_z], color='gold', s=30 + conn_strength*100, marker='*')
+
+            # Life Cord
+            cord_integrity = getattr(self.soul, 'cord_integrity', 0.0)
+            if cord_integrity > 0.1:
+                line_len = 0.5 + 1.5 * cord_integrity
+                line_end_z = position[2] - viz_radius - line_len
+                line_col = self._get_soul_color_rgb() # Use soul color blend for cord?
+                line_col_earth = [0.6, 0.4, 0.2] # Earthy color
+                line_col_blend = np.clip([c1*0.7+c2*0.3 for c1, c2 in zip(line_col, line_col_earth)], 0, 1)
+                ax.plot([position[0], position[0]], [position[1], position[1]], [position[2] - viz_radius, line_end_z],
+                         color=tuple(line_col_blend), linestyle='-', linewidth=1.5 + cord_integrity*2, alpha=0.8, label=f'Life Cord ({cord_integrity:.2f})')
+                ax.scatter([position[0]], [position[1]], [line_end_z], color=tuple(line_col_blend), s=25+cord_integrity*80, marker='v')
+
+            # --- Plot Setup ---
+            ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
+            title = f"Soul Core: {name}\nS:{stability:.2f} C:{coherence:.2f} E:{energy:.2f} R:{resonance:.2f}"
+            ax.set_title(title)
+            if conn_strength > 0.1 or cord_integrity > 0.1: ax.legend(loc='best')
+
+            # --- Auto-scaling ---
+            all_points_list = [list(position)]
+            if conn_strength > 0.1: all_points_list.append([position[0], position[1], position[2] + viz_radius + 1.5 * conn_strength])
+            if cord_integrity > 0.1: all_points_list.append([position[0], position[1], position[2] - viz_radius - 1.5 * cord_integrity])
+            # Ensure all points are added before converting to numpy array
+            if len(all_points_list) > 1:
+                all_points = np.array(all_points_list) # Convert list of lists/arrays
+                if all_points.ndim == 1: # Handle case where only center point exists
+                     all_points = all_points.reshape(1, -1) # Reshape to 2D array
+
+                if all_points.size > 0:
+                    min_coords = np.min(all_points, axis=0) - viz_radius
+                    max_coords = np.max(all_points, axis=0) + viz_radius
+                    means = (min_coords + max_coords) / 2.0
+                    ranges = max_coords - min_coords
+                    max_range = max(max(ranges), viz_radius * 3.0)
+                    ax.set_xlim(means[0] - max_range / 2, means[0] + max_range / 2)
+                    ax.set_ylim(means[1] - max_range / 2, means[1] + max_range / 2)
+                    ax.set_zlim(means[2] - max_range / 2, means[2] + max_range / 2)
+                else: # Fallback if no points generated (shouldn't happen if position exists)
+                     ax.set_xlim(-1, 1); ax.set_ylim(-1, 1); ax.set_zlim(-1, 1)
+            else: # Only center position
+                 ax.set_xlim(position[0]-1, position[0]+1)
+                 ax.set_ylim(position[1]-1, position[1]+1)
+                 ax.set_zlim(position[2]-1, position[2]+1)
+
+            self._save_or_show(fig, "soul_core_structure_enhanced.png", show, save)
+            return fig
+        except Exception as e:
+            logger.error(f"Error generating core structure visualization: {e}", exc_info=True)
+            if 'fig' in locals() and fig: plt.close(fig)
+            return None
+    # --- END OF REPLACEMENT visualize_core_structure METHOD ---
     
-    def visualize_life_cord(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Visualize the soul's life cord structure.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(14, 10))
-        ax = fig.add_subplot(111, projection='3d')
-        
-        # Get life cord data or create placeholder
-        life_cord = getattr(self.soul, 'life_cord', None)
-        
-        if life_cord is None:
-            # Create placeholder life cord data
-            life_cord = {
-                'integrity': 0.85,
-                'channels': 7,
-                'harmonic_nodes': 12,
-                'soul_anchor': {'position': [0, 0, 2], 'strength': 0.9},
-                'earth_anchor': {'position': [0, 0, -2], 'strength': 0.8}
-            }
-        
-        # Extract life cord properties
-        integrity = life_cord.get('integrity', 0.8)
-        num_channels = life_cord.get('channels', 7)
-        soul_anchor = life_cord.get('soul_anchor', {'position': [0, 0, 2], 'strength': 0.9})
-        earth_anchor = life_cord.get('earth_anchor', {'position': [0, 0, -2], 'strength': 0.8})
-        harmonic_nodes = life_cord.get('harmonic_nodes', 12)
-        
-        # Plot the soul and earth anchors
-        soul_pos = soul_anchor.get('position', [0, 0, 2])
-        earth_pos = earth_anchor.get('position', [0, 0, -2])
-        
-        ax.scatter([soul_pos[0]], [soul_pos[1]], [soul_pos[2]], 
-                  color='purple', s=300, alpha=0.8, label='Soul Anchor')
-        ax.scatter([earth_pos[0]], [earth_pos[1]], [earth_pos[2]], 
-                  color='green', s=300, alpha=0.8, label='Earth Anchor')
-        
-        # Create the life cord channels
-        for i in range(num_channels):
-            # Generate a slightly different path for each channel
-            t = np.linspace(0, 1, 50)
-            
-            # Determine channel type (primary or secondary)
-            is_primary = (i == 0)
-            
-            # Create base helix path from soul to earth
-            radius = 0.2 if is_primary else 0.1 + (i * 0.02)
-            frequency = 4 if is_primary else 3 + (i % 3)
-            phase = 0 if is_primary else (i * np.pi / num_channels)
-            
-            # Modify path based on integrity
-            radius *= 0.8 + (integrity * 0.4)  # Higher integrity = more regular
-            
-            # Calculate path coordinates
-            x = radius * np.sin(2 * np.pi * frequency * t + phase)
-            y = radius * np.cos(2 * np.pi * frequency * t + phase)
-            z = np.linspace(soul_pos[2], earth_pos[2], len(t))
-            
-            # Add some variation based on position (less for higher integrity)
-            variation = (1 - integrity) * 0.2
-            x += variation * np.sin(4 * np.pi * t)
-            y += variation * np.cos(3 * np.pi * t)
-            
-            # Determine color and width based on channel type
-            if is_primary:
-                color = 'gold'
-                linewidth = 5
-                alpha = 0.8
+    def visualize_aspects_map(self,
+    show: bool = True,
+     save: bool = True) -> Optional[plt.Figure]:
+        """ Visualize the acquired aspects and their strengths via radar chart. """
+        if not VISUALIZATION_ENABLED: return None
+        fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={'polar': True})
+        try:
+            aspects_data = getattr(self.soul, 'aspects', {})
+            if not aspects_data:
+                ax.text(0, 0, "No aspects acquired", ha='center', va='center')
+                ax.set_title("Soul Aspects Map (Empty)"); ax.set_xticks(
+                    []); ax.set_yticks([])
+                self._save_or_show(
+    fig, "soul_aspects_map_empty.png", show, save)
+                return fig
+
+            # Limit displayed aspects if too many (e.g., top 12)
+            num_to_show = 12
+            sorted_aspects = sorted(
+    aspects_data.items(), key=lambda item: item[1].get(
+        'strength', 0.0), reverse=True)
+            labels = [name for name, data in sorted_aspects[:num_to_show]]
+            strengths = [data.get('strength', 0.0)
+                                  for name, data in sorted_aspects[:num_to_show]]
+            num_vars = len(labels)
+
+            if num_vars == 0:  # Handle case where no aspects have strength > 0
+                 ax.text(
+    0,
+    0,
+    "No aspects with strength > 0",
+    ha='center',
+     va='center')
+                 ax.set_title("Soul Aspects Map (Zero Strength)"); ax.set_xticks(
+                     []); ax.set_yticks([])
+                 self._save_or_show(
+    fig, "soul_aspects_map_empty.png", show, save)
+                 return fig
+
+            angles = np.linspace(
+    0, 2 * np.pi, num_vars, endpoint=False).tolist()
+            strengths = np.clip(strengths, 0, 1).tolist()
+            strengths += strengths[:1]; angles += angles[:1]  # Complete loop
+
+            ax.plot(
+    angles,
+    strengths,
+    linewidth=2,
+    linestyle='solid',
+    color='magenta',
+     marker='o')
+            ax.fill(angles, strengths, 'magenta', alpha=0.4)
+
+            # Adjust font size
+            ax.set_xticks(angles[:-1]); ax.set_xticklabels(labels, fontsize=9)
+            ax.set_yticks(np.arange(0, 1.1, 0.2)); ax.set_ylim(0, 1)
+            ax.set_title(
+                f'Soul Aspects (Top {num_vars}): {getattr(self.soul, "name", self.soul.spark_id[:8])}', size=16, y=1.1)
+
+            self._save_or_show(
+    fig, "soul_aspects_map_enhanced.png", show, save)
+            return fig
+        except Exception as e:
+            logger.error(
+    f"Error generating aspects map visualization: {e}",
+     exc_info=True)
+            if 'fig' in locals() and fig: plt.close(fig)
+            return None
+
+    def visualize_frequency_signature(
+        self, show: bool = True, save: bool = True) -> Optional[plt.Figure]:
+        """ Visualize the frequency signature (uses SoulSpark method). """
+        if not VISUALIZATION_ENABLED: return None
+        save_path = os.path.join(
+    self.output_dir,
+     "soul_frequency_signature_enhanced.png") if save else None
+        try:
+            # Call the method on the soul object itself
+            fig = self.soul.visualize_energy_signature(
+    show=False, save_path=None)  # Generate fig without showing/saving yet
+            if fig is None: return None  # Generation failed within soul object
+            self._save_or_show(
+    fig, "soul_frequency_signature_enhanced.png", show, save)
+            return fig
+        except AttributeError:
+            logger.error(
+                "SoulSpark object missing 'visualize_energy_signature' method.")
+            return None
+        except Exception as e:
+            logger.error(
+    f"Error calling/saving frequency signature visualization: {e}",
+     exc_info=True)
+            return None
+
+    def visualize_life_cord(self, show: bool = True,
+                            save: bool = True) -> Optional[plt.Figure]:
+        """ Visualize the detailed life cord structure (2D Representation). """
+        if not VISUALIZATION_ENABLED: return None
+        fig, ax = plt.subplots(figsize=(12, 6))  # Wider for legend
+
+        try:
+            life_cord_data = getattr(self.soul, 'life_cord', {})
+            cord_integrity = getattr(self.soul, 'cord_integrity', 0.0)
+            if not life_cord_data or not getattr(
+    self.soul, 'cord_formation_complete', False):
+                ax.text(
+    0.5,
+    0.5,
+    "Life Cord Not Formed",
+    ha='center',
+    va='center',
+     transform=ax.transAxes)
+                ax.set_title("Life Cord Structure (Not Formed)"); ax.set_xticks(
+                    []); ax.set_yticks([])
+                self._save_or_show(
+    fig, "soul_life_cord_absent.png", show, save)
+                return fig
+
+            # --- Extract Data ---
+            soul_anchor_pos = life_cord_data.get(
+    'soul_anchor', {}).get(
+        'position', [
+            0, 1])  # Use 2D placeholder
+            earth_anchor_pos = life_cord_data.get(
+    'earth_anchor', {}).get(
+        'position', [
+            0, 0])  # Use 2D placeholder
+            primary_freq = life_cord_data.get('primary_frequency', 0.0)
+            bandwidth = life_cord_data.get('bandwidth', 0.0)
+            stability = life_cord_data.get('stability', 0.0)
+            elasticity = life_cord_data.get('elasticity', 0.0)
+            num_channels = life_cord_data.get('channel_count', 1)
+            harmonic_nodes = life_cord_data.get('harmonic_nodes', [])
+            secondary_channels = life_cord_data.get('secondary_channels', [])
+            earth_conn = life_cord_data.get('earth_connection', 0.0)
+
+            # --- Plotting (2D Representation) ---
+            ax.set_title(
+    f"Life Cord: {
+        getattr(
+            self.soul,
+            'name',
+            self.soul.spark_id[
+                :8])}\nIntegrity: {
+                    cord_integrity:.3f}, EarthConn: {
+                        earth_conn:.3f}, BW: {
+                            bandwidth:.1f} Hz")
+            ax.set_ylim(-0.6, 1.6)  # Adjust Y-lim for labels
+            ax.set_xlim(-0.1, 1.1)
+            ax.set_yticks([])
+            ax.set_xlabel("Connection Path (Earth Anchor -> Soul Anchor)")
+
+            # Draw Anchors
+            ax.plot(1, 0.5, 'o', markersize=18, color='purple',
+                    alpha=0.7, label=f'Soul (Stab: {stability:.2f})')
+            ax.plot(0, 0.5, 'o', markersize=18, color='saddlebrown',
+                    alpha=0.7, label=f'Earth (Elast: {elasticity:.2f})')
+
+            # Draw Primary Channel
+            line_width = 2 + cord_integrity * 6  # Thicker line based on integrity
+            ax.plot([0,
+    1],
+    [0.5,
+    0.5],
+    color='gold',
+    linewidth=line_width,
+    solid_capstyle='round',
+    alpha=0.7,
+     label=f'Primary ({primary_freq:.0f} Hz)')
+
+            # Draw Secondary Channels
+            y_offset_base = 0.20
+            y_increment = 0.10
+            channel_colors = {
+    'emotional': '#6495ED',
+    'mental': '#90EE90',
+     'spiritual': '#E6E6FA'}
+            for i, chan in enumerate(secondary_channels):
+                y_pos = 0.5 + (y_offset_base + i * y_increment) * \
+                               (1 if i % 2 == 0 else -1)
+                chan_bw = chan.get(
+    'bandwidth', 10.0); chan_res = chan.get(
+        'interference_resistance', 0.5)
+                chan_lw = 1 + (chan_bw / 50.0) * 3  # Width based on bandwidth
+                chan_alpha = 0.4 + chan_res * 0.4  # Alpha based on resistance
+                chan_col = channel_colors.get(chan.get('type'), 'grey')
+                ax.plot([0,
+    1],
+    [y_pos,
+    y_pos],
+    color=chan_col,
+    linewidth=chan_lw,
+    alpha=chan_alpha,
+    label=f"{chan.get('type',
+     'Sec')[:3]}. (Res:{chan_res:.2f})")
+
+            # Draw Harmonic Nodes
+            if harmonic_nodes:
+                node_x = [n.get('position', 0.5) for n in harmonic_nodes]
+                node_y = [0.5] * len(harmonic_nodes)  # On primary channel
+                node_size = [30 +
+    n.get('amplitude', 0.5) *
+     120 for n in harmonic_nodes]
+                node_freqs = [n.get('frequency', 0.0) for n in harmonic_nodes]
+                cmap_nodes = plt.get_cmap('plasma')
+                norm_nodes = mcolors.LogNorm(
+    vmin=max(
+        1, min(
+            f for f in node_freqs if f > 0)), vmax=max(
+                f for f in node_freqs if f > 0)) if any(
+                    f > 0 for f in node_freqs) else mcolors.Normalize(
+                        0, 1)
+                node_colors = cmap_nodes(norm_nodes(node_freqs)) if any(
+                    f > 0 for f in node_freqs) else ['grey'] * len(node_freqs)
+                scatter = ax.scatter(
+    node_x,
+    node_y,
+    s=node_size,
+    c=node_colors,
+    alpha=0.9,
+    zorder=10,
+    edgecolors='black',
+     linewidth=0.5)
+                # Add colorbar if nodes exist and frequencies vary
+                if len(set(nf for nf in node_freqs if nf > 0)) > 1:
+                     cbar = fig.colorbar(
+    scatter,
+    ax=ax,
+    label='Node Resonance Freq (Hz)',
+    pad=0.02,
+     aspect=30)
+
+            ax.legend(
+    loc='center left',
+    bbox_to_anchor=(
+        1.02,
+        0.5),
+         fontsize='small')
+            plt.tight_layout(rect=[0, 0, 0.88, 1])  # Adjust layout
+
+            self._save_or_show(fig, "soul_life_cord_enhanced.png", show, save)
+            return fig
+        except Exception as e:
+            logger.error(f"Error generating life cord visualization: {e}", exc_info=True)
+            if 'fig' in locals() and fig: plt.close(fig)
+            return None
+
+    def visualize_identity(self, show: bool = True, save: bool = True) -> Optional[plt.Figure]:
+         """ Visualize key identity attributes in a panel. """
+         if not VISUALIZATION_ENABLED: return None
+         fig = plt.figure(figsize=(10, 12)) # Taller figure
+         gs = fig.add_gridspec(3, 2, hspace=0.5, wspace=0.3) # 3 rows
+
+         try:
+            name = getattr(self.soul, 'name', 'N/A')
+            soul_color_str = getattr(self.soul, 'soul_color', 'grey')
+            soul_color_rgb = self._get_soul_color_rgb()
+            voice_freq = getattr(self.soul, 'voice_frequency', 0.0)
+            crystallization = getattr(self.soul, 'crystallization_level', 0.0)
+            seph_aspect = getattr(self.soul, 'sephiroth_aspect', 'N/A')
+            elem_affinity = getattr(self.soul, 'elemental_affinity', 'N/A')
+            plat_symbol = getattr(self.soul, 'platonic_symbol', 'N/A')
+            attr_coherence = getattr(self.soul, 'attribute_coherence', 0.0)
+            name_resonance = getattr(self.soul, 'name_resonance', 0.0)
+            gematria = getattr(self.soul, 'gematria_value', 0)
+
+            # --- 1. Name & Color Swatch (Top Left) ---
+            ax1 = fig.add_subplot(gs[0, 0])
+            ax1.set_title("Name & Color")
+            ax1.set_xticks([]); ax1.set_yticks([])
+            ax1.set_facecolor(mcolors.to_hex(soul_color_rgb) if soul_color_rgb else 'lightgrey')
+            id_text = f"Name: {name}\n" \
+                      f"(Gematria: {gematria})\n" \
+                      f"Soul Color: {soul_color_str.capitalize()}\n" \
+                      f"Name Res: {name_resonance:.3f}"
+            ax1.text(0.5, 0.5, id_text, ha='center', va='center', fontsize=11, wrap=True,
+                     bbox=dict(facecolor='white', alpha=0.85, pad=0.8))
+
+            # --- 2. Voice Frequency Waveform (Top Right) ---
+            ax2 = fig.add_subplot(gs[0, 1])
+            ax2.set_title(f"Voice Signature ({voice_freq:.1f} Hz)")
+            if voice_freq > FLOAT_EPSILON:
+                 t = np.linspace(0, 5 / voice_freq, 500) # Show 5 cycles
+                 wave = np.sin(2 * PI * voice_freq * t) * 0.8 # Base wave
+                 # Add harmonic complexity based on attribute coherence
+                 num_harmonics = int(2 + attr_coherence * 5)
+                 for i in range(2, num_harmonics + 1):
+                      wave += (0.8 / (i**1.2)) * np.sin(2 * PI * voice_freq * i * t + PI*i/3) # Add harmonics w/ phase
+                 ax2.plot(t * 1000, wave, color=mcolors.to_hex(soul_color_rgb) if soul_color_rgb else 'blue')
+                 ax2.set_xlabel("Time (ms)"); ax2.set_ylabel("Amplitude"); ax2.set_ylim(-1, 1)
+            else: ax2.text(0.5, 0.5, "No Voice Freq", ha='center', va='center', transform=ax2.transAxes)
+
+            # --- 3. Affinities Text (Middle Left) ---
+            ax3 = fig.add_subplot(gs[1, 0])
+            ax3.set_title("Affinities")
+            ax3.set_xticks([]); ax3.set_yticks([])
+            aff_text = f"Sephiroth: {seph_aspect.capitalize()}\n" \
+                       f"Element: {elem_affinity.capitalize()}\n" \
+                       f"Platonic: {plat_symbol.capitalize()}"
+            ax3.text(0.5, 0.5, aff_text, ha='center', va='center', fontsize=11,
+                     bbox=dict(facecolor='white', alpha=0.85, pad=0.8))
+
+            # --- 4. Emotional Resonance (Middle Right) ---
+            ax4 = fig.add_subplot(gs[1, 1])
+            emo_res = getattr(self.soul, 'emotional_resonance', {})
+            if emo_res:
+                 labels = list(emo_res.keys())
+                 values = list(emo_res.values())
+                 colors = plt.get_cmap('viridis')(np.linspace(0, 1, len(labels)))
+                 bars = ax4.barh(labels, values, color=colors, alpha=0.7)
+                 ax4.set_xlim(0, 1); ax4.set_xlabel("Resonance Level")
+                 ax4.set_title("Emotional Resonance")
+                 for bar in bars: ax4.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2, f'{bar.get_width():.2f}', va='center')
             else:
-                color = plt.cm.cool(i / num_channels)
-                linewidth = 2
-                alpha = 0.6
-                
-            # Plot the channel
-            ax.plot(x, y, z, color=color, linewidth=linewidth, alpha=alpha)
-        
-        # Add harmonic nodes along the cord
-        for i in range(harmonic_nodes):
-            # Position node along the cord
-            node_t = (i + 1) / (harmonic_nodes + 1)
-            
-            # Calculate node position with slight offset from center
-            node_x = 0.1 * np.sin(node_t * np.pi * 2)
-            node_y = 0.1 * np.cos(node_t * np.pi * 2)
-            node_z = soul_pos[2] - node_t * (soul_pos[2] - earth_pos[2])
-            
-            # Node size based on position (larger in middle)
-            node_size = 80 * (1 - 2 * abs(0.5 - node_t))
-            
-            # Node color based on function
-            node_color = plt.cm.plasma(node_t)
-            
-            # Plot the node
-            ax.scatter([node_x], [node_y], [node_z], color=node_color, 
-                      s=node_size, alpha=0.8, edgecolor='white')
-        
-        # Set labels and title
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title(f'Soul Life Cord (Integrity: {integrity:.2f}, Channels: {num_channels})')
-        
-        # Add legend
-        ax.legend()
-        
-        # Set equal aspect ratio
-        max_range = max(
-            abs(soul_pos[2] - earth_pos[2]),
-            2 * radius
-        )
-        ax.set_xlim(-max_range/2, max_range/2)
-        ax.set_ylim(-max_range/2, max_range/2)
-        ax.set_zlim(earth_pos[2] - max_range/4, soul_pos[2] + max_range/4)
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_life_cord.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
-    
-    def visualize_identity(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Visualize the soul's identity crystallization.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-            
-        Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(15, 10))
-        
-        # Get identity data or create placeholder
-        identity = getattr(self.soul, 'identity', None)
-        
-        if identity is None:
-            # Create placeholder identity data
-            identity = {
-                'name': 'Luminara',
-                'soul_color': [0.7, 0.3, 0.9],
-                'voice_frequency': 432.0,
-                'crystallization': 0.88,
-                'divine_aspects': ['wisdom', 'compassion', 'creativity'],
-                'resonance_signature': [0.8, 0.7, 0.9, 0.85, 0.75],
-                'unique_pattern': np.random.random((20, 20))
-            }
-        
-        # Extract identity properties
-        name = identity.get('name', 'Unnamed')
-        soul_color = identity.get('soul_color', [0.5, 0.5, 0.8])
-        voice_freq = identity.get('voice_frequency', 432.0)
-        crystallization = identity.get('crystallization', 0.8)
-        divine_aspects = identity.get('divine_aspects', ['unknown'])
-        
-        # Create a 2x2 subplot grid
-        grid = plt.GridSpec(2, 2, wspace=0.3, hspace=0.3)
-        
-        # 1. Name and Soul Color visualization (top left)
-        ax1 = fig.add_subplot(grid[0, 0])
-        
-        # Convert soul color to RGB
-        if isinstance(soul_color, list) and len(soul_color) == 3:
-            rgb_color = soul_color
-        else:
-            rgb_color = [0.5, 0.5, 0.8]  # Default blue-purple
-            
-        # Create a color swatch
-        gradient = np.linspace(0, 1, 100)
-        gradient = np.vstack((gradient, gradient))
-        
-        # Plot color swatch with variations
-        color_img = np.zeros((100, 100, 3))
-        for i in range(3):
-            # Add some variation to make it more interesting
-            channel = np.outer(np.linspace(max(0, rgb_color[i]-0.2), min(1, rgb_color[i]+0.2), 100), 
-                              np.ones(100))
-            # Add some patterns
-            channel += 0.05 * np.sin(np.outer(np.linspace(0, 4*np.pi, 100), np.ones(100)))
-            # Ensure values are in [0, 1]
-            channel = np.clip(channel, 0, 1)
-            color_img[:, :, i] = channel
-            
-        ax1.imshow(color_img)
-        ax1.axis('off')
-        
-        # Add name as title
-        ax1.set_title(f"Soul Name: {name}", fontsize=14)
-        
-        # Add color information
-        rgb_text = f"RGB: ({rgb_color[0]:.2f}, {rgb_color[1]:.2f}, {rgb_color[2]:.2f})"
-        ax1.text(0.5, -0.1, rgb_text, transform=ax1.transAxes, ha='center')
-        
-        # 2. Voice Frequency visualization (top right)
-        ax2 = fig.add_subplot(grid[0, 1])
-        
-        # Create time array for voice visualization
-        t = np.linspace(0, 1, 1000)
-        
-        # Generate voice waveform
-        voice_wave = np.sin(2 * np.pi * voice_freq * t)
-        
-        # Add harmonics based on crystallization
-        for i in range(1, 5):
-            harmonic_amp = crystallization / (i * 2)
-            voice_wave += harmonic_amp * np.sin(2 * np.pi * voice_freq * (i+1) * t)
-            
-        # Plot voice waveform
-        ax2.plot(t, voice_wave, color=rgb_color, linewidth=2)
-        
-        # Set labels and title
-        ax2.set_xlabel('Time')
-        ax2.set_ylabel('Amplitude')
-        ax2.set_title(f'Voice Frequency: {voice_freq:.2f} Hz')
-        ax2.set_xlim(0, 0.05)  # Show just a portion for clarity
-        
-        # 3. Divine Aspects visualization (bottom left)
-        ax3 = fig.add_subplot(grid[1, 0], polar=True)
-        
-        # Create a polar plot for divine aspects
-        num_aspects = len(divine_aspects)
-        theta = np.linspace(0, 2*np.pi, num_aspects, endpoint=False)
-        
-        # Equal strength for placeholder, or use actual data if available
-        if hasattr(identity, 'aspect_strengths'):
-            strengths = identity.get('aspect_strengths', [0.8] * num_aspects)
-        else:
-            strengths = [0.8] * num_aspects
-            
-        # Create aspect plot
-        ax3.bar(theta, strengths, width=2*np.pi/num_aspects, bottom=0.2, 
-               alpha=0.7, color=plt.cm.viridis(np.linspace(0, 1, num_aspects)))
-        
-        # Set aspect labels
-        ax3.set_xticks(theta)
-        ax3.set_xticklabels(divine_aspects)
-        
-        # Set title
-        ax3.set_title('Divine Aspects')
-        
-        # 4. Crystallization Pattern (bottom right)
-        ax4 = fig.add_subplot(grid[1, 1])
-        
-        # Get unique pattern or create one
-        unique_pattern = identity.get('unique_pattern', None)
-        if unique_pattern is None:
-            # Create a crystalline pattern based on soul properties
-            size = 50
-            unique_pattern = np.zeros((size, size))
-            
-            # Create crystalline structure with symmetry
-            for i in range(size):
-                for j in range(size):
-                    # Calculate distance from center
-                    x = i - size/2
-                    y = j - size/2
-                    r = np.sqrt(x**2 + y**2)
-                    
-                    # Calculate angle
-                    theta = np.arctan2(y, x)
-                    
-                    # Create crystalline pattern with 6-fold symmetry
-                    pattern = np.sin(6 * theta) * np.exp(-r/(size/3))
-                    
-                    # Add more details based on crystallization
-                    if crystallization > 0.7:
-                        pattern += 0.3 * np.sin(12 * theta) * np.exp(-r/(size/6))
-                        
-                    # More crystallization = more structure
-                    noise = np.random.random() * (1 - crystallization)
-                    
-                    unique_pattern[i, j] = pattern + noise
-        
-        # Normalize pattern
-        unique_pattern = (unique_pattern - np.min(unique_pattern)) / (np.max(unique_pattern) - np.min(unique_pattern))
-        
-        # Plot the crystallization pattern
-        im = ax4.imshow(unique_pattern, cmap='plasma', interpolation='bilinear')
-        
-        # Add colorbar
-        cbar = fig.colorbar(im, ax=ax4)
-        cbar.set_label('Pattern Intensity')
-        
-        # Set title
-        ax4.set_title(f'Identity Crystallization: {crystallization:.2f}')
-        ax4.axis('off')
-        
-        # Add overall title
-        fig.suptitle(f'Soul Identity Profile: {name}', fontsize=16)
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_identity.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
-    
-    def create_soul_dashboard(self, show: bool = True, save: bool = True) -> plt.Figure:
-        """
-        Create a comprehensive dashboard with key soul metrics.
-        
-        Args:
-            show: Whether to display visualization
-            save: Whether to save visualization to file
-                Returns:
-            Figure object
-        """
-        fig = plt.figure(figsize=(20, 16))
-        
-        # Set up subplot grid
-        gs = fig.add_gridspec(3, 3, hspace=0.4, wspace=0.4)
-        
-        # Extract core soul metrics
-        stability = self.soul.stability
-        resonance = self.soul.resonance
-        coherence = getattr(self.soul, 'coherence', 0.7)
-        identity_data = getattr(self.soul, 'identity', {})
-        name = identity_data.get('name', 'Unnamed Soul')
-        crystallization = identity_data.get('crystallization', 0.8)
-        life_cord = getattr(self.soul, 'life_cord', {})
-        cord_integrity = life_cord.get('integrity', 0.8)
-        aspects = getattr(self.soul, 'aspects', {})
-        
-        # 1. Core metrics gauge chart (top left)
-        ax1 = fig.add_subplot(gs[0, 0])
-        metrics = ['Stability', 'Resonance', 'Coherence', 'Crystallization', 'Cord Integrity']
-        values = [stability, resonance, coherence, crystallization, cord_integrity]
-        colors = ['green', 'blue', 'purple', 'gold', 'teal']
-        
-        bars = ax1.barh(metrics, values, color=colors, alpha=0.7)
-        ax1.set_xlim(0, 1)
-        ax1.set_title('Core Soul Metrics')
-        
-        for i, bar in enumerate(bars):
-            width = bar.get_width()
-            ax1.text(width + 0.01, bar.get_y() + bar.get_height()/2, 
-                   f'{width:.2f}', va='center')
-        
-        # 2. Simplified 3D structure (top middle)
-        ax2 = fig.add_subplot(gs[0, 1], projection='3d')
-        
-        # Create a simple soul field visualization
-        phi = (1 + np.sqrt(5)) / 2
-        u = np.linspace(0, 2 * np.pi, 100)
-        v = np.linspace(0, np.pi, 100)
-        
-        # Base sphere
-        x = stability * np.outer(np.cos(u), np.sin(v))
-        y = stability * np.outer(np.sin(u), np.sin(v))
-        z = stability * np.outer(np.ones(np.size(u)), np.cos(v))
-        
-        # Add variations based on resonance
-        variation = 0.1 * resonance * np.sin(phi * u[:, np.newaxis] + v[np.newaxis, :])
-        x += variation
-        y += variation * np.cos(u[:, np.newaxis])
-        z += variation * np.sin(v[np.newaxis, :])
-        
-        # Create colormap based on coherence
-        theta = np.arctan2(y, x)
-        phi_angle = np.arctan2(np.sqrt(x**2 + y**2), z)
-        
-        colors = np.zeros((*x.shape, 4))
-        colors[..., 0] = 0.5 + 0.5 * np.sin(phi_angle + theta)  # Red
-        colors[..., 1] = 0.4 + 0.4 * np.cos(phi_angle * phi)    # Green
-        colors[..., 2] = 0.6 + 0.4 * np.sin(theta * phi)        # Blue
-        colors[..., 3] = 0.7  # Alpha
-        
-        # Plot the surface
-        ax2.plot_surface(x, y, z, facecolors=colors, antialiased=True)
-        
-        # Set labels and title
-        ax2.set_title('Soul Energy Field')
-        ax2.set_xlabel('X')
-        ax2.set_ylabel('Y')
-        ax2.set_zlabel('Z')
-        ax2.set_box_aspect([1,1,1])
-        
-        # 3. Identity summary (top right)
-        ax3 = fig.add_subplot(gs[0, 2])
-        
-        # Get soul color
-        soul_color = identity_data.get('soul_color', [0.5, 0.5, 0.8])
-        
-        # Create identity summary
-        identity_text = f"Name: {name}\n"
-        identity_text += f"Crystallization: {crystallization:.2f}\n"
-        
-        # Add voice frequency if available
-        voice_freq = identity_data.get('voice_frequency', None)
-        if voice_freq:
-            identity_text += f"Voice Frequency: {voice_freq:.1f} Hz\n"
-            
-        # Add divine aspects if available
-        divine_aspects = identity_data.get('divine_aspects', [])
-        if divine_aspects:
-            identity_text += f"Divine Aspects: {', '.join(divine_aspects[:3])}"
-            if len(divine_aspects) > 3:
-                identity_text += f" +{len(divine_aspects)-3} more"
-        
-        # Create a gradient background using soul color
-        gradient = np.zeros((100, 100, 3))
-        for i in range(3):
-            gradient[:, :, i] = np.linspace(1, soul_color[i], 100)[:, np.newaxis]
-        
-        ax3.imshow(gradient)
-        
-        # Add identity text
-        ax3.text(0.5, 0.5, identity_text, ha='center', va='center',
-                transform=ax3.transAxes, fontsize=12, 
-                bbox=dict(facecolor='white', alpha=0.8))
-        
-        ax3.set_title('Soul Identity')
-        ax3.axis('off')
-        
-        # 4. Aspect distribution (middle left)
-        ax4 = fig.add_subplot(gs[1, 0])
-        
-        # Count aspects by category/Sephirah
-        aspect_categories = {}
-        for aspect, data in aspects.items():
-            # Try to determine category
-            category = "Other"
-            
-            for sep in ["kether", "chokmah", "binah", "chesed", "geburah", 
-                      "tiphareth", "netzach", "hod", "yesod", "malkuth", "daath"]:
-                if sep in aspect.lower():
-                    category = sep.capitalize()
-                    break
-            
-            # Add to counter
-            if category not in aspect_categories:
-                aspect_categories[category] = 0
-            aspect_categories[category] += 1
-        
-        # If no aspects, create placeholder data
-        if not aspect_categories:
-            aspect_categories = {
-                "Kether": 3, "Chokmah": 2, "Binah": 4, 
-                "Chesed": 3, "Geburah": 2, "Tiphareth": 5,
-                "Netzach": 2, "Hod": 3, "Yesod": 4, "Malkuth": 3
-            }
-        
-        # Create pie chart of aspect distribution
-        labels = aspect_categories.keys()
-        sizes = aspect_categories.values()
-        
-        ax4.pie(sizes, labels=labels, autopct='%1.1f%%',
-               shadow=True, startangle=90, 
-               colors=plt.cm.tab20(np.linspace(0, 1, len(labels))))
-        
-        ax4.set_title('Soul Aspect Distribution')
-        
-        # 5. Frequency signature (middle middle)
-        ax5 = fig.add_subplot(gs[1, 1])
-        
-        # Get frequency data or generate placeholder
-        base_freq = getattr(self.soul, 'base_frequency', 432.0)
-        
-        # Generate frequency spectrum
-        x = np.linspace(base_freq * 0.8, base_freq * 2.5, 1000)
-        
-        # Create peaks at key frequencies (base freq and harmonics)
-        y = np.zeros_like(x)
-        phi = (1 + np.sqrt(5)) / 2
-        
-        for i in range(5):
-            # Main harmonics
-            freq = base_freq * (i + 1)
-            amp = 1.0 / (i + 1) * stability
-            width = 5 + 10 * (1 - coherence)  # More coherent = sharper peaks
-            y += amp * np.exp(-(x - freq)**2 / width)
-            
-            # Phi-based harmonics
-            if i < 3:
-                phi_freq = base_freq * phi**(i+1)
-                phi_amp = 0.3 / (i + 1) * resonance
-                y += phi_amp * np.exp(-(x - phi_freq)**2 / width)
-        
-        # Plot frequency spectrum
-        ax5.plot(x, y, color='blue', linewidth=2)
-        
-        # Mark key frequencies
-        for i in range(3):
-            freq = base_freq * (i + 1)
-            amp = 1.0 / (i + 1) * stability
-            ax5.plot([freq, freq], [0, amp], 'r--', alpha=0.5)
-            ax5.text(freq, amp + 0.02, f"{freq:.1f} Hz", ha='center')
-        
-        # Set labels and title
-        ax5.set_xlabel('Frequency (Hz)')
-        ax5.set_ylabel('Amplitude')
-        ax5.set_title('Soul Frequency Signature')
-        
-        # 6. Life cord visualization (middle right)
-        ax6 = fig.add_subplot(gs[1, 2])
-        
-        # Extract life cord properties or use defaults
-        channels = life_cord.get('channels', 7)
-        nodes = life_cord.get('harmonic_nodes', 12)
-        
-        # Create simplified 2D life cord visualization
-        cord_length = 100
-        x = np.linspace(0, 1, cord_length)
-        
-        # Plot the main cord
-        ax6.plot(x, np.zeros_like(x), 'k-', linewidth=3, alpha=0.7)
-        
-        # Add channels
-        for i in range(channels):
-            # Primary channel is straight, others are wavy
-            if i == 0:
-                y = np.zeros_like(x)
-                color = 'gold'
-                lw = 4
-                alpha = 0.8
-            else:
-                freq = 8 + i
-                phase = i * np.pi / channels
-                amp = 0.1 + 0.02 * i
-                y = amp * np.sin(freq * np.pi * x + phase)
-                color = plt.cm.cool(i / channels)
-                lw = 2
-                alpha = 0.6
-            
-            ax6.plot(x, y, '-', color=color, linewidth=lw, alpha=alpha)
-        
-        # Add harmonic nodes
-        for i in range(nodes):
-            node_x = (i + 1) / (nodes + 1)
-            node_y = 0
-            
-            size = 100 * (1 - 2 * abs(0.5 - node_x))
-            color = plt.cm.plasma(node_x)
-            
-            ax6.scatter(node_x, node_y, s=size, color=color, 
-                      alpha=0.8, edgecolor='white')
-        
-        # Add anchors
-        ax6.scatter(0, 0, s=200, color='purple', alpha=0.7, label='Soul Anchor')
-        ax6.scatter(1, 0, s=200, color='green', alpha=0.7, label='Earth Anchor')
-        
-        # Set labels and title
-        ax6.set_xlabel('Position')
-        ax6.set_title(f'Life Cord (Integrity: {cord_integrity:.2f}, Channels: {channels})')
-        ax6.set_ylim(-0.3, 0.3)
-        ax6.legend(loc='upper right')
-        ax6.axis('off')
-        
-        # 7. Dimensional resonance (bottom left)
-        ax7 = fig.add_subplot(gs[2, 0])
-        
-        # Create simplified dimensional resonance
-        dimensions = ["Earth", "Physical", "Malkuth", "Yesod", "Tiphareth", "Kether"]
-        
-        # Create resonance values based on available metrics
-        values = []
-        for dim in dimensions:
-            if dim == "Earth":
-                # Earth connection should be strong for a birth-ready soul
-                val = 0.8 + 0.2 * cord_integrity
-            elif dim == "Physical":
-                # Physical resonance should be good for birth-ready soul
-                val = 0.7 + 0.3 * stability
-            elif dim == "Malkuth":
-                # Malkuth similar to Earth
-                val = 0.75 + 0.25 * cord_integrity
-            elif dim == "Yesod":
-                # Yesod (foundation) important for identity
-                val = 0.6 + 0.4 * crystallization
-            elif dim == "Tiphareth":
-                # Tiphareth (beauty) connected to coherence
-                val = 0.5 + 0.5 * coherence
-            elif dim == "Kether":
-                # Kether (crown) indicates ongoing creator connection
-                val = 0.4 + 0.6 * resonance
-            else:
-                val = 0.5
-                
-            values.append(min(1.0, val))  # Ensure value is at most 1.0
-            
-        # Create horizontal bar chart
-        bars = ax7.barh(dimensions, values, 
-                      color=plt.cm.viridis(np.linspace(0, 1, len(dimensions))), 
-                      alpha=0.7)
-        
-        # Add value labels
-        for bar in bars:
-            width = bar.get_width()
-            ax7.text(width + 0.01, bar.get_y() + bar.get_height()/2, 
-                   f'{width:.2f}', va='center')
-        
-        # Set labels and title
-        ax7.set_xlim(0, 1.1)
-        ax7.set_title('Dimensional Resonance')
-        
-        # 8. Coherence pattern (bottom middle)
-        ax8 = fig.add_subplot(gs[2, 1])
-        
-        # Create a simplified coherence visualization
-        grid_size = 50
-        pattern = np.zeros((grid_size, grid_size))
-        
-        # Create base pattern with phi ratio influence
-        phi = (1 + np.sqrt(5)) / 2
-        x = np.linspace(-2, 2, grid_size)
-        y = np.linspace(-2, 2, grid_size)
-        X, Y = np.meshgrid(x, y)
-        
-        # Pattern based on soul metrics
-        pattern = np.sin(stability * X * np.pi) * np.cos(resonance * Y * np.pi)
-        pattern += coherence * np.sin(phi * X * Y * np.pi) * 0.3
-        
-        # Add structured noise - less for more coherent souls
-        noise = np.random.normal(0, 0.3 * (1 - coherence), pattern.shape)
-        pattern += noise
-        
-        # Normalize pattern
-        pattern = (pattern - np.min(pattern)) / (np.max(pattern) - np.min(pattern))
-        
-        # Plot the coherence pattern
-        im = ax8.imshow(pattern, cmap='plasma', origin='lower')
-        ax8.set_title(f'Coherence Pattern (Coherence: {coherence:.2f})')
-        ax8.axis('off')
-        
-        # Add colorbar
-        cbar = fig.colorbar(im, ax=ax8)
-        cbar.set_label('Pattern Energy')
-        
-        # 9. Summary metrics with divine connection (bottom right)
-        ax9 = fig.add_subplot(gs[2, 2])
-        
-        # Create a radar chart with key final metrics
-        categories = ['Stability', 'Resonance', 'Coherence', 
-                     'Identity', 'Life Cord', 'Earth Connection']
-        
-        # Create values based on soul properties
-        values = [
-            stability,
-            resonance,
-            coherence,
-            crystallization,
-            cord_integrity,
-            cord_integrity * 0.8 + stability * 0.2
-        ]
-        
-        # Complete the loop for the radar chart
-        values = np.concatenate((values, [values[0]]))
-        categories = np.concatenate((categories, [categories[0]]))
-        
-        # Calculate angles for radar chart
-        angles = np.linspace(0, 2*np.pi, len(categories), endpoint=True)
-        
-        # Create radar chart
-        ax9.plot(angles, values, 'o-', linewidth=2)
-        ax9.fill(angles, values, alpha=0.25)
-        ax9.set_thetagrids(angles * 180/np.pi, categories)
-        
-        # Set radar chart limits
-        ax9.set_ylim(0, 1)
-        ax9.set_title('Soul Balance Summary')
-        
-        # Calculate overall readiness score
-        readiness = (stability + resonance + coherence + 
-                    crystallization + cord_integrity) / 5
-        
-        # Add readiness score in center
-        ax9.text(0, 0, f"{readiness:.2f}", ha='center', va='center', 
-               fontsize=20, fontweight='bold', bbox=dict(facecolor='white', alpha=0.8))
-        
-        # Add soul name as overall title
-        birth_ready = "Birth Ready" if readiness > 0.8 else "Developing"
-        fig.suptitle(f"Soul Dashboard: {name} ({birth_ready})", fontsize=20, y=0.98)
-        
-        if save:
-            plt.savefig(f"{self.output_dir}/soul_dashboard.png", dpi=300, bbox_inches='tight')
-            
-        if show:
-            plt.show()
-        else:
-            plt.close()
-            
-        return fig
+                 ax4.text(0.5, 0.5, "No Data", ha='center', va='center', transform=ax4.transAxes); ax4.set_title("Emotional Resonance")
+
+            # --- 5. Crystallization Gauge (Bottom Left) ---
+            ax5 = fig.add_subplot(gs[2, 0])
+            ax5.set_title(f"Crystallization Level: {crystallization:.3f}")
+            ax5.barh([0], [crystallization], height=0.4, color='gold', alpha=0.8)
+            ax5.barh([0], [1.0-crystallization], left=crystallization, height=0.4, color='grey', alpha=0.3)
+            ax5.set_xlim(0, 1); ax5.set_yticks([]); ax5.set_xticks([0, 0.5, 1.0])
+            ax5.text(crystallization / 2, 0, f"{crystallization*100:.1f}%", ha='center', va='center', color='black', fontweight='bold')
+
+            # --- 6. Attribute Coherence Gauge (Bottom Right) ---
+            ax6 = fig.add_subplot(gs[2, 1])
+            ax6.set_title(f"Attribute Coherence: {attr_coherence:.3f}")
+            ax6.barh([0], [attr_coherence], height=0.4, color='cyan', alpha=0.8)
+            ax6.barh([0], [1.0-attr_coherence], left=attr_coherence, height=0.4, color='grey', alpha=0.3)
+            ax6.set_xlim(0, 1); ax6.set_yticks([]); ax6.set_xticks([0, 0.5, 1.0])
+            ax6.text(attr_coherence / 2, 0, f"{attr_coherence*100:.1f}%", ha='center', va='center', color='black', fontweight='bold')
 
 
-def generate_sample_soul_visualizations(output_dir: str = "soul_visualizations"):
-    """
-    Generate sample visualizations for a test soul.
-    
-    Args:
-        output_dir: Directory to save visualizations
-    """
-    import os
-    
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Create a sample SoulSpark
-    # This would normally be from loading an actual SoulSpark
-    # but we'll create a simple placeholder here
-    class SampleSoul:
-        def __init__(self):
-            self.stability = 0.92
-            self.resonance = 0.88
-            self.coherence = 0.85
-            self.base_frequency = 432.0
-            
-            # Identity
-            self.identity = {
-                'name': 'Seraphina',
-                'soul_color': [0.7, 0.3, 0.9],
-                'voice_frequency': 432.0,
-                'crystallization': 0.89,
-                'divine_aspects': ['wisdom', 'compassion', 'creativity', 'joy'],
-                'resonance_signature': [0.8, 0.7, 0.9, 0.85, 0.75]
-            }
-            
-            # Life cord
-            self.life_cord = {
-                'integrity': 0.91,
-                'channels': 7,
-                'harmonic_nodes': 12,
-                'soul_anchor': {'position': [0, 0, 2], 'strength': 0.9},
-                'earth_anchor': {'position': [0, 0, -2], 'strength': 0.85}
-            }
-            
-            # Aspects
-            self.aspects = {
-                'kether_light': {'strength': 0.85, 'integration': 0.82},
-                'chokmah_wisdom': {'strength': 0.78, 'integration': 0.73},
-                'binah_understanding': {'strength': 0.82, 'integration': 0.78},
-                'chesed_mercy': {'strength': 0.75, 'integration': 0.77},
-                'geburah_strength': {'strength': 0.72, 'integration': 0.68},
-                'tiphareth_beauty': {'strength': 0.90, 'integration': 0.85},
-                'netzach_victory': {'strength': 0.68, 'integration': 0.72},
-                'hod_splendor': {'strength': 0.74, 'integration': 0.69},
-                'yesod_foundation': {'strength': 0.88, 'integration': 0.82},
-                'malkuth_kingdom': {'strength': 0.86, 'integration': 0.89}
-            }
-            
-            # Placeholder metrics
-            self.harmony_metrics = {
-                "Energy Flow": 0.88,
-                "Stability": 0.92,
-                "Resonance": 0.88, 
-                "Coherence": 0.85,
-                "Creator Bond": 0.79,
-                "Aspect Integration": 0.83,
-                "Earth Attunement": 0.90,
-                "Sephiroth Harmony": 0.87,
-                "Identity Clarity": 0.89,
-                "Life Cord": 0.91,
-                "Vibrational State": 0.86,
-                "Divine Alignment": 0.84
-            }
-    
-    # Create sample soul
-    sample_soul = SampleSoul()
-    
-    # Create visualizer
-    visualizer = EnhancedSoulVisualizer(sample_soul, output_dir)
-    
-    # Generate all visualizations
-    visualizer.generate_all_visualizations(show=True, save=True)
-    
-    print(f"Sample soul visualizations saved to {output_dir}")
+            fig.suptitle(f'Identity Profile: {name}', fontsize=16)
+            self._save_or_show(fig, "soul_identity_enhanced.png", show, save)
+            return fig
+         except Exception as e:
+            logger.error(f"Error generating identity visualization: {e}", exc_info=True)
+            if 'fig' in locals() and fig:
+                plt.close(fig)
+         return None
 
+    def create_soul_dashboard(self, show: bool = True, save: bool = True) -> Optional[plt.Figure]:
+         """ Create a comprehensive dashboard view (Refined Layout). """
+         if not VISUALIZATION_ENABLED: return None
+         fig = plt.figure(figsize=(14, 15)) # Adjusted size
+         gs = fig.add_gridspec(4, 2, height_ratios=[2, 2, 1.5, 1], hspace=0.5, wspace=0.3) # 4 rows
 
-if __name__ == "__main__":
-    # Generate sample visualizations when run directly
-    generate_sample_soul_visualizations()
+         try:
+            name = getattr(self.soul, 'name', self.soul.spark_id[:8])
+            is_incarnated = getattr(self.soul, 'incarnated', False)
+            status = "Incarnated" if is_incarnated else "Forming"
+
+            # --- 1. Core Metrics Radar (Top Left) ---
+            ax1 = fig.add_subplot(gs[0, 0], polar=True)
+            core_metrics = { "Stab": self.soul.stability, "Res": self.soul.resonance, "Coh": self.soul.coherence, "Align": self.soul.creator_alignment, "Energy": self.soul.energy, }
+            labels = list(core_metrics.keys()); values = list(core_metrics.values())
+            values = np.clip(values, 0, 1).tolist(); angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+            values += values[:1]; angles += angles[:1] # Complete loop
+            ax1.plot(angles, values, linewidth=1.5, linestyle='solid', color='blue', marker='o', markersize=4)
+            ax1.fill(angles, values, 'blue', alpha=0.3)
+            ax1.set_xticks(angles[:-1]); ax1.set_xticklabels(labels, fontsize=9); ax1.set_yticks(np.arange(0, 1.1, 0.25)); ax1.set_ylim(0, 1.05)
+            ax1.tick_params(axis='y', labelsize=8)
+            ax1.set_title("Core State", fontsize=11, pad=15)
+
+            # --- 2. Identity/Harmony Radar (Top Right) ---
+            ax2 = fig.add_subplot(gs[0, 1], polar=True)
+            id_metrics = { "Cryst": self.soul.crystallization_level, "AttrCoh": self.soul.attribute_coherence, "NameRes": self.soul.name_resonance, "Response": self.soul.response_level, "Harmony": self.soul.harmony, }
+            labels = list(id_metrics.keys()); values = list(id_metrics.values())
+            values = np.clip(values, 0, 1).tolist(); angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+            values += values[:1]; angles += angles[:1]
+            ax2.plot(angles, values, linewidth=1.5, linestyle='solid', color='gold', marker='o', markersize=4)
+            ax2.fill(angles, values, 'gold', alpha=0.3)
+            ax2.set_xticks(angles[:-1]); ax2.set_xticklabels(labels, fontsize=9); ax2.set_yticks(np.arange(0, 1.1, 0.25)); ax2.set_ylim(0, 1.05)
+            ax2.tick_params(axis='y', labelsize=8)
+            ax2.set_title("Identity & Harmony", fontsize=11, pad=15)
+
+            # --- 3. Earth/Incarnation Radar (Middle Left) ---
+            ax3 = fig.add_subplot(gs[1, 0], polar=True)
+            earth_metrics = { "EarthRes": self.soul.earth_resonance, "GaiaConn": self.soul.gaia_connection, "Planetary": self.soul.planetary_resonance, "ElemAlign": self.soul.elemental_alignment, "CycleSync": self.soul.cycle_synchronization, }
+            labels = list(earth_metrics.keys()); values = list(earth_metrics.values())
+            values = np.clip(values, 0, 1).tolist(); angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+            values += values[:1]; angles += angles[:1]
+            ax3.plot(angles, values, linewidth=1.5, linestyle='solid', color='green', marker='o', markersize=4)
+            ax3.fill(angles, values, 'green', alpha=0.3)
+            ax3.set_xticks(angles[:-1]); ax3.set_xticklabels(labels, fontsize=9); ax3.set_yticks(np.arange(0, 1.1, 0.25)); ax3.set_ylim(0, 1.05)
+            ax3.tick_params(axis='y', labelsize=8)
+            ax3.set_title("Earth Attunement", fontsize=11, pad=15)
+
+            # --- 4. Life Cord/Incarnation Radar (Middle Right) ---
+            ax4 = fig.add_subplot(gs[1, 1], polar=True)
+            incarn_metrics = { "CordInt": self.soul.cord_integrity, "FieldInt": self.soul.field_integration, "PhysInt": self.soul.physical_integration, "MemRet": self.soul.memory_retention, "HbEntrain": self.soul.heartbeat_entrainment, }
+            labels = list(incarn_metrics.keys()); values = list(incarn_metrics.values())
+            values = np.clip(values, 0, 1).tolist(); angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+            values += values[:1]; angles += angles[:1]
+            ax4.plot(angles, values, linewidth=1.5, linestyle='solid', color='saddlebrown', marker='o', markersize=4)
+            ax4.fill(angles, values, 'saddlebrown', alpha=0.3)
+            ax4.set_xticks(angles[:-1]); ax4.set_xticklabels(labels, fontsize=9); ax4.set_yticks(np.arange(0, 1.1, 0.25)); ax4.set_ylim(0, 1.05)
+            ax4.tick_params(axis='y', labelsize=8)
+            ax4.set_title("Incarnation Readiness", fontsize=11, pad=15)
+
+            # --- 5. Aspect Strength Bar Chart (Bottom Left) ---
+            ax5 = fig.add_subplot(gs[2, 0])
+            aspects_data = getattr(self.soul, 'aspects', {})
+            if aspects_data:
+                sorted_aspects = sorted(aspects_data.items(), key=lambda item: item[1].get('strength', 0.0), reverse=True)
+                aspect_names = [name.replace('_', ' ').title() for name, data in sorted_aspects[:10]] # Top 10, formatted
+                aspect_strengths = [data.get('strength', 0.0) for name, data in sorted_aspects[:10]]
+                colors = self.aspect_cmap(np.linspace(0.1, 0.9, len(aspect_names)))
+                bars = ax5.barh(aspect_names, aspect_strengths, color=colors, alpha=0.8)
+                ax5.set_xlim(0, 1.05); ax5.set_xlabel("Strength", fontsize=9)
+                ax5.tick_params(axis='y', labelsize=8); ax5.tick_params(axis='x', labelsize=8)
+                ax5.set_title(f"Top {len(aspect_names)} Aspects", fontsize=11)
+                ax5.invert_yaxis() # Show strongest at top
+                # Add text labels
+                for bar in bars: ax5.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2, f'{bar.get_width():.2f}', va='center', fontsize=7)
+            else: ax5.text(0.5, 0.5, "No Aspects", ha='center', va='center', transform=ax5.transAxes); ax5.set_title("Aspects", fontsize=11)
+
+            # --- 6. Key Identity Info (Bottom Right) ---
+            ax6 = fig.add_subplot(gs[2, 1])
+            ax6.set_title("Identity Summary", fontsize=11)
+            ax6.set_xticks([]); ax6.set_yticks([])
+            ax6.set_facecolor(mcolors.to_hex(self._get_soul_color_rgb()) if self._get_soul_color_rgb() else 'lightgrey')
+            id_text = ( f"Name: {getattr(self.soul, 'name', 'N/A')}\n"
+                        f"Color: {getattr(self.soul, 'soul_color', 'N/A').capitalize()}\n"
+                        f"Voice: {getattr(self.soul, 'voice_frequency', 0.0):.1f} Hz\n"
+                        f"Sephirah: {getattr(self.soul, 'sephiroth_aspect', 'N/A').capitalize()}\n"
+                        f"Element: {getattr(self.soul, 'elemental_affinity', 'N/A').capitalize()}\n"
+                        f"Symbol: {getattr(self.soul, 'platonic_symbol', 'N/A').capitalize()}\n"
+                        f"Crystallized: {getattr(self.soul, 'identity_crystallized', False)}" )
+            ax6.text(0.5, 0.5, id_text, ha='center', va='center', fontsize=10, linespacing=1.5,
+                     bbox=dict(facecolor='white', alpha=0.88, pad=0.7))
+
+            # --- 7. Stages Completed (Bottom Row spanning 2 cols) ---
+            ax7 = fig.add_subplot(gs[3, :]) # Span both columns
+            stages = [ 'Guff', 'Journey', 'Entangle', 'Harmonic', 'Cord', 'Earth', 'Identity', 'Incarnate' ]
+            flags = [ getattr(self.soul, flag, False) for flag in [
+                        'guff_strengthened', 'sephiroth_journey_complete', 'creator_channel_id', # Check channel ID existence for Entangle
+                        'harmonically_strengthened', 'cord_formation_complete', 'earth_harmonized',
+                        'identity_crystallized', 'incarnated' ] ]
+            readiness = [ getattr(self.soul, flag, False) for flag in [
+                        'ready_for_guff', 'ready_for_journey', 'ready_for_entanglement', 'ready_for_strengthening',
+                        'ready_for_life_cord', 'ready_for_earth', 'ready_for_identity', 'ready_for_birth' ] ]
+
+            bar_width = 0.35
+            x_pos = np.arange(len(stages))
+            rects1 = ax7.bar(x_pos - bar_width/2, [1 if f else 0 for f in flags], bar_width, label='Completed', color='forestgreen', alpha=0.8)
+            rects2 = ax7.bar(x_pos + bar_width/2, [1 if r else 0 for r in readiness], bar_width, label='Ready For Next', color='skyblue', alpha=0.6)
+
+            ax7.set_ylabel("Status (1=Yes)", fontsize=9)
+            ax7.set_title("Formation Stage Progress", fontsize=11)
+            ax7.set_xticks(x_pos)
+            ax7.set_xticklabels(stages, rotation=30, ha='right', fontsize=9)
+            ax7.set_yticks([0, 1]); ax7.set_yticklabels(['No', 'Yes'], fontsize=8)
+            ax7.legend(fontsize='small', loc='upper center', bbox_to_anchor=(0.5, -0.25), ncol=2) # Legend below
+
+            fig.suptitle(f"Soul Dashboard: {name} (Status: {status})", fontsize=18, y=0.99)
+            self._save_or_show(fig, "soul_dashboard_enhanced.png", show, save)
+            return fig
+         except Exception as e:
+            logger.error(f"Error generating soul dashboard: {e}", exc_info=True)
+            if 'fig' in locals() and fig: plt.close(fig)
+            return None
+
+# --- END OF FILE soul_visualization_enhanced.py ---
 
 
 

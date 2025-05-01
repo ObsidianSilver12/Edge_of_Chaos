@@ -1,13 +1,11 @@
 # --- START OF FILE src/stage_1/soul_formation/guff_strengthening.py ---
 
 """
-Guff Strengthening Functions
+Guff Strengthening Functions (Refactored V4.3 - Principle-Driven S/C, PEP8)
 
-Handles the initial strengthening and energizing of a newly sparked soul
-within the Guff (Hall of Souls) region of the Kether field. Modifies the
-SoulSpark object instance directly. Uses centrally defined constants.
-
-Author: Soul Development Framework Team
+Handles initial strengthening within the Guff using SEU energy transfer
+and applying an *influence factor* increment to SoulSpark instead of direct
+SU/CU boosts. Adheres to PEP 8 formatting.
 """
 
 import logging
@@ -17,235 +15,358 @@ import sys
 from datetime import datetime
 import time
 from typing import Dict, List, Any, Tuple, Optional
+from math import exp
 
-# --- Logging ---
 logger = logging.getLogger(__name__)
-
-# --- Constants ---
+# Ensure logger level is set appropriately
 try:
-    from constants.constants import *
+    import constants.constants as const # Use alias
+    logger.setLevel(const.LOG_LEVEL)
+except ImportError:
+    logger.warning(
+        "Constants not loaded, using default INFO level for Guff logger."
+    )
+    logger.setLevel(logging.INFO)
+
+# --- Constants Import (using alias 'const') ---
+try:
+    import constants.constants as const
 except ImportError as e:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.critical(f"CRITICAL ERROR: Could not import constants: {e}. Guff Strengthening cannot function.")
+    logger.critical(
+        "CRITICAL ERROR: constants.py failed import in guff_strengthening.py"
+    )
     raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
 try:
-    from stage_1.soul_formation.soul_spark import SoulSpark
-    # Need FieldController to get properties at soul's location
+    from stage_1.soul_spark.soul_spark import SoulSpark
     from stage_1.fields.field_controller import FieldController
-    from stage_1.fields.kether_field import KetherField # For type hint and check
-    DEPENDENCIES_AVAILABLE = True
+    from stage_1.fields.kether_field import KetherField
 except ImportError as e:
-    logger.critical(f"CRITICAL ERROR: Failed to import dependencies (SoulSpark, FieldController, KetherField): {e}")
+    logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}",
+                    exc_info=True)
     raise ImportError(f"Core dependencies missing: {e}") from e
 
+# --- Metrics Tracking ---
 try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
+except ImportError:
+    logger.error("Metrics tracking module not found.")
     METRICS_AVAILABLE = False
-    class MetricsPlaceholder:
-        def record_metrics(self, *args, **kwargs): pass
+    # Define placeholder if module not found
+    class MetricsPlaceholder: record_metrics = lambda *a, **kw: None
     metrics = MetricsPlaceholder()
 
-# --- Helper Functions ---
-
-def _check_prerequisites(soul_spark: SoulSpark, field_controller: FieldController) -> bool:
-    """Checks if the soul is ready and correctly positioned for Guff strengthening."""
-    logger.debug(f"Checking Guff strengthening prerequisites for soul {soul_spark.spark_id}...")
-
-    # 1. Soul State Check
-    if getattr(soul_spark, "guff_strengthened", False):
-        logger.warning(f"Soul {soul_spark.spark_id} already marked as Guff strengthened. Proceeding with re-strengthening.")
-        # return False # Or allow re-strengthening? Let's allow for now.
-    if not getattr(soul_spark, "ready_for_guff", False):
-        logger.error("Prerequisite failed: Soul not marked ready for Guff (should be set after initial spark).")
+# --- Helper: Check Prerequisites ---
+def _check_prerequisites(soul_spark: SoulSpark,
+                         field_controller: FieldController) -> bool:
+    """Checks if the soul and environment meet Guff strengthening criteria."""
+    logger.debug(
+        f"Checking Guff strengthening prerequisites for soul "
+        f"{soul_spark.spark_id}..."
+    )
+    if not isinstance(soul_spark, SoulSpark):
+        logger.error("Prereq fail: Invalid SoulSpark object.")
         return False
-
-    # 2. Field Controller Check
     if not isinstance(field_controller, FieldController):
-         logger.error("Prerequisite failed: Invalid FieldController instance provided.")
-         return False
-    if not field_controller.kether_field:
-        logger.error("Prerequisite failed: FieldController does not have a valid KetherField instance.")
+        logger.error("Prereq fail: Invalid FieldController object.")
         return False
 
-    # 3. Location Check
+    # Check flags using constants
+    if getattr(soul_spark, const.FLAG_GUFF_STRENGTHENED, False):
+        logger.warning(f"Soul {soul_spark.spark_id} already Guff strengthened.")
+        # Allow re-strengthening? For now, return True but log warning.
+        # If re-strengthening is disallowed, return False here.
+    if not getattr(soul_spark, const.FLAG_READY_FOR_GUFF, False):
+        logger.error(f"Prereq fail: Soul not marked {const.FLAG_READY_FOR_GUFF}.")
+        return False
+
+    # Check essential attributes
+    required_attrs = ['energy', 'stability', 'coherence', 'frequency', 'position']
+    if not all(hasattr(soul_spark, attr) for attr in required_attrs):
+        missing = [a for a in required_attrs if not hasattr(soul_spark, a)]
+        logger.error(f"Prereq fail: SoulSpark missing attributes: {missing}.")
+        return False
+
+    # Check Kether field presence
+    if not field_controller.kether_field or \
+       not isinstance(field_controller.kether_field, KetherField):
+        logger.error("Prereq fail: FieldController missing valid KetherField.")
+        return False
+
+    # Check location
     current_field = getattr(soul_spark, 'current_field_key', 'unknown')
     if current_field != 'kether':
-        logger.error(f"Prerequisite failed: Soul is not in Kether field (current: {current_field}).")
+        logger.error(f"Prereq fail: Soul must be in Kether field "
+                     f"(current: {current_field}).")
         return False
-    position = getattr(soul_spark, 'position', None)
-    if position is None:
-        logger.error("Prerequisite failed: Soul position attribute is missing.")
-        return False
-    # Convert float position to int grid coordinates for check
-    grid_coords = field_controller._coords_to_int_tuple(position)
-    if not field_controller.kether_field.is_in_guff(grid_coords):
-        logger.error(f"Prerequisite failed: Soul position {grid_coords} is not within the Guff region.")
+    position = getattr(soul_spark, 'position')
+    try:
+        # Use FieldController helper to convert float coords to int tuple
+        grid_coords = field_controller._coords_to_int_tuple(position)
+        if not field_controller.kether_field.is_in_guff(grid_coords):
+            logger.error(f"Prereq fail: Soul at {grid_coords} not in Guff.")
+            return False
+    except AttributeError:
+         logger.error("FieldController missing '_coords_to_int_tuple' method.")
+         return False
+    except Exception as e:
+        logger.error(f"Prereq fail: Error checking Guff location {position}: {e}")
         return False
 
     logger.debug("Guff strengthening prerequisites met.")
     return True
 
-def _calculate_guff_boosts(soul_spark: SoulSpark, guff_properties: Dict[str, Any], delta_time: float) -> Tuple[float, float, float]:
-    """Calculates the energy, stability, and coherence boosts for one time step."""
-    # Energy boost based on difference and Guff energy level
-    energy_diff = guff_properties.get('energy', VOID_BASE_ENERGY) - soul_spark.energy
-    energy_boost = energy_diff * GUFF_STRENGTHENING_ENERGY_RATE * delta_time
+# --- Helper: Calculate Resonance ---
+def _calculate_guff_resonance(soul_freq: float, guff_freq: float) -> float:
+    """Calculates resonance factor (0.1 to 1.0) based on frequency diff."""
+    if soul_freq <= const.FLOAT_EPSILON or guff_freq <= const.FLOAT_EPSILON:
+        return 0.1 # Minimum resonance if frequencies are zero/negative
+    # Normalized frequency difference
+    freq_diff_norm = abs(soul_freq - guff_freq) / max(guff_freq, soul_freq,
+                                                     const.FLOAT_EPSILON)
+    # Exponential decay: resonance drops as difference increases
+    resonance = exp(-freq_diff_norm * 3.0) # Tuning parameter '3.0' controls sensitivity
+    return max(0.1, float(resonance)) # Ensure minimum resonance factor
 
-    # Stability boost towards target
-    stability_diff = GUFF_STABILITY_TARGET - soul_spark.stability
-    stability_boost = stability_diff * GUFF_STRENGTHENING_STABILITY_RATE * delta_time
+# --- Core Calculation (Returns energy boost and INFLUENCE increment) ---
+def _calculate_guff_boosts(soul_spark: SoulSpark,
+                           guff_properties: Dict[str, Any],
+                           delta_time: float) -> Tuple[float, float]:
+    """
+    Calculates energy boost (SEU) and Guff influence factor increment (0-1).
+    Influence factor affects stability/coherence calculation within SoulSpark.
+    """
+    try:
+        target_e_seu = guff_properties.get('guff_target_energy_seu',
+                                          const.GUFF_TARGET_ENERGY_SEU)
+        guff_freq = guff_properties.get('frequency_hz', const.KETHER_FREQ)
 
-    # Coherence boost towards target
-    coherence_diff = GUFF_COHERENCE_TARGET - soul_spark.coherence
-    coherence_boost = coherence_diff * GUFF_STRENGTHENING_COHERENCE_RATE * delta_time
+        # Calculate resonance and coupling
+        resonance = _calculate_guff_resonance(soul_spark.frequency, guff_freq)
+        # Coupling influenced by soul's coherence (more coherent = better coupling)
+        coupling_factor = resonance * (soul_spark.coherence / const.MAX_COHERENCE_CU)
+        coupling_factor = max(0.0, min(1.0, coupling_factor)) # Clamp 0-1
 
-    return energy_boost, stability_boost, coherence_boost
+        # Energy Transfer (SEU)
+        energy_diff = target_e_seu - soul_spark.energy
+        # Use specific Guff energy transfer rate constant
+        energy_boost = (energy_diff * const.GUFF_ENERGY_TRANSFER_RATE_K *
+                        coupling_factor * delta_time)
 
+        # Calculate Guff Influence Factor Increment
+        # Base rate modified by coupling and time. Stronger coupling -> faster influence gain.
+        influence_increment = (coupling_factor * delta_time *
+                               const.GUFF_INFLUENCE_RATE_K) # Use new rate
+
+        logger.debug(f"  Guff Calc: Resonance={resonance:.3f}, "
+                     f"Coupling={coupling_factor:.3f}")
+        logger.debug(f"  Guff Calc: dE={energy_boost:.3f} SEU, "
+                     f"InfluenceIncrement={influence_increment:.5f}")
+        return energy_boost, influence_increment
+
+    except Exception as e:
+        logger.error(f"Error calculating Guff boosts: {e}", exc_info=True)
+        return 0.0, 0.0 # Return zero boost/increment on error
 
 # --- Main Orchestration Function ---
-
-def perform_guff_strengthening(soul_spark: SoulSpark, field_controller: FieldController, duration: float = GUFF_STRENGTHENING_DURATION) -> Tuple[SoulSpark, Dict[str, Any]]:
+def perform_guff_strengthening(
+        soul_spark: SoulSpark,
+        field_controller: FieldController,
+        duration: float = const.GUFF_STRENGTHENING_DURATION
+        ) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
-    Performs the Guff strengthening process over a simulated duration.
-    Modifies the SoulSpark object in place. Fails hard on critical errors.
+    Performs Guff strengthening using SEU energy transfer and influence factor
+    increments. Modifies SoulSpark attributes directly.
 
     Args:
-        soul_spark (SoulSpark): The soul spark object (will be modified).
-        field_controller (FieldController): The controller managing the fields.
-        duration (float): The simulated duration (time units) spent in the Guff.
+        soul_spark: The SoulSpark object to strengthen.
+        field_controller: The FieldController managing the environment.
+        duration: The simulated duration of the strengthening process (seconds).
 
     Returns:
-        Tuple[SoulSpark, Dict[str, Any]]: A tuple containing:
-            - The modified SoulSpark object.
-            - overall_metrics (Dict): Summary metrics for the strengthening process.
+        Tuple containing the modified SoulSpark and a dictionary of metrics.
 
     Raises:
-        TypeError: If soul_spark or field_controller are not the correct types.
-        ValueError: If duration is invalid or prerequisites not met.
-        RuntimeError: If getting Guff properties fails or process fails critically.
+        TypeError: If input object types are invalid.
+        ValueError: If duration is invalid or prerequisites are not met.
+        RuntimeError: If critical errors occur during processing.
     """
-    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark must be SoulSpark.")
-    if not isinstance(field_controller, FieldController): raise TypeError("field_controller must be FieldController.")
+    # --- Input Validation & Setup ---
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
+    if not isinstance(field_controller, FieldController): raise TypeError("field_controller invalid.")
     if not isinstance(duration, (int, float)) or duration <= 0: raise ValueError("Duration must be positive.")
 
-    spark_id = getattr(soul_spark, 'spark_id', 'unknown')
-    logger.info(f"--- Starting Guff Strengthening for Soul {spark_id} (Duration: {duration}) ---")
+    spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
+    log_msg = (f"--- Starting Guff Strengthening [Principle-Driven] "
+               f"for Soul {spark_id} (Dur: {duration}) ---")
+    logger.info(log_msg)
+
     start_time_iso = datetime.now().isoformat()
     start_time_dt = datetime.fromisoformat(start_time_iso)
-
-    # Use a small internal time step for simulation stability
-    time_step = 0.1 # Simulation time units per step
+    time_step = 0.1 # Simulation step duration
     num_steps = max(1, int(duration / time_step))
 
     try:
-        # --- Check Prerequisites ---
+        # --- Prerequisites Check ---
         if not _check_prerequisites(soul_spark, field_controller):
-            raise ValueError("Soul prerequisites for Guff strengthening not met.")
-        logger.info("Prerequisites checked successfully.")
+            raise ValueError("Guff strengthening prerequisites not met.")
 
-        # --- Store Initial State ---
+        # --- Initial State & Properties ---
         initial_state = {
-            'energy': getattr(soul_spark, 'energy', 0.0),
-            'stability': getattr(soul_spark, 'stability', 0.0),
-            'coherence': getattr(soul_spark, 'coherence', 0.0),
+            'energy_seu': soul_spark.energy,
+            'stability_su': soul_spark.stability,
+            'coherence_cu': soul_spark.coherence,
+            'guff_influence_factor': getattr(soul_spark, 'guff_influence_factor', 0.0)
         }
-        logger.info(f"Initial State: Energy={initial_state['energy']:.4f}, Stab={initial_state['stability']:.4f}, Coh={initial_state['coherence']:.4f}")
+        log_initial = (f"Initial State: E={initial_state['energy_seu']:.2f}SEU, "
+                       f"S={initial_state['stability_su']:.1f}SU, "
+                       f"C={initial_state['coherence_cu']:.1f}CU, "
+                       f"GuffInf={initial_state['guff_influence_factor']:.3f}")
+        logger.info(log_initial)
 
-        # --- Simulate Strengthening Over Duration ---
-        # Get Guff properties once (assume they are static for this process)
+        # Get Guff properties at soul's location
         soul_pos_coords = field_controller._coords_to_int_tuple(soul_spark.position)
         try:
             guff_props = field_controller.get_properties_at(soul_pos_coords)
-            if not field_controller.kether_field or not field_controller.kether_field.is_in_guff(soul_pos_coords):
-                 raise RuntimeError("Failed consistency check: Soul position not in Guff according to KetherField.")
-            logger.debug(f"Guff properties at {soul_pos_coords}: E={guff_props.get('energy'):.3f}, Coh={guff_props.get('coherence'):.3f}")
-        except (IndexError, RuntimeError) as e:
-            logger.error(f"Failed to get Guff properties at soul position {soul_pos_coords}: {e}")
-            raise RuntimeError("Could not retrieve properties from Guff region.") from e
+        except Exception as e:
+             raise RuntimeError(f"Could not retrieve Guff properties at "
+                                f"{soul_pos_coords}: {e}") from e
+        if not guff_props.get('in_guff', False):
+            # This check should ideally be redundant due to prerequisites
+            raise RuntimeError(f"Consistency check failed: Soul position "
+                               f"{soul_pos_coords} not reported as in Guff.")
+        guff_freq_hz = guff_props.get('frequency_hz', const.KETHER_FREQ)
+        logger.debug(f"Guff props at {soul_pos_coords}: Freq={guff_freq_hz:.1f}Hz")
 
-        total_energy_gain = 0.0
-        total_stability_gain = 0.0
-        total_coherence_gain = 0.0
-
+        # --- Simulation Loop ---
+        total_e_gain = 0.0
+        total_influence_gain = 0.0
         for step in range(num_steps):
-            e_boost, s_boost, c_boost = _calculate_guff_boosts(soul_spark, guff_props, time_step)
+            e_boost, influence_increment = _calculate_guff_boosts(
+                soul_spark, guff_props, time_step
+            )
 
-            # Apply boosts and clamp
-            soul_spark.energy = min(GUFF_ENERGY_MULTIPLIER, max(0.0, soul_spark.energy + e_boost)) # Cap energy gain relative to Guff multiplier
-            soul_spark.stability = min(GUFF_STABILITY_TARGET, max(0.0, soul_spark.stability + s_boost)) # Move towards target
-            soul_spark.coherence = min(GUFF_COHERENCE_TARGET, max(0.0, soul_spark.coherence + c_boost)) # Move towards target
+            # Apply Energy Boost
+            energy_before = soul_spark.energy
+            soul_spark.energy = min(const.MAX_SOUL_ENERGY_SEU,
+                                    max(0.0, soul_spark.energy + e_boost))
+            total_e_gain += (soul_spark.energy - energy_before)
 
-            total_energy_gain += e_boost
-            total_stability_gain += s_boost
-            total_coherence_gain += c_boost
+            # Apply Guff Influence Factor Increment
+            current_influence = getattr(soul_spark, 'guff_influence_factor', 0.0)
+            new_influence = min(1.0, current_influence + influence_increment)
+            setattr(soul_spark, 'guff_influence_factor', new_influence)
+            total_influence_gain += (new_influence - current_influence)
 
-            # Optional: Log progress periodically
-            if step % (num_steps // 5) == 0: # Log 5 times during process
-                 logger.debug(f"  Guff Step {step}/{num_steps}: E={soul_spark.energy:.4f}, S={soul_spark.stability:.4f}, C={soul_spark.coherence:.4f}")
+            # Update Derived S/C Scores using soul_spark's internal method
+            # This now incorporates the updated guff_influence_factor
+            if hasattr(soul_spark, 'update_state'):
+                soul_spark.update_state()
+            else:
+                 logger.error("SoulSpark object missing 'update_state' method!")
+                 # Decide how to handle - maybe raise error or just log?
+                 # raise AttributeError("SoulSpark needs 'update_state' method.")
+
+            # Log progress periodically
+            if step % (num_steps // 5 or 1) == 0:
+                 log_step = (f"  Guff Step {step+1}/{num_steps}: "
+                             f"E={soul_spark.energy:.1f}, "
+                             f"S={soul_spark.stability:.1f}, "
+                             f"C={soul_spark.coherence:.1f}, "
+                             f"GuffInf={new_influence:.3f}")
+                 logger.debug(log_step)
 
         # --- Final Update & Metrics ---
-        setattr(soul_spark, 'guff_strengthened', True)
-        setattr(soul_spark, 'ready_for_journey', True) # Mark ready for next stage
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        setattr(soul_spark, const.FLAG_GUFF_STRENGTHENED, True)
+        setattr(soul_spark, const.FLAG_READY_FOR_JOURNEY, True)
+        last_mod_time = datetime.now().isoformat()
+        setattr(soul_spark, 'last_modified', last_mod_time)
 
-        end_time_iso = datetime.now().isoformat()
+        end_time_iso = last_mod_time
         end_time_dt = datetime.fromisoformat(end_time_iso)
         final_state = {
-            'energy': soul_spark.energy,
-            'stability': soul_spark.stability,
-            'coherence': soul_spark.coherence,
-            'guff_strengthened': soul_spark.guff_strengthened,
-            'ready_for_journey': soul_spark.ready_for_journey,
+            'energy_seu': soul_spark.energy,
+            'stability_su': soul_spark.stability,
+            'coherence_cu': soul_spark.coherence,
+            'guff_influence_factor': getattr(soul_spark, 'guff_influence_factor', 0.0),
+            const.FLAG_GUFF_STRENGTHENED: True,
+            const.FLAG_READY_FOR_JOURNEY: True
         }
-
         overall_metrics = {
             'action': 'guff_strengthening', 'soul_id': spark_id,
             'start_time': start_time_iso, 'end_time': end_time_iso,
             'duration_seconds': (end_time_dt - start_time_dt).total_seconds(),
             'simulated_duration': duration,
             'initial_state': initial_state, 'final_state': final_state,
-            'total_energy_gain': float(total_energy_gain),
-            'total_stability_gain': float(total_stability_gain),
-            'total_coherence_gain': float(total_coherence_gain),
-            'guff_properties_used': guff_props, # Record properties used for boost
+            'total_energy_gain_seu': float(final_state['energy_seu'] -
+                                           initial_state['energy_seu']),
+            'total_guff_influence_gain': float(final_state['guff_influence_factor'] -
+                                                initial_state['guff_influence_factor']),
+            'final_stability_su': final_state['stability_su'], # Report final emergent score
+            'final_coherence_cu': final_state['coherence_cu'], # Report final emergent score
+            # Guff targets used (for information)
+            'guff_targets_used': {k:v for k,v in guff_props.items()
+                                  if 'guff_target' in k},
             'success': True,
         }
-        # Record metrics
         if METRICS_AVAILABLE:
-            try: metrics.record_metrics('guff_strengthening_summary', overall_metrics)
-            except Exception as e: logger.error(f"Failed to record summary metrics for guff strengthening: {e}")
+             metrics.record_metrics('guff_strengthening_summary', overall_metrics)
 
-        # Log memory echo
-        echo_msg = f"Strengthened in Guff. E:{final_state['energy']:.3f}, S:{final_state['stability']:.3f}, C:{final_state['coherence']:.3f}"
-        logger.info(f"Memory echo created: {echo_msg}")
-        if hasattr(soul_spark, 'memory_echoes') and isinstance(soul_spark.memory_echoes, list):
-            soul_spark.memory_echoes.append(f"{getattr(soul_spark, 'last_modified')}: {echo_msg}")
+        # Add Memory Echo
+        echo_msg = (f"Strengthened in Guff. "
+                    f"E:{final_state['energy_seu']:.1f}, "
+                    f"S:{final_state['stability_su']:.1f}, "
+                    f"C:{final_state['coherence_cu']:.1f}, "
+                    f"GuffInf:{final_state['guff_influence_factor']:.3f}")
+        if hasattr(soul_spark, 'add_memory_echo'):
+            soul_spark.add_memory_echo(echo_msg)
+            logger.info(f"Memory echo created: {echo_msg}")
 
-        logger.info(f"--- Guff Strengthening Completed Successfully for Soul {spark_id} ---")
+        log_final = (f"--- Guff Strengthening Completed Successfully "
+                     f"for Soul {spark_id} ---")
+        logger.info(log_final)
         logger.info(f"Duration: {overall_metrics['duration_seconds']:.2f}s")
-        logger.info(f"Final State: E={final_state['energy']:.4f}, S={final_state['stability']:.4f}, C={final_state['coherence']:.4f}")
-
+        logger.info(f"Final State: E={final_state['energy_seu']:.1f}SEU, "
+                    f"S={final_state['stability_su']:.1f}SU, "
+                    f"C={final_state['coherence_cu']:.1f}CU")
         return soul_spark, overall_metrics
 
+    # --- Error Handling ---
+    except (ValueError, TypeError, AttributeError) as e_val:
+         logger.error(f"Guff strengthening failed for {spark_id}: {e_val}",
+                      exc_info=True)
+         record_failure_metric(spark_id, start_time_iso,
+                               'prerequisites/validation', str(e_val))
+         raise # Re-raise validation errors
+    except RuntimeError as e_rt:
+         logger.critical(f"Guff strengthening failed critically "
+                         f"for {spark_id}: {e_rt}", exc_info=True)
+         record_failure_metric(spark_id, start_time_iso, 'runtime', str(e_rt))
+         raise # Re-raise runtime errors
     except Exception as e:
-        end_time_iso = datetime.now().isoformat()
-        logger.critical(f"Guff strengthening process failed critically for soul {spark_id}: {e}", exc_info=True)
-        # Mark soul as failed this stage?
-        setattr(soul_spark, "guff_strengthened", False)
-        setattr(soul_spark, "ready_for_journey", False)
-        if METRICS_AVAILABLE:
-             try: metrics.record_metrics('guff_strengthening_summary', {
-                  'action': 'guff_strengthening', 'soul_id': spark_id,
-                  'start_time': start_time_iso, 'end_time': end_time_iso,
-                  'duration_seconds': (datetime.fromisoformat(end_time_iso) - start_time_dt).total_seconds(),
-                  'success': False, 'error': str(e)
-             })
-             except Exception as metric_e: logger.error(f"Failed to record failure metrics: {metric_e}")
-        raise RuntimeError(f"Guff strengthening process failed critically.") from e
+         logger.critical(f"Unexpected error during Guff strengthening "
+                         f"for {spark_id}: {e}", exc_info=True)
+         record_failure_metric(spark_id, start_time_iso, 'unexpected', str(e))
+         raise RuntimeError(f"Unexpected Guff strengthening failure: {e}") from e
+
+# --- Failure Metric Helper ---
+def record_failure_metric(spark_id: str, start_time_iso: str,
+                          failed_step: str, error_msg: str):
+    """Helper to record failure metrics consistently."""
+    if METRICS_AVAILABLE:
+        try:
+            end_time_iso = datetime.now().isoformat()
+            duration_secs = (datetime.fromisoformat(end_time_iso) -
+                             datetime.fromisoformat(start_time_iso)).total_seconds()
+            metrics.record_metrics('guff_strengthening_summary', {
+                'action': 'guff_strengthening', 'soul_id': spark_id,
+                'start_time': start_time_iso, 'end_time': end_time_iso,
+                'duration_seconds': duration_secs, 'success': False,
+                'error': error_msg, 'failed_step': failed_step
+            })
+        except Exception as metric_e:
+            logger.error(f"Failed record failure metrics for {spark_id}: {metric_e}")
 
 # --- END OF FILE src/stage_1/soul_formation/guff_strengthening.py ---

@@ -8,6 +8,7 @@ and aspects of each of the 11 Sephiroth.
 """
 
 from typing import Dict, List, Any, Tuple
+from constants.constants import PHI
 
 # Import shared constants if needed (e.g., for default frequencies)
 # from constants.constants import * # Example
@@ -205,7 +206,7 @@ SEPHIROTH_ASPECT_DATA: Dict[str, Dict[str, Any]] = {
     # --- Yesod ---
     'yesod': {
         'name': "Yesod", 'title': "Foundation", 'base_frequency': YESOD_FREQ,
-        'primary_color': 'purple', 'element': 'water/aether', # Astral waters, foundation
+        'primary_color': 'violet', 'element': 'water/aether', # Astral waters, foundation
         'geometric_correspondence': 'nonagon', # 9 represents completion before manifestation
         'platonic_affinity': 'icosahedron', # Water association
         'divine_attribute': "Foundation",
@@ -250,7 +251,7 @@ SEPHIROTH_ASPECT_DATA: Dict[str, Dict[str, Any]] = {
     # --- Daath ---
     'daath': {
         'name': "Daath", 'title': "Knowledge", 'base_frequency': DAATH_FREQ,
-        'primary_color': 'lavender/grey', # Invisible/hidden nature
+        'primary_color': 'lavender', # Invisible/hidden nature
         'element': 'aether/shadow', # Intersection of spiritual and shadow
         'geometric_correspondence': 'vesica_piscis', # Gateway, intersection
         'platonic_affinity': 'none', # Not a true Sephirah, abyss/gateway

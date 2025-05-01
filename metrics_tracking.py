@@ -1,62 +1,102 @@
 """
-Metrics Tracking Module
+Enhanced Metrics Tracking Module
 
-Provides centralized metrics collection, storage, and analysis for the
+Provides centralized metrics collection, storage, analysis, and terminal display for the
 Soul Development Framework. Enforces stricter error handling for persistence
-and retrieval.
+and retrieval with additional terminal output.
 
-Author: Soul Development Framework Team - Refactored with Strict Error Handling
+Author: Soul Development Framework Team - Enhanced with Terminal Display
 """
 
 import logging
-# Import LOG_LEVEL from constants instead of defining it here
-# LOG_LEVEL = logging.INFO  # Define directly
-
 import os
 import json
 import numpy as np
 import time
 import threading
 import uuid
-from datetime import datetime # Added import
+from datetime import datetime
 from typing import Dict, List, Any, Union, Optional
 
 # --- Constants ---
 try:
-    # Import necessary constants, e.g., logging config, base data dir
-    # Ensure this import path is correct relative to the project root
+    # Import necessary constants
     from constants.constants import LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE, PERSIST_INTERVAL_SECONDS
-    METRICS_DIR = os.path.join(DATA_DIR_BASE, "metrics") # Define full path
+    METRICS_DIR = os.path.join(DATA_DIR_BASE, "metrics")
     METRICS_FILE = os.path.join(METRICS_DIR, "soul_metrics.json")
 except ImportError as e:
     # Basic logging setup if constants failed
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. Metrics tracking may fail.")
-    # Define fallbacks ONLY for script to load, but functionality will be impaired
+    print(f"METRICS WARNING: Failed to import essential constants: {e}. Using fallback values.")
+    # Define fallbacks
     METRICS_DIR = "metrics"
     METRICS_FILE = os.path.join(METRICS_DIR, "soul_metrics.json")
     LOG_LEVEL = logging.INFO
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     PERSIST_INTERVAL_SECONDS = 60
 
+# --- Configuration ---
+# Set to True to enable terminal display of metrics as they're recorded
+DISPLAY_METRICS_IN_TERMINAL = True
+# Set to True to add formatting for better terminal readability
+FORMAT_TERMINAL_OUTPUT = True
+
 # --- Logging Setup ---
 log_file_path = os.path.join("logs", "metrics_tracking.log")
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-# Use fileConfig or dictConfig if more complex setup is needed
-if not logging.getLogger().hasHandlers(): # Configure only if not already configured
+if not logging.getLogger().hasHandlers():
     logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')
 logger = logging.getLogger('metrics_tracking')
 
 # --- Global Metrics Store ---
 _metrics_store: Dict[str, Dict[str, Any]] = {}
-_metrics_lock = threading.Lock() # Lock for thread safety
-_last_persist_time: float = 0.0 # Track last persistence time
+_metrics_lock = threading.Lock()  # Lock for thread safety
+_last_persist_time: float = 0.0  # Track last persistence time
+
+# --- Terminal Output Helper Functions ---
+def _format_value_for_display(value: Any) -> str:
+    """Format a value for terminal display with appropriate formatting."""
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    elif isinstance(value, dict):
+        return f"<Dict with {len(value)} keys>"
+    elif isinstance(value, list):
+        return f"<List with {len(value)} items>"
+    else:
+        return str(value)
+
+def _display_metric_in_terminal(category: str, name: str, value: Any) -> None:
+    """Display a metric in the terminal with nice formatting."""
+    if not DISPLAY_METRICS_IN_TERMINAL:
+        return
+    
+    if FORMAT_TERMINAL_OUTPUT:
+        category_str = f"[{category.upper()}]"
+        formatted_value = _format_value_for_display(value)
+        print(f"{category_str.ljust(20)} {name.ljust(30)} = {formatted_value}")
+    else:
+        print(f"METRIC: {category}.{name} = {value}")
+
+def _display_metrics_dict_in_terminal(category: str, metrics_dict: Dict[str, Any]) -> None:
+    """Display multiple metrics in the terminal with nice formatting."""
+    if not DISPLAY_METRICS_IN_TERMINAL:
+        return
+        
+    if FORMAT_TERMINAL_OUTPUT:
+        print(f"\n{'-'*20} METRICS: {category.upper()} {'-'*20}")
+        for name, value in metrics_dict.items():
+            formatted_value = _format_value_for_display(value)
+            print(f"  {name.ljust(30)} = {formatted_value}")
+        print(f"{'-'*60}")
+    else:
+        for name, value in metrics_dict.items():
+            print(f"METRIC: {category}.{name} = {value}")
 
 # --- Core Functions ---
 
 def record_metric(category: str, name: str, value: Any) -> None:
     """
-    Record a single metric value.
+    Record a single metric value with terminal display.
 
     Args:
         category (str): Metric category (e.g., 'simulation', 'field_guff'). Must be non-empty.
@@ -87,6 +127,9 @@ def record_metric(category: str, name: str, value: Any) -> None:
             _metrics_store[category] = {}
         _metrics_store[category][name] = value
 
+    # Display the metric in the terminal
+    _display_metric_in_terminal(category, name, value)
+    
     logger.debug(f"Recorded metric: {category}.{name} = {value}")
 
     # --- Persistence Check ---
@@ -103,7 +146,7 @@ def record_metric(category: str, name: str, value: Any) -> None:
 
 def record_metrics(category: str, metrics_dict: Dict[str, Any]) -> None:
     """
-    Record multiple metrics for a category.
+    Record multiple metrics for a category with terminal display.
 
     Args:
         category (str): Metric category. Must be non-empty.
@@ -134,6 +177,9 @@ def record_metrics(category: str, metrics_dict: Dict[str, Any]) -> None:
             _metrics_store[category] = {}
         _metrics_store[category].update(validated_metrics) # Use update for efficiency
 
+    # Display the metrics in the terminal
+    _display_metrics_dict_in_terminal(category, validated_metrics)
+    
     logger.debug(f"Recorded multiple metrics for category: {category}")
 
     # Trigger persistence check (same logic as single record)
@@ -216,11 +262,13 @@ def clear_metrics(category: Optional[str] = None) -> None:
             if category in _metrics_store:
                 del _metrics_store[category] # Remove the category entirely
                 logger.info(f"Cleared metrics for category: {category}")
+                print(f"METRICS: Cleared all metrics for category: {category}")
             else:
                 logger.warning(f"Attempted to clear non-existent metrics category: {category}")
         else:
             _metrics_store = {} # Reset the entire store
             logger.info("Cleared all metrics categories.")
+            print("METRICS: Cleared all metrics categories.")
 
 
 def persist_metrics() -> bool:
@@ -288,12 +336,12 @@ def load_metrics() -> bool:
             raise RuntimeError(f"Loaded metrics data is not a dictionary (Type: {type(loaded_metrics)}). File corrupt?")
 
         with _metrics_lock:
-            # Clear existing metrics before loading to avoid merging issues?
-            # Or update? Let's update, allows partial loads if structure changes? No, safer to replace.
+            # Clear existing metrics before loading to avoid merging issues
             _metrics_store = loaded_metrics
             _last_persist_time = time.time() # Reset last persist time after loading
 
         logger.info(f"Loaded metrics successfully from {METRICS_FILE}")
+        print(f"METRICS: Loaded {len(loaded_metrics)} categories from {METRICS_FILE}")
         return True
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON metrics file {METRICS_FILE}: {e}", exc_info=True)
@@ -308,7 +356,7 @@ def load_metrics() -> bool:
 # --- Analysis Function ---
 def analyze_metrics(category: str) -> Optional[Dict[str, Any]]:
     """
-    Perform basic analysis on metrics for a category.
+    Perform basic analysis on metrics for a category with terminal display.
 
     Args:
         category (str): Category to analyze.
@@ -319,6 +367,7 @@ def analyze_metrics(category: str) -> Optional[Dict[str, Any]]:
     metrics_data = get_category_metrics(category) # Safely gets metrics or {}
     if not metrics_data:
         logger.warning(f"No metrics found for category '{category}' to analyze.")
+        print(f"METRICS ANALYSIS: No data available for category '{category}'")
         return None # Return None if no data
 
     analysis = { "category": category, "metric_count": len(metrics_data) }
@@ -348,7 +397,49 @@ def analyze_metrics(category: str) -> Optional[Dict[str, Any]]:
          analysis["numeric_max"] = 0.0
          analysis["numeric_std_dev"] = 0.0
 
+    # Display analysis in terminal
+    if DISPLAY_METRICS_IN_TERMINAL:
+        print(f"\n{'='*20} METRICS ANALYSIS: {category.upper()} {'='*20}")
+        print(f"  Total metrics: {analysis['metric_count']}")
+        print(f"  Numeric metrics: {analysis['numeric_metric_count']}")
+        if analysis['numeric_metric_count'] > 0:
+            print(f"  Average: {analysis['numeric_average']:.4f}")
+            print(f"  Min: {analysis['numeric_min']:.4f}")
+            print(f"  Max: {analysis['numeric_max']:.4f}")
+            print(f"  Std Dev: {analysis['numeric_std_dev']:.4f}")
+        if non_numeric_keys:
+            print(f"  Non-numeric metrics: {len(non_numeric_keys)}")
+            print(f"  Keys: {', '.join(non_numeric_keys[:5])}{'...' if len(non_numeric_keys) > 5 else ''}")
+        print("="*(40 + len(category)))
+
     return analysis
+
+def print_metrics_summary() -> None:
+    """
+    Print a summary of all metrics categories to the terminal.
+    """
+    all_metrics = get_all_metrics()
+    
+    print("\n" + "="*60)
+    print("METRICS SUMMARY - ALL CATEGORIES")
+    print("="*60)
+    
+    if not all_metrics:
+        print("No metrics recorded yet.")
+        print("="*60)
+        return
+        
+    categories = list(all_metrics.keys())
+    categories.sort()
+    
+    print(f"Total categories: {len(categories)}")
+    for category in categories:
+        metrics_count = len(all_metrics[category])
+        numeric_count = sum(1 for v in all_metrics[category].values() if isinstance(v, (int, float)))
+        print(f"  {category.ljust(25)}: {metrics_count} metrics ({numeric_count} numeric)")
+    
+    print("\nUse analyze_metrics(category) for detailed analysis of a specific category")
+    print("="*60)
 
 
 # --- Initial Load Attempt ---
@@ -358,15 +449,17 @@ try:
         load_metrics() # Attempt load, raises errors on failure now
     else:
         logger.info("Metrics file does not exist on initial load. Starting fresh.")
+        print("METRICS: No existing metrics file found. Starting with empty metrics store.")
 except Exception as initial_load_e:
     logger.error(f"Error during initial metrics load: {initial_load_e}")
+    print(f"METRICS WARNING: Failed to load existing metrics: {initial_load_e}")
     # Initialize empty store if load fails critically
     _metrics_store = {}
 
 
 # --- Example Usage ---
 if __name__ == "__main__":
-    print("Running Metrics Tracking Module Example...")
+    print("Running Enhanced Metrics Tracking Module Example...")
 
     # Record some metrics
     try:
@@ -379,8 +472,6 @@ if __name__ == "__main__":
         record_metric("void_field", "last_spark_time", time.time())
         record_metric("errors", "initialization_errors", 0)
         record_metric("performance", "loop_time_ms", 15.3)
-        # Example of unserializable (will now raise TypeError on persist if default=str doesn't handle it)
-        # record_metric("debug", "custom_object", object())
         print("Metrics recorded.")
     except Exception as e:
          print(f"ERROR recording metrics: {e}")
@@ -392,19 +483,18 @@ if __name__ == "__main__":
         all_mets = get_all_metrics()
         print(f"\nSimulation Start Time: {sim_start}")
         print(f"Guff Field Metrics: {guff_metrics}")
-        # print(f"All Metrics: {all_mets}") # Can be very large
         print(f"Total Categories: {len(all_mets)}")
     except Exception as e:
          print(f"ERROR getting metrics: {e}")
 
+    # Print summary of all metrics
+    print_metrics_summary()
+
     # Analyze metrics
     try:
         guff_analysis = analyze_metrics("guff_field")
-        print(f"\nAnalysis for 'guff_field': {guff_analysis}")
         void_analysis = analyze_metrics("void_field")
-        print(f"Analysis for 'void_field': {void_analysis}")
         non_existent_analysis = analyze_metrics("imaginary_category")
-        print(f"Analysis for 'imaginary_category': {non_existent_analysis}") # Should be None
     except Exception as e:
          print(f"ERROR analyzing metrics: {e}")
 
@@ -420,16 +510,13 @@ if __name__ == "__main__":
     try:
         print("\nClearing 'void_field' metrics...")
         clear_metrics("void_field")
-        print(f"'void_field' metrics after clear: {get_category_metrics('void_field')}")
-        print("Reloading metrics from file...")
+        print("\nReloading metrics from file...")
         load_metrics() # Will fail if file doesn't exist or persistence failed
-        print(f"'void_field' metrics after reload: {get_category_metrics('void_field')}")
         print("\nClearing all metrics...")
         clear_metrics()
-        print(f"All metrics after clear: {get_all_metrics()}")
     except Exception as e:
         print(f"ERROR during clear/reload: {e}")
 
 
-    print("\nMetrics Tracking Module Example Finished.")
+    print("\nEnhanced Metrics Tracking Module Example Finished.")
 # --- END OF FILE metrics_tracking.py ---

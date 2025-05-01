@@ -1,18 +1,16 @@
-import numpy as np
 import json
+import numpy as np
 import piexif
 from PIL import Image
-import os
-from typing import Dict, Any, Tuple, Optional, Union
-import base64
+from typing import Dict, Any, Optional
 
-from .utils import binary_to_string, calculate_resonance_signature
+from glyphs.glyph_resonance.utils import binary_to_string, calculate_resonance_signature
 
 class SigilDecoder:
     def __init__(self):
         """Initialize the SigilDecoder."""
         pass
-        
+
     def decode_from_exif(self, image_path: str) -> Optional[Dict[str, Any]]:
         """
         Extracts resonance data from an image's EXIF metadata.
@@ -24,36 +22,35 @@ class SigilDecoder:
             Dictionary containing the resonance data, or None if not found
         """
         try:
-            # Open the image
+            # Open the image and get EXIF bytes from the image info
             img = Image.open(image_path)
+            exif_bytes = img.info.get("exif")
+            if not exif_bytes:
+                return None
             
-            # Extract EXIF data
-            exif_data = img._getexif()
-            if exif_data is None:
+            exif_data = piexif.load(exif_bytes)
+            
+            # Check that the Software tag is correctly set (tag 305 in 0th IFD)
+            software = exif_data["0th"].get(305)
+            if software != b'AeriSigilSystem':
                 return None
                 
-            # Check if this is an Aeri sigil
-            for tag_id, value in exif_data.items():
-                tag_name = piexif.TAGS.get(tag_id, {}).get('name', '')
-                if tag_name == 'Software' and value == b'AeriSigilSystem':
-                    # Find the UserComment field containing our JSON data
-                    for subtag_id, subtag_value in exif_data.items():
-                        subtag_name = piexif.TAGS.get(subtag_id, {}).get('name', '')
-                        if subtag_name == 'UserComment':
-                            # Parse the JSON data
-                            try:
-                                if isinstance(subtag_value, bytes):
-                                    json_str = subtag_value.decode('utf-8')
-                                else:
-                                    json_str = subtag_value
-                                    
-                                resonance_data = json.loads(json_str)
-                                return resonance_data
-                            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                                print(f"Error decoding JSON: {e}")
-                                return None
-            
-            return None
+            # Get the UserComment field from the Exif IFD (tag 37510)
+            user_comment = exif_data["Exif"].get(37510)
+            if user_comment is None:
+                return None
+                
+            # Decode the JSON stored as UserComment
+            try:
+                if isinstance(user_comment, bytes):
+                    json_str = user_comment.decode("utf-8")
+                else:
+                    json_str = user_comment
+                resonance_data = json.loads(json_str)
+                return resonance_data
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                print(f"Error decoding JSON: {e}")
+                return None
         
         except Exception as e:
             print(f"Error reading EXIF data: {e}")
@@ -234,4 +231,18 @@ class SigilDecoder:
             synthesis_params["color_mapping"] = color_map
             
         return synthesis_params
+
+if __name__ == "__main__":
+    print("Decoder started...")
+    decoder = SigilDecoder()
+    test_image_path = "glyphs/glyph_resonance/encoded_glyphs/encoded_mother_sigil.jpeg"
+    
+    resonance = decoder.read_mother_resonance(test_image_path)
+    if resonance.get("error"):
+        print("Error:", resonance["error"])
+    else:
+        print("Resonance data:", resonance)
+    
+    synthesis = decoder.generate_sound_parameters(resonance)
+    print("Synthesis Parameters:", synthesis)
 

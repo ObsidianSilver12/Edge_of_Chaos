@@ -25,7 +25,7 @@ except ImportError:
 # --- Constants ---
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from src.constants.constants import *
+    from constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. NoiseGenerator cannot function.")
@@ -58,7 +58,7 @@ class NoiseGenerator:
     Performs strict validation and fails hard on errors.
     """
 
-    def __init__(self, sample_rate: int = SAMPLE_RATE, output_dir: str = OUTPUT_DIR_BASE):
+    def __init__(self, sample_rate: int = SAMPLE_RATE, output_dir: str = DATA_DIR_BASE):
         """
         Initialize a new noise generator.
 

@@ -302,7 +302,7 @@ class SeedOfLife:
             mask = self.pattern_3d > threshold
             
             # Plot the voxels
-            cmap = plt.cm.viridis
+            cmap = plt.get_cmap('viridis')
             norm = plt.Normalize(vmin=threshold, vmax=np.max(self.pattern_3d))
             colors = cmap(norm(self.pattern_3d))
             

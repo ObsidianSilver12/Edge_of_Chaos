@@ -1,7 +1,7 @@
 import os
 import datetime
-from src.glyphs.glyph_resonance.encoder import encode_glyph  # Import encode_sigil function
-from src.glyphs.mother.mother_resonance import create_mother_resonance_data
+from glyphs.glyph_resonance.encoder import encode_glyph  # Import encode_sigil function
+from glyphs.mother.mother_resonance import create_mother_resonance_data
 
 def run_encode():
     """
@@ -18,8 +18,8 @@ def run_encode():
     mother_data["encoding_timestamp"] = datetime.datetime.now().isoformat()
     
     # Source and destination paths
-    source_path = "src/glyphs/glyph_resonance/glyphs/mother_sigil.jpeg"
-    output_path = "src/glyphs/glyph_resonance/encoded_glyphs/encoded_mother_sigil.jpeg"
+    source_path = "glyphs/glyph_resonance/glyphs/mother_sigil.jpeg"
+    output_path = "glyphs/glyph_resonance/encoded_glyphs/encoded_mother_sigil.jpeg"
     
     # Ensure encoded_glyphs directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

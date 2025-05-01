@@ -1,13 +1,11 @@
-# --- START OF FILE harmonic_strengthening.py ---
+# --- START OF FILE src/stage_1/soul_formation/harmonic_strengthening.py ---
 
 """
-Harmonic Strengthening Functions (Refactored - Operates on SoulSpark Object, Uses Constants)
+Harmonic Strengthening Functions (Refactored V4.1 - SEU/SU/CU Units)
 
-Provides functions for enhancing soul stability, coherence, and resonance
-through harmonic frequencies and phi-resonance amplification. Modifies the
-SoulSpark object instance directly. Uses centrally defined constants.
-
-Author: Soul Development Framework Team
+Enhances soul stability (SU), coherence (CU) after Creator Entanglement
+by applying direct deltas based on harmonic/phi resonance principles.
+Modifies the SoulSpark object instance directly. Uses constants.
 """
 
 import logging
@@ -18,32 +16,30 @@ from datetime import datetime
 import time
 from typing import Dict, List, Any, Tuple, Optional
 
-
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    # Import necessary constants FROM THE CENTRAL FILE
     from constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.critical(f"CRITICAL ERROR: Could not import constants from constants: {e}. Harmonic Strengthening cannot function correctly.")
+    logger.critical(f"CRITICAL ERROR: Could not import constants: {e}.")
     raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
 try:
-    from stage_1.soul_formation.soul_spark import SoulSpark
-    DEPENDENCIES_AVAILABLE = True
+    from stage_1.soul_spark.soul_spark import SoulSpark
 except ImportError as e:
-    logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}. Harmonic Strengthening cannot function.")
+    logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}.")
     raise ImportError(f"Core dependency SoulSpark missing: {e}") from e
 
+# --- Metrics Tracking ---
 try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
+except ImportError:
+    logger.error("Metrics tracking module not found. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
     class MetricsPlaceholder:
         def record_metrics(self, *args, **kwargs): pass
@@ -53,477 +49,346 @@ except ImportError as e:
 # --- Helper Functions ---
 
 def _check_prerequisites(soul_spark: SoulSpark) -> bool:
-    """Checks if the soul meets prerequisites for harmonic strengthening."""
-    logger.debug(f"Checking prerequisites for soul {soul_spark.spark_id}...")
-    # Requires formation completion (from Sephiroth journey or Guff stage depending on flow)
-    # Let's assume a flag like 'sephiroth_journey_complete' exists or check 'formation_complete'
-    if not getattr(soul_spark, "sephiroth_journey_complete", getattr(soul_spark, "formation_complete", False)):
-        logger.error("Prerequisite failed: Soul formation/journey not complete.")
+    """ Checks prerequisites using SU/CU thresholds. """
+    logger.debug(f"Checking prerequisites for harmonic strengthening (Soul: {soul_spark.spark_id})...")
+    if not isinstance(soul_spark, SoulSpark): return False
+
+    # 1. Stage Completion Check
+    if not getattr(soul_spark, FLAG_READY_FOR_STRENGTHENING, False): # Set by entanglement
+        logger.error(f"Prerequisite failed: Soul not marked {FLAG_READY_FOR_STRENGTHENING}.")
         return False
 
-    # Requires minimum stability and coherence using constants
-    stability = getattr(soul_spark, "stability", 0.0)
-    if stability < HARMONIC_STRENGTHENING_PREREQ_STABILITY:
-        logger.error(f"Prerequisite failed: Soul stability ({stability:.3f}) below threshold ({HARMONIC_STRENGTHENING_PREREQ_STABILITY}).")
+    # 2. Minimum Stability and Coherence (Absolute SU/CU)
+    stability_su = getattr(soul_spark, 'stability', 0.0)
+    coherence_cu = getattr(soul_spark, 'coherence', 0.0)
+    # Use specific HS prerequisite constants
+    if stability_su < HARMONIC_STRENGTHENING_PREREQ_STABILITY_SU:
+        logger.error(f"Prerequisite failed: Stability ({stability_su:.1f} SU) < {HARMONIC_STRENGTHENING_PREREQ_STABILITY_SU} SU.")
         return False
-    coherence = getattr(soul_spark, "coherence", 0.0)
-    if coherence < HARMONIC_STRENGTHENING_PREREQ_COHERENCE:
-        logger.error(f"Prerequisite failed: Soul coherence ({coherence:.3f}) below threshold ({HARMONIC_STRENGTHENING_PREREQ_COHERENCE}).")
+    if coherence_cu < HARMONIC_STRENGTHENING_PREREQ_COHERENCE_CU:
+        logger.error(f"Prerequisite failed: Coherence ({coherence_cu:.1f} CU) < {HARMONIC_STRENGTHENING_PREREQ_COHERENCE_CU} CU.")
         return False
+
+    if getattr(soul_spark, FLAG_HARMONICALLY_STRENGTHENED, False):
+        logger.warning(f"Soul {soul_spark.spark_id} already marked {FLAG_HARMONICALLY_STRENGTHENED}. Re-running.")
 
     logger.debug("Harmonic strengthening prerequisites met.")
     return True
 
 def _ensure_soul_properties(soul_spark: SoulSpark):
-    """Ensure soul has necessary numeric properties, initializing if missing. Fails hard."""
-    # This helper is important for robustness before calculations
-    logger.debug(f"Ensuring properties exist for soul {soul_spark.spark_id}...")
-    attributes_to_check = [
-        ("frequency", SOUL_SPARK_DEFAULT_FREQ),
-        ("stability", SOUL_SPARK_DEFAULT_STABILITY),
-        ("coherence", SOUL_SPARK_DEFAULT_COHERENCE),
-        ("harmonics", []), # Default to empty list, populated later if needed
-        ("phi_resonance", 0.5),
-        ("pattern_stability", 0.5),
-        ("harmony", 0.5),
-        ("field_radius", 3.0),
-        ("field_strength", 0.5)
-    ]
-    for attr, default in attributes_to_check:
-        if not hasattr(soul_spark, attr) or getattr(soul_spark, attr) is None:
-            logger.warning(f"Soul {soul_spark.spark_id} missing '{attr}'. Initializing to default: {default}")
-            setattr(soul_spark, attr, default)
+    """ Ensure soul has necessary numeric properties. """
+    logger.debug(f"Ensuring properties for harmonic strengthening (Soul {soul_spark.spark_id})...")
+    # Check core attributes exist (should be guaranteed by init)
+    required = ['frequency', 'stability', 'coherence', 'harmonics', 'phi_resonance', 'pattern_coherence', 'harmony', 'aspects']
+    if not all(hasattr(soul_spark, attr) for attr in required):
+        missing = [attr for attr in required if not hasattr(soul_spark, attr)]
+        raise AttributeError(f"SoulSpark missing essential attributes for HS: {missing}")
 
-    # Ensure harmonics list is populated if frequency exists but harmonics doesn't
-    if hasattr(soul_spark, 'frequency') and getattr(soul_spark, 'frequency') > FLOAT_EPSILON and (not hasattr(soul_spark, 'harmonics') or not soul_spark.harmonics):
-        logger.warning(f"Soul {soul_spark.spark_id} missing 'harmonics'. Initializing based on frequency.")
-        h_count = getattr(soul_spark, 'harmonic_count', HARMONIC_STRENGTHENING_HARMONIC_COUNT) # Use soul's count or constant
-        setattr(soul_spark, 'harmonics', [soul_spark.frequency * n for n in range(1, h_count + 1)])
+    # Initialize field radius/strength if missing (treat as 0-1 factor for now)
+    if not hasattr(soul_spark, 'field_radius'): setattr(soul_spark, 'field_radius', 1.0) # Example default size factor
+    if not hasattr(soul_spark, 'field_strength'): setattr(soul_spark, 'field_strength', 0.5) # Example default strength factor
 
-    # Validate numerical types and ranges
-    for attr, _ in attributes_to_check:
-        val = getattr(soul_spark, attr)
-        if attr == 'harmonics': # Special check for list
-             if not isinstance(val, list) or not all(isinstance(f, (int, float)) and f > FLOAT_EPSILON for f in val):
-                  raise TypeError(f"Soul attribute 'harmonics' must be a list of positive numbers, found {val}.")
-        elif not isinstance(val, (int, float)):
-             raise TypeError(f"Soul attribute '{attr}' must be numeric, found {type(val)}.")
-        elif not np.isfinite(val):
-             raise ValueError(f"Soul attribute '{attr}' has non-finite value {val}.")
-        elif attr == 'frequency' and val <= FLOAT_EPSILON:
-             raise ValueError(f"Soul frequency ({val}) must be positive.")
-        elif attr != 'frequency' and attr != 'field_radius' and not (0.0 <= val <= 1.0):
-             logger.warning(f"Clamping soul attribute '{attr}' ({val}) to 0-1 range.")
-             setattr(soul_spark, attr, max(0.0, min(1.0, val)))
-    logger.debug("Soul properties ensured.")
+    if soul_spark.frequency <= FLOAT_EPSILON: raise ValueError("Soul frequency must be positive.")
+    logger.debug("Soul properties ensured for harmonic strengthening.")
 
+
+# --- Core Strengthening Functions (Applying Deltas to SU/CU) ---
 
 def _perform_frequency_tuning(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
-    """Tunes frequency using constants. Modifies SoulSpark. Fails hard."""
-    logger.info(f"Starting frequency tuning for soul {soul_spark.spark_id} (Intensity={intensity:.2f})...")
+    """ Tunes frequency towards target harmonics. Modifies SoulSpark frequency (Hz). """
+    logger.info(f"Starting frequency tuning (Intensity={intensity:.2f})...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-    _ensure_soul_properties(soul_spark) # Ensure necessary attributes exist and are valid
 
     try:
-        current_freq = getattr(soul_spark, "frequency")
-        logger.debug(f"  Current frequency: {current_freq:.2f} Hz")
-
-        # Find closest target frequency using constant list
+        current_freq = soul_spark.frequency
         target_freq = min(HARMONIC_STRENGTHENING_TARGET_FREQS, key=lambda f: abs(f - current_freq))
-        logger.debug(f"  Target harmonic frequency: {target_freq:.2f} Hz")
-
-        # Calculate tuning amount using constant factor
         freq_diff = target_freq - current_freq
         tuning_amount = freq_diff * intensity * HARMONIC_STRENGTHENING_TUNING_INTENSITY_FACTOR
-        new_freq = current_freq + tuning_amount
-        new_freq = max(FLOAT_EPSILON, new_freq) # Ensure positive
-        logger.debug(f"  Calculated frequency shift: {tuning_amount:.2f} Hz, New frequency: {new_freq:.2f} Hz")
+        new_freq = max(FLOAT_EPSILON * 10, current_freq + tuning_amount) # Ensure positive Hz
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "frequency", float(new_freq))
-        # Update basic harmonic list based on new frequency
-        h_count = getattr(soul_spark, 'harmonic_count', HARMONIC_STRENGTHENING_HARMONIC_COUNT)
-        harmonics_list = [new_freq * n for n in range(1, h_count + 1)]
-        setattr(soul_spark, "harmonics", harmonics_list)
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        soul_spark.frequency = float(new_freq)
+        # Regenerate harmonics and frequency signature based on new frequency
+        soul_spark.generate_harmonic_structure() # This updates self.harmonics and self.frequency_signature
+        timestamp = datetime.now().isoformat(); soul_spark.last_modified = timestamp
 
-        # --- Calculate & Record Metrics ---
-        attunement_level = 0.0; target_reached = False
-        if abs(freq_diff) > FLOAT_EPSILON: attunement_level = abs(tuning_amount) / abs(freq_diff)
-        target_reached = abs(new_freq - target_freq) < HARMONIC_STRENGTHENING_TUNING_TARGET_REACH_HZ # Use constant
-
+        # Calculate Metrics
+        attunement_level = abs(tuning_amount) / max(FLOAT_EPSILON, abs(freq_diff)) if abs(freq_diff) > FLOAT_EPSILON else 1.0
+        target_reached = abs(new_freq - target_freq) < HARMONIC_STRENGTHENING_TUNING_TARGET_REACH_HZ
         phase_metrics = {
-            "original_frequency": float(current_freq), "target_frequency": float(target_freq), "new_frequency": float(new_freq),
-            "frequency_shift": float(tuning_amount), "attunement_level": float(attunement_level), "target_reached": target_reached,
-            "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('harmonic_strengthening_tuning', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record tuning metrics: {e}")
-
-        logger.info(f"Frequency tuning complete. New frequency: {new_freq:.2f} Hz (Level: {attunement_level:.2f}, TargetReached: {target_reached})")
+            "original_frequency_hz": float(current_freq), "target_frequency_hz": float(target_freq), "new_frequency_hz": float(new_freq),
+            "frequency_shift_hz": float(tuning_amount), "attunement_level": float(attunement_level), "target_reached": target_reached,
+            "timestamp": timestamp
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_tuning', phase_metrics)
+        logger.info(f"Frequency tuning complete. New Freq: {new_freq:.2f} Hz")
         return phase_metrics
 
-    except Exception as e: logger.error(f"Error during frequency tuning: {e}", exc_info=True); raise RuntimeError("Frequency tuning failed.") from e
+    except Exception as e: logger.error(f"Error frequency tuning: {e}", exc_info=True); raise RuntimeError("Freq tuning failed.") from e
 
 
 def _perform_phi_resonance_amplification(soul_spark: SoulSpark, intensity: float, duration_factor: float) -> Dict[str, Any]:
-    """Amplifies phi resonance using constants. Modifies SoulSpark. Fails hard."""
-    logger.info(f"Starting phi resonance amplification for soul {soul_spark.spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f})...")
+    """ Amplifies phi resonance factor (0-1) and boosts stability (SU). """
+    logger.info(f"Starting phi resonance amplification (Int={intensity:.2f}, DurF={duration_factor:.2f})...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
     if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
-    _ensure_soul_properties(soul_spark)
 
     try:
-        current_phi_resonance = getattr(soul_spark, "phi_resonance")
-        current_stability = getattr(soul_spark, "stability")
-        logger.debug(f"  Initial Phi Resonance: {current_phi_resonance:.4f}, Stability: {current_stability:.4f}")
+        current_phi_resonance = soul_spark.phi_resonance # 0-1 factor
+        current_stability_su = soul_spark.stability # SU score
 
-        # Calculate increase using constants
-        phi_increase = HARMONIC_STRENGTHENING_PHI_AMP_INTENSITY_FACTOR * intensity * HARMONIC_STRENGTHENING_PHI_AMP_DURATION_FACTOR * duration_factor
-        new_phi_resonance = min(1.0, current_phi_resonance + phi_increase)
-        logger.debug(f"  Calculated phi resonance increase: {phi_increase:.4f}, New Phi Resonance: {new_phi_resonance:.4f}")
+        phi_increase_factor = HARMONIC_STRENGTHENING_PHI_AMP_INTENSITY_FACTOR * intensity * duration_factor
+        new_phi_resonance = min(1.0, current_phi_resonance + phi_increase_factor)
 
-        # Use constant for stability boost factor
-        stability_increase = phi_increase * HARMONIC_STRENGTHENING_PHI_STABILITY_BOOST_FACTOR
-        new_stability = min(1.0, current_stability + stability_increase)
-        logger.debug(f"  Calculated stability increase: {stability_increase:.4f}, New Stability: {new_stability:.4f}")
+        # Stability boost is proportional to phi increase and max potential SU gain
+        stability_boost_su = phi_increase_factor * HARMONIC_STRENGTHENING_PHI_STABILITY_BOOST_FACTOR * MAX_STABILITY_SU
+        new_stability_su = min(MAX_STABILITY_SU, current_stability_su + stability_boost_su)
+        actual_stability_gain = new_stability_su - current_stability_su
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "phi_resonance", float(new_phi_resonance))
-        setattr(soul_spark, "stability", float(new_stability))
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        soul_spark.phi_resonance = float(new_phi_resonance)
+        soul_spark.stability = float(new_stability_su)
+        timestamp = datetime.now().isoformat(); soul_spark.last_modified = timestamp
 
-        # --- Calculate & Record Metrics ---
-        improvement = (phi_increase / max(FLOAT_EPSILON, 1.0 - current_phi_resonance)) if current_phi_resonance < 1.0 else 0.0
+        # Calculate Metrics
+        phi_change = new_phi_resonance - current_phi_resonance
         phase_metrics = {
             "original_phi_resonance": float(current_phi_resonance), "new_phi_resonance": float(new_phi_resonance),
-            "phi_resonance_change": float(phi_increase), "stability_increase": float(stability_increase),
-            "final_stability": float(new_stability), "improvement_factor": float(improvement),
-            "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('harmonic_strengthening_phi', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record phi resonance metrics: {e}")
-
-        logger.info(f"Phi resonance amplified. New Resonance: {new_phi_resonance:.4f}, Stability: {new_stability:.4f}")
+            "phi_resonance_change": float(phi_change),
+            "initial_stability_su": float(current_stability_su), "stability_boost_su": float(stability_boost_su),
+            "final_stability_su": float(new_stability_su), "actual_stability_gain_su": float(actual_stability_gain),
+            "timestamp": timestamp
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_phi', phase_metrics)
+        logger.info(f"Phi resonance amplified. New PhiRes: {new_phi_resonance:.4f}, Stability: {new_stability_su:.1f} SU")
         return phase_metrics
 
-    except Exception as e: logger.error(f"Error during phi resonance amplification: {e}", exc_info=True); raise RuntimeError("Phi resonance amplification failed.") from e
+    except Exception as e: logger.error(f"Error phi resonance amplification: {e}", exc_info=True); raise RuntimeError("Phi resonance amp failed.") from e
 
 
 def _perform_pattern_stabilization(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
-    """Stabilizes harmonic patterns using constants. Modifies SoulSpark. Fails hard."""
-    logger.info(f"Starting pattern stabilization for soul {soul_spark.spark_id} (Intensity={intensity:.2f})...")
+    """ Stabilizes patterns (boosts pattern coherence factor 0-1) and stability (SU). """
+    logger.info(f"Starting pattern stabilization (Intensity={intensity:.2f})...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-    _ensure_soul_properties(soul_spark)
 
     try:
-        current_stability = getattr(soul_spark, "stability")
-        current_pattern_stability = getattr(soul_spark, "pattern_stability")
-        aspects = getattr(soul_spark, "aspects", {})
-        logger.debug(f"  Initial Pattern Stability: {current_pattern_stability:.4f}, Soul Stability: {current_stability:.4f}")
+        current_stability_su = soul_spark.stability # SU score
+        current_pattern_coherence = soul_spark.pattern_coherence # 0-1 factor
+        aspect_count = len(getattr(soul_spark, 'aspects', {}))
 
-        # Calculate aspect influence using constant factors
-        aspect_influence = min(HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_CAP, len(aspects) * HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_FACTOR)
-        logger.debug(f"  Aspect influence factor: {aspect_influence:.4f}")
-
-        # Calculate stabilization amount using constants
+        # Calculate increase factor for pattern coherence (0-1)
+        aspect_influence = min(HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_CAP, aspect_count * HARMONIC_STRENGTHENING_PATTERN_STAB_ASPECT_FACTOR)
         base_increase = HARMONIC_STRENGTHENING_PATTERN_STAB_INTENSITY_FACTOR * intensity
-        aspect_bonus = aspect_influence * intensity # Aspect influence scales with intensity
-        total_increase = base_increase + aspect_bonus
-        new_pattern_stability = min(1.0, current_pattern_stability + total_increase)
-        logger.debug(f"  Calculated pattern stability increase: {total_increase:.4f}, New Pattern Stability: {new_pattern_stability:.4f}")
+        total_increase_factor = base_increase + aspect_influence * intensity
+        new_pattern_coherence = min(1.0, current_pattern_coherence + total_increase_factor)
+        actual_pcoh_gain = new_pattern_coherence - current_pattern_coherence
 
-        # Use constant for stability boost
-        stability_increase = total_increase * HARMONIC_STRENGTHENING_PATTERN_STAB_STABILITY_BOOST
-        new_stability = min(1.0, current_stability + stability_increase)
-        logger.debug(f"  Calculated soul stability increase: {stability_increase:.4f}, New Soul Stability: {new_stability:.4f}")
+        # Stability boost (SU) based on pattern coherence improvement
+        stability_boost_su = actual_pcoh_gain * HARMONIC_STRENGTHENING_PATTERN_STAB_STABILITY_BOOST * MAX_STABILITY_SU # Scale by max SU
+        new_stability_su = min(MAX_STABILITY_SU, current_stability_su + stability_boost_su)
+        actual_stability_gain = new_stability_su - current_stability_su
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "pattern_stability", float(new_pattern_stability))
-        setattr(soul_spark, "stability", float(new_stability))
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        soul_spark.pattern_coherence = float(new_pattern_coherence)
+        soul_spark.stability = float(new_stability_su)
+        timestamp = datetime.now().isoformat(); soul_spark.last_modified = timestamp
 
-        # --- Calculate & Record Metrics ---
-        improvement = (total_increase / max(FLOAT_EPSILON, 1.0 - current_pattern_stability)) if current_pattern_stability < 1.0 else 0.0
+        # Calculate Metrics
         phase_metrics = {
-            "original_pattern_stability": float(current_pattern_stability), "new_pattern_stability": float(new_pattern_stability),
-            "pattern_stability_change": float(total_increase), "stability_increase": float(stability_increase),
-            "final_stability": float(new_stability), "aspect_influence": float(aspect_influence),
-            "improvement_factor": float(improvement), "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('harmonic_strengthening_pattern', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record pattern stabilization metrics: {e}")
-
-        logger.info(f"Pattern stabilization complete. New Pattern Stability: {new_pattern_stability:.4f}, Soul Stability: {new_stability:.4f}")
+            "original_pattern_coherence": float(current_pattern_coherence), "new_pattern_coherence": float(new_pattern_coherence),
+            "pattern_coherence_change": float(actual_pcoh_gain),
+            "initial_stability_su": float(current_stability_su), "stability_boost_su": float(stability_boost_su),
+            "final_stability_su": float(new_stability_su), "actual_stability_gain_su": float(actual_stability_gain),
+            "aspect_influence": float(aspect_influence), "timestamp": timestamp
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_pattern', phase_metrics)
+        logger.info(f"Pattern stabilization complete. New P.Coh: {new_pattern_coherence:.4f}, Stability: {new_stability_su:.1f} SU")
         return phase_metrics
 
-    except Exception as e: logger.error(f"Error during pattern stabilization: {e}", exc_info=True); raise RuntimeError("Pattern stabilization failed.") from e
-
+    except Exception as e: logger.error(f"Error pattern stabilization: {e}", exc_info=True); raise RuntimeError("Pattern stabilization failed.") from e
 
 def _perform_coherence_enhancement(soul_spark: SoulSpark, intensity: float, duration_factor: float) -> Dict[str, Any]:
-    """Enhances coherence using constants. Modifies SoulSpark. Fails hard."""
-    logger.info(f"Starting coherence enhancement for soul {soul_spark.spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f})...")
+    """ Enhances overall coherence (CU score) and harmony (0-1 factor). """
+    logger.info(f"Starting coherence enhancement (Int={intensity:.2f}, DurF={duration_factor:.2f})...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
     if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
-    _ensure_soul_properties(soul_spark)
 
     try:
-        current_coherence = getattr(soul_spark, "coherence")
-        current_harmony = getattr(soul_spark, "harmony")
-        harmonics_list = getattr(soul_spark, "harmonics", [])
-        logger.debug(f"  Initial Coherence: {current_coherence:.4f}, Harmony: {current_harmony:.4f}, Harmonics Count: {len(harmonics_list)}")
+        current_coherence_cu = soul_spark.coherence # CU score
+        current_harmony = soul_spark.harmony # 0-1 factor
+        harmonics_list = getattr(soul_spark, 'harmonics', [])
 
-        # Use constants for calculation
+        # Coherence boost based on intensity, duration, and harmonic complexity
         harmonic_factor = min(1.0, len(harmonics_list) / HARMONIC_STRENGTHENING_COHERENCE_HARMONIC_COUNT_NORM)
-        base_increase = HARMONIC_STRENGTHENING_COHERENCE_INTENSITY_FACTOR * intensity * HARMONIC_STRENGTHENING_COHERENCE_DURATION_FACTOR * duration_factor
+        base_increase = HARMONIC_STRENGTHENING_COHERENCE_INTENSITY_FACTOR * intensity * duration_factor
         harmonic_bonus = harmonic_factor * intensity * HARMONIC_STRENGTHENING_COHERENCE_HARMONIC_FACTOR
-        total_increase = base_increase + harmonic_bonus
-        new_coherence = min(1.0, current_coherence + total_increase)
-        logger.debug(f"  Harmonic richness factor: {harmonic_factor:.4f}")
-        logger.debug(f"  Calculated coherence increase: {total_increase:.4f}, New Coherence: {new_coherence:.4f}")
+        total_coherence_boost_cu = (base_increase + harmonic_bonus) * MAX_COHERENCE_CU # Scale boost by max CU
+        new_coherence_cu = min(MAX_COHERENCE_CU, current_coherence_cu + total_coherence_boost_cu)
+        actual_coherence_gain = new_coherence_cu - current_coherence_cu
 
-        # Use constant for harmony boost
-        harmony_increase = total_increase * HARMONIC_STRENGTHENING_COHERENCE_HARMONY_BOOST
-        new_harmony = min(1.0, current_harmony + harmony_increase)
-        logger.debug(f"  Calculated harmony increase: {harmony_increase:.4f}, New Harmony: {new_harmony:.4f}")
+        # Harmony factor (0-1) boost based on coherence gain
+        harmony_increase_factor = (actual_coherence_gain / MAX_COHERENCE_CU) * HARMONIC_STRENGTHENING_COHERENCE_HARMONY_BOOST
+        new_harmony = min(1.0, current_harmony + harmony_increase_factor)
+        actual_harmony_gain = new_harmony - current_harmony
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "coherence", float(new_coherence))
-        setattr(soul_spark, "harmony", float(new_harmony))
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        soul_spark.coherence = float(new_coherence_cu)
+        soul_spark.harmony = float(new_harmony)
+        timestamp = datetime.now().isoformat(); soul_spark.last_modified = timestamp
 
-        # --- Calculate & Record Metrics ---
-        improvement = (total_increase / max(FLOAT_EPSILON, 1.0 - current_coherence)) if current_coherence < 1.0 else 0.0
+        # Calculate Metrics
         phase_metrics = {
-            "original_coherence": float(current_coherence), "new_coherence": float(new_coherence),
-            "coherence_change": float(total_increase), "harmony_increase": float(harmony_increase),
-            "final_harmony": float(new_harmony), "harmonic_factor": float(harmonic_factor),
-            "improvement_factor": float(improvement), "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('harmonic_strengthening_coherence', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record coherence enhancement metrics: {e}")
-
-        logger.info(f"Coherence enhancement complete. New Coherence: {new_coherence:.4f}, Harmony: {new_harmony:.4f}")
+            "original_coherence_cu": float(current_coherence_cu), "new_coherence_cu": float(new_coherence_cu),
+            "coherence_boost_cu": float(total_coherence_boost_cu), "actual_coherence_gain_cu": float(actual_coherence_gain),
+            "original_harmony": float(current_harmony), "new_harmony": float(new_harmony),
+            "harmony_gain": float(actual_harmony_gain), "harmonic_factor": float(harmonic_factor),
+            "timestamp": timestamp
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_coherence', phase_metrics)
+        logger.info(f"Coherence enhancement complete. New Coherence: {new_coherence_cu:.1f} CU, Harmony: {new_harmony:.4f}")
         return phase_metrics
 
-    except Exception as e: logger.error(f"Error during coherence enhancement: {e}", exc_info=True); raise RuntimeError("Coherence enhancement failed.") from e
+    except Exception as e: logger.error(f"Error coherence enhancement: {e}", exc_info=True); raise RuntimeError("Coherence enhancement failed.") from e
 
 
 def _perform_field_expansion(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
-    """Expands resonance field using constants. Modifies SoulSpark. Fails hard."""
-    logger.info(f"Starting field expansion for soul {soul_spark.spark_id} (Intensity={intensity:.2f})...")
+    """ Expands resonance field radius (absolute units?) and strength (0-1 factor). """
+    logger.info(f"Starting field expansion (Intensity={intensity:.2f})...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-    _ensure_soul_properties(soul_spark)
 
     try:
-        current_radius = getattr(soul_spark, "field_radius")
-        current_strength = getattr(soul_spark, "field_strength")
-        coherence = getattr(soul_spark, "coherence")
-        stability = getattr(soul_spark, "stability")
-        logger.debug(f"  Initial Field Radius: {current_radius:.4f}, Strength: {current_strength:.4f}")
-        logger.debug(f"  State factors: Coherence={coherence:.3f}, Stability={stability:.3f}")
+        # Ensure field attributes exist
+        if not hasattr(soul_spark, 'field_radius'): setattr(soul_spark, 'field_radius', 1.0) # Default relative size?
+        if not hasattr(soul_spark, 'field_strength'): setattr(soul_spark, 'field_strength', 0.5) # Default 0-1 factor
+        current_radius = float(soul_spark.field_radius) # Assuming absolute units now? Let's keep relative for now.
+        current_strength = float(soul_spark.field_strength) # 0-1 factor
+        # Use normalized stability/coherence scores
+        coherence_norm = soul_spark.coherence / MAX_COHERENCE_CU
+        stability_norm = soul_spark.stability / MAX_STABILITY_SU
 
+        expand_factor = ((coherence_norm + stability_norm) / 2.0) * HARMONIC_STRENGTHENING_EXPANSION_STATE_FACTOR
+        # Increase radius additively (or multiplicatively?)
+        radius_increase = HARMONIC_STRENGTHENING_EXPANSION_INTENSITY_FACTOR * intensity * expand_factor # Additive increase?
+        strength_increase_factor = HARMONIC_STRENGTHENING_EXPANSION_STR_INTENSITY_FACTOR * intensity * expand_factor * HARMONIC_STRENGTHENING_EXPANSION_STR_STATE_FACTOR
 
-        # Calculate expansion using constants
-        expand_factor = ((coherence + stability) / 2.0) * HARMONIC_STRENGTHENING_EXPANSION_STATE_FACTOR
-        radius_increase = HARMONIC_STRENGTHENING_EXPANSION_INTENSITY_FACTOR * intensity * expand_factor
-        strength_increase = HARMONIC_STRENGTHENING_EXPANSION_STR_INTENSITY_FACTOR * intensity * expand_factor * HARMONIC_STRENGTHENING_EXPANSION_STR_STATE_FACTOR
+        new_radius = current_radius + radius_increase # Additive increase
+        new_strength = min(1.0, current_strength + strength_increase_factor) # Additive increase to 0-1 factor
 
-        new_radius = current_radius + radius_increase
-        new_strength = min(1.0, current_strength + strength_increase)
-        logger.debug(f"  ExpandFactor={expand_factor:.3f}, RadiusInc={radius_increase:.4f}, StrengthInc={strength_increase:.4f}")
-        logger.debug(f"  New Field Radius: {new_radius:.4f}, New Strength: {new_strength:.4f}")
+        soul_spark.field_radius = float(new_radius)
+        soul_spark.field_strength = float(new_strength)
+        timestamp = datetime.now().isoformat(); soul_spark.last_modified = timestamp
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "field_radius", float(new_radius))
-        setattr(soul_spark, "field_strength", float(new_strength))
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
-
-        # --- Calculate & Record Metrics ---
-        radius_improvement_pct = (radius_increase / max(FLOAT_EPSILON, current_radius)) * 100.0 if current_radius > FLOAT_EPSILON else (100.0 if radius_increase > 0 else 0.0)
-        strength_improvement_factor = (strength_increase / max(FLOAT_EPSILON, 1.0 - current_strength)) if current_strength < 1.0 else 0.0
+        # Calculate Metrics
         phase_metrics = {
             "original_radius": float(current_radius), "new_radius": float(new_radius), "radius_change": float(radius_increase),
-            "radius_improvement_pct": float(radius_improvement_pct), "original_strength": float(current_strength),
-            "new_strength": float(new_strength), "strength_change": float(strength_increase),
-            "strength_improvement_factor": float(strength_improvement_factor),
-            "coherence_factor": float(coherence), "stability_factor": float(stability),
-            "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('harmonic_strengthening_expansion', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record field expansion metrics: {e}")
-
+            "original_strength": float(current_strength), "new_strength": float(new_strength),
+            "strength_change": float(new_strength - current_strength), "timestamp": timestamp
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_expansion', phase_metrics)
         logger.info(f"Field expansion complete. New Radius: {new_radius:.4f}, Strength: {new_strength:.4f}")
         return phase_metrics
 
-    except Exception as e: logger.error(f"Error during field expansion: {e}", exc_info=True); raise RuntimeError("Field expansion failed.") from e
+    except Exception as e: logger.error(f"Error field expansion: {e}", exc_info=True); raise RuntimeError("Field expansion failed.") from e
 
 
 # --- Orchestration Function ---
+def perform_harmonic_strengthening(soul_spark: SoulSpark, intensity: float = HARMONIC_STRENGTHENING_INTENSITY_DEFAULT, duration_factor: float = HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT) -> Tuple[SoulSpark, Dict[str, Any]]:
+    """ Performs complete harmonic strengthening. Modifies SoulSpark. Uses SU/CU units. """
+    # --- Input Validation ---
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
+    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor out of range.")
 
-def perform_harmonic_strengthening(soul_spark: SoulSpark, intensity: float = 0.7, duration_factor: float = 1.0) -> Tuple[SoulSpark, Dict[str, Any]]:
-    """
-    Performs the complete harmonic strengthening process. Modifies SoulSpark. Fails hard. Uses constants.
-
-    Args:
-        soul_spark (SoulSpark): The soul spark object (will be modified).
-        intensity (float): Intensity of the strengthening process (0.1-1.0).
-        duration_factor (float): Relative duration multiplier for phases (0.1-2.0).
-
-    Returns:
-        Tuple[SoulSpark, Dict[str, Any]]: A tuple containing:
-            - The modified SoulSpark object.
-            - overall_metrics (Dict): Summary metrics for the strengthening process.
-
-    Raises:
-        TypeError: If soul_spark is not a SoulSpark instance.
-        ValueError: If parameters invalid or prerequisites not met.
-        RuntimeError: If any phase fails critically.
-    """
-    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark must be a SoulSpark instance.")
-    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity must be between 0.1 and 1.0")
-    if not (0.1 <= duration_factor <= 2.0): raise ValueError("Duration factor must be between 0.1 and 2.0")
-
-    spark_id = getattr(soul_spark, 'spark_id', 'unknown')
-    logger.info(f"--- Starting Harmonic Strengthening for Soul {spark_id} (Intensity={intensity:.2f}, DurationFactor={duration_factor:.2f}) ---")
-    start_time_iso = datetime.now().isoformat()
-    start_time_dt = datetime.fromisoformat(start_time_iso)
+    spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
+    logger.info(f"--- Starting Harmonic Strengthening for Soul {spark_id} (Int={intensity:.2f}, DurF={duration_factor:.2f}) ---")
+    start_time_iso = datetime.now().isoformat(); start_time_dt = datetime.fromisoformat(start_time_iso)
     process_metrics_summary = {'steps': {}}
 
     try:
-        # --- Check Prerequisites ---
-        if not _check_prerequisites(soul_spark):
+        _ensure_soul_properties(soul_spark)
+        if not _check_prerequisites(soul_spark): # Uses SU/CU thresholds
             raise ValueError("Soul prerequisites for harmonic strengthening not met.")
-        logger.info("Prerequisites checked successfully.")
 
-        # --- Store Initial State ---
+        # Store Initial State (Absolute SU/CU and Factors)
         initial_state = {
-            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
-            'frequency': getattr(soul_spark, 'frequency', 0.0), 'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
-            'pattern_stability': getattr(soul_spark, 'pattern_stability', 0.0), 'harmony': getattr(soul_spark, 'harmony', 0.0),
-            'field_radius': getattr(soul_spark, 'field_radius', 0.0), 'field_strength': getattr(soul_spark, 'field_strength', 0.0),}
-        logger.info(f"Initial State: Stab={initial_state['stability']:.4f}, Coh={initial_state['coherence']:.4f}, Freq={initial_state['frequency']:.2f}, PhiRes={initial_state['phi_resonance']:.4f}")
+            'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
+            'frequency_hz': soul_spark.frequency, 'phi_resonance': soul_spark.phi_resonance,
+            'pattern_coherence': soul_spark.pattern_coherence, 'harmony': soul_spark.harmony,
+            'field_radius': soul_spark.field_radius, 'field_strength': soul_spark.field_strength
+        }
+        logger.info(f"Initial State: S={initial_state['stability_su']:.1f}SU, C={initial_state['coherence_cu']:.1f}CU, Freq={initial_state['frequency_hz']:.1f}Hz")
 
-        # --- Run Phases (Fail hard within each) ---
-        logger.info("Step 1: Frequency Tuning...")
+        # Run Phases
         metrics1 = _perform_frequency_tuning(soul_spark, intensity)
-        process_metrics_summary['steps']['tuning'] = metrics1
-
-        logger.info("Step 2: Phi Resonance Amplification...")
         metrics2 = _perform_phi_resonance_amplification(soul_spark, intensity, duration_factor)
-        process_metrics_summary['steps']['phi_resonance'] = metrics2
-
-        logger.info("Step 3: Pattern Stabilization...")
         metrics3 = _perform_pattern_stabilization(soul_spark, intensity)
-        process_metrics_summary['steps']['pattern_stabilization'] = metrics3
-
-        logger.info("Step 4: Coherence Enhancement...")
         metrics4 = _perform_coherence_enhancement(soul_spark, intensity, duration_factor)
-        process_metrics_summary['steps']['coherence'] = metrics4
-
-        logger.info("Step 5: Field Expansion...")
         metrics5 = _perform_field_expansion(soul_spark, intensity)
-        process_metrics_summary['steps']['expansion'] = metrics5
+        # Store step metrics if needed: process_metrics_summary['steps']['tuning'] = metrics1 ...
 
-        # --- Finalize ---
-        setattr(soul_spark, 'harmonically_strengthened', True) # Set flag
+        # Finalize
+        setattr(soul_spark, FLAG_HARMONICALLY_STRENGTHENED, True)
+        setattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, True)
+        if hasattr(soul_spark, 'update_state'): soul_spark.update_state() # Final update of S/C scores
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        if hasattr(soul_spark, 'add_memory_echo'): soul_spark.add_memory_echo(f"Harmonically strengthened. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
 
-        # --- Compile Overall Metrics ---
+        # Compile Overall Metrics
         end_time_iso = datetime.now().isoformat(); end_time_dt = datetime.fromisoformat(end_time_iso)
-        final_state = { # Capture final state metrics
-            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
-            'frequency': getattr(soul_spark, 'frequency', 0.0), 'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
-            'pattern_stability': getattr(soul_spark, 'pattern_stability', 0.0), 'harmony': getattr(soul_spark, 'harmony', 0.0),
-            'field_radius': getattr(soul_spark, 'field_radius', 0.0), 'field_strength': getattr(soul_spark, 'field_strength', 0.0),
-            'harmonically_strengthened': getattr(soul_spark, 'harmonically_strengthened', False) }
-        # Calculate overall improvement %
-        initial_avg = (initial_state['stability'] + initial_state['coherence']) / 2.0
-        final_avg = (final_state['stability'] + final_state['coherence']) / 2.0
-        improvement_pct = ((final_avg - initial_avg) / max(FLOAT_EPSILON, initial_avg)) * 100.0
+        final_state = { # Report final state in correct units
+            'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
+            'frequency_hz': soul_spark.frequency, 'phi_resonance': soul_spark.phi_resonance,
+            'pattern_coherence': soul_spark.pattern_coherence, 'harmony': soul_spark.harmony,
+            'field_radius': soul_spark.field_radius, 'field_strength': soul_spark.field_strength,
+            FLAG_HARMONICALLY_STRENGTHENED: getattr(soul_spark, FLAG_HARMONICALLY_STRENGTHENED)
+        }
+        # Calculate overall improvement based on Stability/Coherence SU/CU gain
+        initial_avg_score = (initial_state['stability_su'] / MAX_STABILITY_SU + initial_state['coherence_cu'] / MAX_COHERENCE_CU) / 2.0
+        final_avg_score = (final_state['stability_su'] / MAX_STABILITY_SU + final_state['coherence_cu'] / MAX_COHERENCE_CU) / 2.0
+        improvement_pct = ((final_avg_score - initial_avg_score) / max(FLOAT_EPSILON, initial_avg_score)) * 100.0 if initial_avg_score > FLOAT_EPSILON else (100.0 if final_avg_score > 0 else 0.0)
 
         overall_metrics = {
-            'action': 'harmonic_strengthening', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
-            'duration_seconds': (end_time_dt - start_time_dt).total_seconds(), 'intensity_setting': intensity, 'duration_factor': duration_factor,
-            'initial_state': initial_state, 'final_state': final_state, 'overall_improvement_pct': float(improvement_pct), 'success': True, }
-        try: metrics.record_metrics('harmonic_strengthening_summary', overall_metrics)
-        except Exception as e: logger.error(f"Failed to record summary metrics for strengthening: {e}")
+            'action': 'harmonic_strengthening', 'soul_id': spark_id,
+            'start_time': start_time_iso, 'end_time': end_time_iso,
+            'duration_seconds': (end_time_dt - start_time_dt).total_seconds(),
+            'intensity_setting': intensity, 'duration_factor': duration_factor,
+            'initial_state': initial_state, 'final_state': final_state,
+            'stability_gain_su': final_state['stability_su'] - initial_state['stability_su'],
+            'coherence_gain_cu': final_state['coherence_cu'] - initial_state['coherence_cu'],
+            'overall_improvement_pct': float(improvement_pct), 'success': True,
+        }
+        if METRICS_AVAILABLE: metrics.record_metrics('harmonic_strengthening_summary', overall_metrics)
 
         logger.info(f"--- Harmonic Strengthening Completed Successfully for Soul {spark_id} ---")
-        logger.info(f"Duration: {overall_metrics['duration_seconds']:.2f}s, Overall Improvement: {improvement_pct:.2f}%")
-        logger.info(f"Final State: Stab={final_state['stability']:.4f}, Coh={final_state['coherence']:.4f}, Freq={final_state['frequency']:.2f}")
-
         return soul_spark, overall_metrics
 
-    except Exception as e:
-        end_time_iso = datetime.now().isoformat()
-        logger.critical(f"Harmonic strengthening process failed critically for soul {spark_id}: {e}", exc_info=True)
-        failed_step = "unknown"; steps_completed = list(process_metrics_summary['steps'].keys())
-        if steps_completed: failed_step = steps_completed[-1]
-        # Mark soul as failed this stage? Or just log? Let's just log.
-        setattr(soul_spark, "harmonically_strengthened", False) # Mark as failed
+    except (ValueError, TypeError, AttributeError) as e_val: # Catch setup/attribute errors
+         logger.error(f"Harmonic Strengthening failed for {spark_id} due to validation error: {e_val}", exc_info=True)
+         record_hs_failure(spark_id, start_time_iso, 'prerequisites/validation', str(e_val))
+         raise
+    except RuntimeError as e_rt: # Catch errors from sub-functions
+         logger.critical(f"Harmonic Strengthening failed critically for {spark_id}: {e_rt}", exc_info=True)
+         # Determine failed step based on which metrics were recorded? More complex. Assume 'runtime'.
+         record_hs_failure(spark_id, start_time_iso, 'runtime', str(e_rt))
+         # Reset flags?
+         setattr(soul_spark, FLAG_HARMONICALLY_STRENGTHENED, False)
+         setattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, False)
+         raise
+    except Exception as e: # Catch unexpected errors
+         logger.critical(f"Unexpected error during Harmonic Strengthening for {spark_id}: {e}", exc_info=True)
+         record_hs_failure(spark_id, start_time_iso, 'unexpected', str(e))
+         setattr(soul_spark, FLAG_HARMONICALLY_STRENGTHENED, False)
+         setattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, False)
+         raise RuntimeError(f"Unexpected Harmonic Strengthening failure: {e}") from e
 
-        if METRICS_AVAILABLE:
-             try: metrics.record_metrics('harmonic_strengthening_summary', {
-                  'action': 'harmonic_strengthening', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
-                  'duration_seconds': (datetime.fromisoformat(end_time_iso) - datetime.fromisoformat(start_time_iso)).total_seconds(),
-                  'intensity_setting': intensity, 'duration_factor': duration_factor, 'success': False, 'error': str(e), 'failed_step': failed_step })
-             except Exception as metric_e: logger.error(f"Failed to record failure metrics: {metric_e}")
-        raise RuntimeError(f"Harmonic strengthening process failed at step '{failed_step}'.") from e
-
-# --- Example Usage ---
-if __name__ == "__main__":
-    print("Running Harmonic Strengthening Module Example...")
-    if not DEPENDENCIES_AVAILABLE:
-         print("ERROR: Core dependencies not available. Cannot run example.")
-    else:
-        test_soul = SoulSpark()
-        test_soul.spark_id="test_harmonic_constants_001"
-        # Set state *after* Sephiroth journey might occur
-        test_soul.stability = 0.70
-        test_soul.coherence = 0.65
-        test_soul.frequency = 600.0 # Example frequency
-        test_soul.formation_complete = True
-        test_soul.sephiroth_journey_complete = True # Example flag set by previous controller
-        test_soul.aspects = {'unity': {'strength': 0.8}, 'love': {'strength': 0.6}, 'wisdom': {'strength': 0.5}}
-        test_soul.last_modified = datetime.now().isoformat()
-
-        print(f"\nInitial Soul State ({test_soul.spark_id}):")
-        print(f"  Stability: {test_soul.stability:.4f}")
-        print(f"  Coherence: {test_soul.coherence:.4f}")
-        print(f"  Frequency: {test_soul.frequency:.4f}")
-        print(f"  Aspects Count: {len(test_soul.aspects)}")
-
+# --- Failure Metric Helper ---
+def record_hs_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
+    """ Helper to record failure metrics consistently. """
+    if METRICS_AVAILABLE:
         try:
-            print("\n--- Running Harmonic Strengthening Process ---")
-            modified_soul, summary_metrics_result = perform_harmonic_strengthening(
-                soul_spark=test_soul,
-                intensity=0.85,
-                duration_factor=1.0
-            )
+            metrics.record_metrics('harmonic_strengthening_summary', {
+                'action': 'harmonic_strengthening', 'soul_id': spark_id,
+                'start_time': start_time_iso, 'end_time': datetime.now().isoformat(),
+                'duration_seconds': (datetime.now() - datetime.fromisoformat(start_time_iso)).total_seconds(),
+                'success': False, 'error': error_msg, 'failed_step': failed_step
+            })
+        except Exception as metric_e:
+            logger.error(f"Failed to record HS failure metrics for {spark_id}: {metric_e}")
 
-            print("\n--- Strengthening Complete ---")
-            print("Final Soul State Summary:")
-            print(f"  ID: {modified_soul.spark_id}")
-            print(f"  Harmonically Strengthened Flag: {getattr(modified_soul, 'harmonically_strengthened', False)}")
-            print(f"  Final Stability: {getattr(modified_soul, 'stability', 'N/A'):.4f}")
-            print(f"  Final Coherence: {getattr(modified_soul, 'coherence', 'N/A'):.4f}")
-            print(f"  Final Frequency: {getattr(modified_soul, 'frequency', 'N/A'):.2f} Hz")
-            print(f"  Final Phi Resonance: {getattr(modified_soul, 'phi_resonance', 'N/A'):.4f}")
-            print(f"  Final Pattern Stability: {getattr(modified_soul, 'pattern_stability', 'N/A'):.4f}")
-            print(f"  Final Harmony: {getattr(modified_soul, 'harmony', 'N/A'):.4f}")
-
-
-            print("\nOverall Process Metrics:")
-            # print(json.dumps(summary_metrics_result, indent=2, default=str))
-            print(f"  Duration: {summary_metrics_result.get('duration_seconds', 'N/A'):.2f}s")
-            print(f"  Success: {summary_metrics_result.get('success')}")
-            print(f"  Overall Improvement % (Stab+Coh): {summary_metrics_result.get('overall_improvement_pct', 'N/A'):.2f}%")
-
-        except (ValueError, TypeError, RuntimeError, ImportError, AttributeError) as e:
-            print(f"\n--- ERROR during Harmonic Strengthening Example ---")
-            print(f"An error occurred: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
-        except Exception as e:
-            print(f"\n--- UNEXPECTED ERROR during Harmonic Strengthening Example ---")
-            print(f"An unexpected error occurred: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
-
-    print("\nHarmonic Strengthening Module Example Finished.")
-
-# --- END OF FILE harmonic_strengthening.py ---
+# --- END OF FILE src/stage_1/soul_formation/harmonic_strengthening.py ---

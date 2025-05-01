@@ -1,13 +1,9 @@
-# --- START OF FILE birth.py ---
-
 """
-Birth Process Functions (Refactored - Operates on SoulSpark Object, Uses Constants)
+Birth Process Functions (Refactored V4.1 - SEU/SU/CU Units)
 
-Handles the process of birthing a soul into physical incarnation, including
-attachment, life cord transfer, memory veil deployment, and first breath.
-Modifies the SoulSpark object instance directly.
-
-Author: Soul Development Framework Team
+Handles birth into physical incarnation. Uses 0-1 prerequisites for cord/earth resonance.
+Splits energy into physical/spiritual (SEU). Modifies final frequency (Hz) and stability (SU).
+Integrates Mother Resonance profile influence (passed as dict). Modifies SoulSpark.
 """
 
 import logging
@@ -18,509 +14,417 @@ from typing import Dict, List, Any, Tuple, Optional
 import time
 import uuid
 from datetime import datetime
-from constants.constants import *
-
-# Remove unused imports
-# PHI, GOLDEN_RATIO, EDGE_OF_CHAOS_RATIO
-
-# Extract specific Earth freq
-EARTH_BREATH_FREQUENCY = EARTH_FREQUENCIES.get("breath", 0.2)  # Default ~12 breaths/min
-
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    from constants.constants import EARTH_FREQUENCIES
-    print(f"EARTH_FREQUENCIES successfully imported: {EARTH_FREQUENCIES}")
-except Exception as e:
-    print(f"Failed to import EARTH_FREQUENCIES: {type(e).__name__}: {e}")
+    from constants.constants import *
+except ImportError as e:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.critical(f"CRITICAL ERROR: Could not import constants: {e}.")
+    raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
 try:
-    from stage_1.soul_formation.soul_spark import SoulSpark
-    DEPENDENCIES_AVAILABLE = True
+    from stage_1.soul_spark.soul_spark import SoulSpark
 except ImportError as e:
-    logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}. Birth process cannot function.")
+    logger.critical(f"CRITICAL ERROR: Failed to import SoulSpark: {e}.")
     raise ImportError(f"Core dependency SoulSpark missing: {e}") from e
 
+# --- Metrics Tracking ---
 try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import metrics_tracking: {e}. Metrics will not be recorded.")
+except ImportError:
+    logger.error("Metrics tracking module not found. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
     class MetricsPlaceholder:
-        def record_metrics(self, *args, **kwargs):
-            pass
+        def record_metrics(self, *args, **kwargs): pass
     metrics = MetricsPlaceholder()
 
+# Mother Glyph Path (Keep for reference)
+MOTHER_GLYPH_PATH = "glyphs/glyph_resonance/encoded_glyphs/encoded_mother_sigil.jpeg"
 
 # --- Helper Functions ---
 
 def _check_prerequisites(soul_spark: SoulSpark) -> bool:
-    """Checks if the soul meets prerequisites for birth using constants."""
+    """ Checks prerequisites using 0-1 factors for cord/earth resonance. """
     logger.debug(f"Checking birth prerequisites for soul {soul_spark.spark_id}...")
-    # Check prerequisite flags first
-    if BIRTH_PREREQ_EARTH_HARMONIZED and not getattr(soul_spark, "earth_harmonized", False):
-        logger.error("Prerequisite failed: Soul has not been harmonized with Earth.")
+    if not isinstance(soul_spark, SoulSpark): return False
+
+    # 1. Stage Flag
+    if not getattr(soul_spark, FLAG_READY_FOR_BIRTH, False): # Set by Identity
+        logger.error(f"Prerequisite failed: Soul not marked {FLAG_READY_FOR_BIRTH}.")
         return False
-    if BIRTH_PREREQ_READY_FOR_BIRTH and not getattr(soul_spark, "ready_for_birth", False):
-        logger.error("Prerequisite failed: Soul not marked ready for birth (e.g., after Earth Harmonization).")
+    # Make sure identity was actually crystallized (redundant check, but safe)
+    if not getattr(soul_spark, FLAG_IDENTITY_CRYSTALLIZED, False):
+        logger.error("Prerequisite failed: Soul identity not crystallized (flag mismatch).")
         return False
 
-    # Check numerical prerequisites using constants
-    cord_integrity = getattr(soul_spark, "cord_integrity", 0.0)
+    # 2. Minimum State Thresholds (Factors 0-1)
+    cord_integrity = getattr(soul_spark, "cord_integrity", 0.0) # 0-1 factor
+    earth_resonance = getattr(soul_spark, "earth_resonance", 0.0) # 0-1 factor
+
     if cord_integrity < BIRTH_PREREQ_CORD_INTEGRITY_MIN:
-        logger.error(f"Prerequisite failed: Life cord integrity ({cord_integrity:.3f}) below threshold ({BIRTH_PREREQ_CORD_INTEGRITY_MIN}).")
-        return False
-    earth_resonance = getattr(soul_spark, "earth_resonance", 0.0)
+        logger.error(f"Prerequisite failed: Cord integrity ({cord_integrity:.3f}) < {BIRTH_PREREQ_CORD_INTEGRITY_MIN})"); return False
     if earth_resonance < BIRTH_PREREQ_EARTH_RESONANCE_MIN:
-        logger.error(f"Prerequisite failed: Earth resonance ({earth_resonance:.3f}) below threshold ({BIRTH_PREREQ_EARTH_RESONANCE_MIN}).")
-        return False
+        logger.error(f"Prerequisite failed: Earth Resonance ({earth_resonance:.3f}) < {BIRTH_PREREQ_EARTH_RESONANCE_MIN})"); return False
 
     logger.debug("Birth prerequisites met.")
     return True
 
-def _connect_to_physical_form(soul_spark: SoulSpark, intensity: float) -> Tuple[float, float, Dict[str, Any]]:
-    """Connects soul to physical form using constants. Modifies SoulSpark implicitly via return values used later. Fails hard."""
+def _ensure_soul_properties(soul_spark: SoulSpark):
+    """ Ensure soul has necessary properties for birth. """
+    logger.debug(f"Ensuring properties for birth process (Soul {soul_spark.spark_id})...")
+    required = ['frequency', 'stability', 'coherence', 'energy', 'cord_integrity', 'earth_resonance', 'life_cord']
+    if not all(hasattr(soul_spark, attr) for attr in required):
+        missing = [attr for attr in required if not hasattr(soul_spark, attr)]
+        raise AttributeError(f"SoulSpark missing essential attributes for Birth: {missing}")
+
+    if soul_spark.frequency <= FLOAT_EPSILON: raise ValueError("Soul frequency must be positive.")
+    if not isinstance(soul_spark.life_cord, dict): soul_spark.life_cord = {} # Ensure dict
+
+    # Initialize attributes set during birth if missing
+    defaults = {
+        "memory_veil": None, "breath_pattern": None, "physical_integration": 0.0,
+        "incarnated": False, "birth_time": None, "physical_energy": 0.0,
+        "spiritual_energy": soul_spark.energy # Initially all energy is spiritual
+    }
+    for attr, default in defaults.items():
+        if not hasattr(soul_spark, attr) or getattr(soul_spark, attr) is None:
+             setattr(soul_spark, attr, default)
+
+    logger.debug("Soul properties ensured for Birth.")
+
+
+# --- Core Birth Functions (Updated energy split, stability units) ---
+
+def _connect_to_physical_form(soul_spark: SoulSpark, intensity: float, mother_profile: Optional[Dict]) -> Tuple[float, float, Dict[str, Any]]:
+    """ Connects soul to physical form. Returns connection strength (0-1) and acceptance (0-1). """
     logger.info("Phase: Connecting to physical form...")
-    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity must be between 0.1 and 1.0.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
 
     try:
-        earth_resonance = getattr(soul_spark, "earth_resonance", 0.6) # Get required attrs
-        cord_integrity = getattr(soul_spark, "cord_integrity", 0.7)
-        logger.debug(f"  Input values: EarthRes={earth_resonance:.3f}, CordInteg={cord_integrity:.3f}, Intensity={intensity:.2f}")
+        # Use 0-1 factors for calculation
+        earth_resonance = soul_spark.earth_resonance
+        cord_integrity = soul_spark.cord_integrity
+        mother_nurturing = mother_profile.get('nurturing_capacity', 0.5) if mother_profile else 0.5
+        mother_spiritual = mother_profile.get('spiritual', {}).get('connection', 0.5) if mother_profile else 0.5
+        mother_love = mother_profile.get('love_resonance', 0.5) if mother_profile else 0.5
 
-        # Calculate connection strength and trauma using constants
-        base_strength = (earth_resonance * BIRTH_CONN_WEIGHT_RESONANCE +
-                         cord_integrity * BIRTH_CONN_WEIGHT_INTEGRITY)
-        trauma_factor = intensity * BIRTH_CONN_TRAUMA_FACTOR
+        base_strength = (earth_resonance * BIRTH_CONN_WEIGHT_RESONANCE + cord_integrity * BIRTH_CONN_WEIGHT_INTEGRITY)
+        base_strength *= (1.0 + mother_spiritual * BIRTH_CONN_MOTHER_STRENGTH_FACTOR)
         connection_factor = intensity * BIRTH_CONN_STRENGTH_FACTOR
-        max_potential = base_strength * (1.0 + connection_factor)
-        connection_strength = min(BIRTH_CONN_STRENGTH_CAP, max_potential) # Use constant cap
-        trauma_level = trauma_factor # Trauma directly related to intensity factor
-        acceptance = max(BIRTH_ACCEPTANCE_MIN, 1.0 - trauma_level * BIRTH_ACCEPTANCE_TRAUMA_FACTOR) # Use constants
+        connection_strength = min(BIRTH_CONN_STRENGTH_CAP, max(0.0, base_strength * (1.0 + connection_factor))) # 0-1 score
 
-        logger.debug(f"  Calculated: BaseStr={base_strength:.3f}, Trauma={trauma_level:.3f}, ConnFactor={connection_factor:.3f}")
-        logger.debug(f"  Result: ConnStrength={connection_strength:.3f}, Acceptance={acceptance:.3f}")
+        trauma_base = intensity * BIRTH_CONN_TRAUMA_FACTOR
+        trauma_reduction = mother_nurturing * BIRTH_CONN_MOTHER_TRAUMA_REDUCTION
+        trauma_level = max(0.0, min(1.0, trauma_base - trauma_reduction)) # 0-1 score
+
+        acceptance_base = max(BIRTH_ACCEPTANCE_MIN, 1.0 - trauma_level * BIRTH_ACCEPTANCE_TRAUMA_FACTOR)
+        acceptance_boost = mother_love * BIRTH_CONN_MOTHER_ACCEPTANCE_FACTOR
+        acceptance = min(1.0, max(0.0, acceptance_base + acceptance_boost)) # 0-1 score
 
         phase_metrics = {
-            "base_strength": float(base_strength), "trauma_level": float(trauma_level),
-            "connection_strength": float(connection_strength), "form_acceptance": float(acceptance),
+            "connection_strength_factor": float(connection_strength), "form_acceptance_factor": float(acceptance),
+            "trauma_level_factor": float(trauma_level), "mother_influence_applied": mother_profile is not None,
             "timestamp": datetime.now().isoformat() }
-        try: metrics.record_metrics('birth_connection', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record connection metrics: {e}")
-
-        logger.info(f"Physical form connection phase complete. Connection: {connection_strength:.3f}, Acceptance: {acceptance:.3f}")
-        # Return values needed for subsequent phases and finalization
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_connection', phase_metrics)
+        logger.info(f"Physical form connection phase complete. ConnFactor: {connection_strength:.3f}, AcceptFactor: {acceptance:.3f}")
         return float(connection_strength), float(acceptance), phase_metrics
 
-    except AttributeError as ae: logger.error(f"SoulSpark missing attribute for connection: {ae}"); raise
     except Exception as e: logger.error(f"Error connecting to physical form: {e}", exc_info=True); raise RuntimeError("Physical form connection failed.") from e
 
-
-def _transfer_life_cord(soul_spark: SoulSpark, physical_connection: float, intensity: float) -> Dict[str, Any]:
-    """Transfers life cord using constants. Modifies SoulSpark. Fails hard."""
+def _transfer_life_cord(soul_spark: SoulSpark, physical_connection: float, intensity: float, mother_profile: Optional[Dict]) -> Dict[str, Any]:
+    """ Transfers life cord. Modifies cord_integrity (0-1), bandwidth (Hz). """
     logger.info("Phase: Transferring life cord...")
-    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-    if not hasattr(soul_spark, 'life_cord') or not isinstance(soul_spark.life_cord, dict):
-        raise AttributeError("SoulSpark requires a valid 'life_cord' dictionary attribute.")
-    if not hasattr(soul_spark, 'cord_integrity'):
-         raise AttributeError("SoulSpark missing 'cord_integrity' attribute.")
+    if not (0.0 <= physical_connection <= 1.0): raise ValueError("physical_connection invalid.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity invalid.")
+    if not isinstance(soul_spark.life_cord, dict): raise AttributeError("Missing 'life_cord' dict.")
 
     try:
-        life_cord = soul_spark.life_cord # Get the dict
-        cord_integrity = soul_spark.cord_integrity
-        logger.debug(f"  Input values: CordInteg={cord_integrity:.3f}, PhysConn={physical_connection:.3f}, Intensity={intensity:.2f}")
+        life_cord = soul_spark.life_cord; current_integrity = soul_spark.cord_integrity # 0-1 factor
+        mother_healing = mother_profile.get('healing', {}).get('resonance', 0.5) if mother_profile else 0.5
+        mother_protection = mother_profile.get('healing', {}).get('protection', 0.5) if mother_profile else 0.5
 
-        # Calculate transfer efficiency using constants
-        transfer_efficiency = cord_integrity * (1.0 - intensity * BIRTH_CORD_TRANSFER_INTENSITY_FACTOR)
-        transfer_efficiency = max(0.0, min(1.0, transfer_efficiency)) # Clamp
-        logger.debug(f"  Calculated Transfer Efficiency: {transfer_efficiency:.4f}")
+        base_efficiency_loss = intensity * BIRTH_CORD_TRANSFER_INTENSITY_FACTOR
+        efficiency_boost = mother_healing * BIRTH_CORD_MOTHER_EFFICIENCY_FACTOR
+        transfer_efficiency = current_integrity * (1.0 - base_efficiency_loss + efficiency_boost) # 0-1 factor
+        transfer_efficiency = max(0.0, min(1.0, transfer_efficiency))
 
-        # Calculate form integration using constants
-        form_integration = physical_connection * BIRTH_CORD_INTEGRATION_CONN_FACTOR
-        form_integration = max(0.0, min(1.0, form_integration))
-        logger.debug(f"  Calculated Form Integration: {form_integration:.4f}")
+        base_integration = physical_connection * BIRTH_CORD_INTEGRATION_CONN_FACTOR
+        integration_boost = mother_protection * BIRTH_CORD_MOTHER_INTEGRATION_FACTOR
+        form_integration = min(1.0, max(0.0, base_integration + integration_boost)) # 0-1 factor
 
-        # Calculate new cord integrity and bandwidth
-        new_integrity = cord_integrity * transfer_efficiency
-        original_bandwidth = life_cord.get("bandwidth", 100.0) # Get current or default
-        new_bandwidth = original_bandwidth * transfer_efficiency
-        logger.debug(f"  New Integrity: {new_integrity:.4f}, New Bandwidth: {new_bandwidth:.2f}")
+        new_integrity = current_integrity * transfer_efficiency # Update 0-1 factor
+        original_bandwidth_hz = life_cord.get("bandwidth_hz", 100.0) # Get Hz
+        new_bandwidth_hz = original_bandwidth_hz * transfer_efficiency # Scale Hz
 
-        # --- Update SoulSpark ---
-        # Modify the existing life_cord dictionary on the soul_spark
-        life_cord["form_integration"] = float(form_integration)
+        # Update SoulSpark
+        life_cord["form_integration_factor"] = float(form_integration)
         life_cord["physical_anchored"] = True
-        life_cord["bandwidth"] = float(new_bandwidth)
-        # Update the top-level integrity attribute
-        setattr(soul_spark, "cord_integrity", float(new_integrity))
-        # Add form_integration attribute directly? Or keep in cord dict? Keep in cord for now.
-        # setattr(soul_spark, "form_integration", float(form_integration))
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        life_cord["bandwidth_hz"] = float(new_bandwidth_hz) # Store Hz
+        setattr(soul_spark, "cord_integrity", float(new_integrity)) # Update 0-1 score
+        timestamp = datetime.now().isoformat(); setattr(soul_spark, 'last_modified', timestamp)
 
-        # --- Calculate & Record Metrics ---
         phase_metrics = {
-            "transfer_efficiency": float(transfer_efficiency), "form_integration": float(form_integration),
-            "original_integrity": float(cord_integrity), "new_integrity": float(new_integrity),
-            "integrity_change": float(new_integrity - cord_integrity),
-            "original_bandwidth": float(original_bandwidth), "new_bandwidth": float(new_bandwidth),
-            "bandwidth_reduction": float(original_bandwidth - new_bandwidth),
-            "timestamp": getattr(soul_spark, 'last_modified') }
-        try: metrics.record_metrics('birth_cord_transfer', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record cord transfer metrics: {e}")
-
-        logger.info(f"Life cord transferred. Efficiency: {transfer_efficiency:.3f}, New Integrity: {new_integrity:.3f}, Form Integration: {form_integration:.3f}")
+            "transfer_efficiency_factor": transfer_efficiency, "form_integration_factor": form_integration,
+            "new_integrity_factor": new_integrity, "new_bandwidth_hz": new_bandwidth_hz,
+            "mother_influence_applied": mother_profile is not None, "timestamp": timestamp }
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_cord_transfer', phase_metrics)
+        logger.info(f"Life cord transferred. IntegrityFactor: {new_integrity:.3f}, BW: {new_bandwidth_hz:.1f} Hz")
         return phase_metrics
 
     except Exception as e: logger.error(f"Error transferring life cord: {e}", exc_info=True); raise RuntimeError("Life cord transfer failed.") from e
 
-
-def _deploy_memory_veil(soul_spark: SoulSpark, intensity: float) -> Dict[str, Any]:
-    """Deploys memory veil using constants. Modifies SoulSpark. Fails hard."""
+def _deploy_memory_veil(soul_spark: SoulSpark, intensity: float, mother_profile: Optional[Dict]) -> Dict[str, Any]:
+    """ Deploys memory veil. Modifies memory_retention (0-1 factor). """
     logger.info("Phase: Deploying memory veil...")
     if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-
     try:
-        # Calculate veil properties using constants
-        veil_strength = BIRTH_VEIL_STRENGTH_BASE + intensity * BIRTH_VEIL_STRENGTH_INTENSITY_FACTOR
-        veil_permanence = BIRTH_VEIL_PERMANENCE_BASE + intensity * BIRTH_VEIL_PERMANENCE_INTENSITY_FACTOR
-        base_retention = BIRTH_VEIL_RETENTION_BASE + intensity * BIRTH_VEIL_RETENTION_INTENSITY_FACTOR
-        base_retention = max(BIRTH_VEIL_RETENTION_MIN, base_retention) # Ensure minimum retention
+        mother_love = mother_profile.get('love_resonance', 0.5) if mother_profile else 0.5
 
-        # Clamp values
-        veil_strength = max(0.0, min(1.0, veil_strength))
-        veil_permanence = max(0.0, min(1.0, veil_permanence))
-        base_retention = max(0.0, min(1.0, base_retention))
-        logger.debug(f"  Calculated Veil Properties: Strength={veil_strength:.3f}, Permanence={veil_permanence:.3f}, BaseRetention={base_retention:.3f}")
+        veil_strength = BIRTH_VEIL_STRENGTH_BASE + intensity * BIRTH_VEIL_STRENGTH_INTENSITY_FACTOR # 0-1 factor
+        veil_permanence = BIRTH_VEIL_PERMANENCE_BASE + intensity * BIRTH_VEIL_PERMANENCE_INTENSITY_FACTOR # 0-1 factor
+        base_retention = BIRTH_VEIL_RETENTION_BASE + intensity * BIRTH_VEIL_RETENTION_INTENSITY_FACTOR # Base 0-1 factor
+        retention_boost = mother_love * BIRTH_VEIL_MOTHER_RETENTION_FACTOR
+        final_retention = max(BIRTH_VEIL_RETENTION_MIN, min(1.0, base_retention + retention_boost)) # Final 0-1 factor
+        veil_strength = max(0.0, min(1.0, veil_strength)); veil_permanence = max(0.0, min(1.0, veil_permanence))
 
-        # Calculate retention for specific memory types using constant modifiers
-        memory_retentions = {}
-        for mem_type, mod in BIRTH_VEIL_MEMORY_RETENTION_MODS.items():
-            retention = min(1.0, base_retention + mod) # Add modifier
-            memory_retentions[mem_type] = float(retention)
-        logger.debug(f"  Specific Memory Retentions: {memory_retentions}")
+        memory_retentions = { mem_type: float(min(1.0, max(0.0, final_retention + mod))) for mem_type, mod in BIRTH_VEIL_MEMORY_RETENTION_MODS.items() }
 
-        # Create veil configuration dictionary
-        veil_config = {
-            "strength": float(veil_strength), "permanence": float(veil_permanence),
-            "base_retention": float(base_retention), "memory_retentions": memory_retentions,
-            "deployment_time": datetime.now().isoformat()
-        }
+        deployment_time = datetime.now().isoformat()
+        veil_config = { "strength_factor": veil_strength, "permanence_factor": veil_permanence, "base_retention_factor": final_retention, "memory_retentions": memory_retentions, "deployment_time": deployment_time }
 
-        # --- Update SoulSpark ---
         setattr(soul_spark, "memory_veil", veil_config)
-        setattr(soul_spark, "memory_retention", float(base_retention)) # Store base retention
-        setattr(soul_spark, 'last_modified', veil_config['deployment_time'])
+        setattr(soul_spark, "memory_retention", final_retention) # Store final 0-1 factor
+        setattr(soul_spark, 'last_modified', deployment_time)
 
-        # --- Calculate & Record Metrics ---
-        phase_metrics = veil_config.copy() # Use veil_config as basis for metrics
-        phase_metrics["timestamp"] = veil_config['deployment_time']
-        try: metrics.record_metrics('birth_memory_veil', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record memory veil metrics: {e}")
-
-        logger.info(f"Memory veil deployed. Strength: {veil_strength:.3f}, Base Retention: {base_retention:.3f}")
+        phase_metrics = {**veil_config, "mother_influence_applied": mother_profile is not None, "timestamp": deployment_time}
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_memory_veil', phase_metrics)
+        logger.info(f"Memory veil deployed. StrengthFactor: {veil_strength:.3f}, RetentionFactor: {final_retention:.3f}")
         return phase_metrics
 
     except Exception as e: logger.error(f"Error deploying memory veil: {e}", exc_info=True); raise RuntimeError("Memory veil deployment failed.") from e
 
-
-def _first_breath_integration(soul_spark: SoulSpark, physical_connection: float, intensity: float) -> Dict[str, Any]:
-    """Integrates first breath using constants. Modifies SoulSpark. Fails hard."""
+def _first_breath_integration(soul_spark: SoulSpark, physical_connection: float, intensity: float, mother_profile: Optional[Dict]) -> Dict[str, Any]:
+    """ Integrates first breath. Modifies earth_resonance (0-1), energy split (SEU). """
     logger.info("Phase: Integrating first breath...")
-    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
-
+    if not (0.0 <= physical_connection <= 1.0): raise ValueError("physical_connection invalid.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity invalid.")
     try:
-        earth_breath_freq = EARTH_BREATH_FREQUENCY # Use constant
-        earth_resonance = getattr(soul_spark, "earth_resonance", 0.6) # Assumed set by harmonization
-        logger.debug(f"  Input values: EarthRes={earth_resonance:.3f}, PhysConn={physical_connection:.3f}, Intensity={intensity:.2f}")
+        current_earth_resonance = soul_spark.earth_resonance # 0-1 factor
+        total_energy_seu = soul_spark.energy # SEU
 
-        # Calculate breath properties using constants
-        breath_amplitude = BIRTH_BREATH_AMP_BASE + intensity * BIRTH_BREATH_AMP_INTENSITY_FACTOR
-        breath_depth = BIRTH_BREATH_DEPTH_BASE + intensity * BIRTH_BREATH_DEPTH_INTENSITY_FACTOR
-        breath_sync = earth_resonance * BIRTH_BREATH_SYNC_RESONANCE_FACTOR
-        integration_strength = physical_connection * BIRTH_BREATH_INTEGRATION_CONN_FACTOR
+        mother_breath_freq = mother_profile.get('breath_pattern', {}).get('frequency', EARTH_BREATH_FREQUENCY) if mother_profile else EARTH_BREATH_FREQUENCY
+        mother_nurturing = mother_profile.get('nurturing_capacity', 0.5) if mother_profile else 0.5
+        mother_healing = mother_profile.get('healing', {}).get('resonance', 0.5) if mother_profile else 0.5
 
-        # Clamp values
-        breath_amplitude = max(0.0, min(1.0, breath_amplitude))
-        breath_depth = max(0.0, min(1.0, breath_depth))
+        breath_amplitude = max(0.0, min(1.0, BIRTH_BREATH_AMP_BASE + intensity * BIRTH_BREATH_AMP_INTENSITY_FACTOR)) # 0-1 factor
+        breath_depth = max(0.0, min(1.0, BIRTH_BREATH_DEPTH_BASE + intensity * BIRTH_BREATH_DEPTH_INTENSITY_FACTOR)) # 0-1 factor
+        base_sync = current_earth_resonance * BIRTH_BREATH_SYNC_RESONANCE_FACTOR
+        sync_deviation = abs(mother_breath_freq - EARTH_BREATH_FREQUENCY) / max(FLOAT_EPSILON, EARTH_BREATH_FREQUENCY)
+        mother_sync_factor = max(0.0, 1.0 - sync_deviation)
+        breath_sync = base_sync * (1.0 + mother_sync_factor * BIRTH_BREATH_MOTHER_SYNC_FACTOR) # 0-1 factor
         breath_sync = max(0.0, min(1.0, breath_sync))
-        integration_strength = max(0.0, min(1.0, integration_strength))
-        logger.debug(f"  Calculated Breath Properties: Amp={breath_amplitude:.3f}, Depth={breath_depth:.3f}, Sync={breath_sync:.3f}, Integration={integration_strength:.3f}")
+        integration_strength = max(0.0, min(1.0, physical_connection * BIRTH_BREATH_INTEGRATION_CONN_FACTOR)) # 0-1 factor
 
-        # Calculate resonance boost and energy shift using constants
-        resonance_boost = breath_sync * breath_depth * BIRTH_BREATH_RESONANCE_BOOST_FACTOR
-        new_earth_resonance = min(1.0, earth_resonance + resonance_boost)
+        # Earth Resonance boost (0-1 score)
+        resonance_boost_factor = breath_sync * breath_depth * BIRTH_BREATH_RESONANCE_BOOST_FACTOR
+        resonance_boost_factor *= (1.0 + mother_nurturing * BIRTH_BREATH_MOTHER_RESONANCE_BOOST)
+        new_earth_resonance = min(1.0, current_earth_resonance + resonance_boost_factor)
+        earth_resonance_gain = new_earth_resonance - current_earth_resonance
 
-        energy_shift = breath_depth * integration_strength * BIRTH_BREATH_ENERGY_SHIFT_FACTOR
-        physical_energy = BIRTH_BREATH_PHYSICAL_ENERGY_BASE + energy_shift * BIRTH_BREATH_PHYSICAL_ENERGY_SCALE
-        spiritual_energy = BIRTH_BREATH_SPIRITUAL_ENERGY_BASE + energy_shift * BIRTH_BREATH_SPIRITUAL_ENERGY_SCALE
-        physical_energy = max(0.0, min(1.0, physical_energy))
-        spiritual_energy = max(BIRTH_BREATH_SPIRITUAL_ENERGY_MIN, min(1.0, spiritual_energy)) # Ensure min spiritual energy
-        logger.debug(f"  Resonance Boost: {resonance_boost:.4f} -> New EarthRes={new_earth_resonance:.3f}")
-        logger.debug(f"  Energy Shift: {energy_shift:.4f} -> PhysEnergy={physical_energy:.3f}, SpiritEnergy={spiritual_energy:.3f}")
+        # Energy Split (SEU)
+        energy_shift_factor = breath_depth * integration_strength * BIRTH_BREATH_ENERGY_SHIFT_FACTOR
+        energy_shift_factor *= (1.0 + mother_healing * BIRTH_BREATH_MOTHER_ENERGY_BOOST)
+        # Physical energy is a fraction of the *total* available energy, scaled by factors
+        physical_energy_fraction = BIRTH_BREATH_PHYSICAL_ENERGY_BASE + energy_shift_factor * BIRTH_BREATH_PHYSICAL_ENERGY_SCALE
+        physical_energy_fraction = max(0.05, min(0.95, physical_energy_fraction)) # Clamp fraction 5%-95%
+        new_physical_energy_seu = total_energy_seu * physical_energy_fraction
+        # Spiritual energy is the remainder
+        new_spiritual_energy_seu = total_energy_seu - new_physical_energy_seu
+        # Ensure non-negative
+        new_physical_energy_seu = max(0.0, new_physical_energy_seu)
+        new_spiritual_energy_seu = max(0.0, new_spiritual_energy_seu)
 
-        # Create breath configuration dictionary
+        breath_time = datetime.now().isoformat()
         breath_config = {
-            "frequency": float(earth_breath_freq), "amplitude": float(breath_amplitude), "depth": float(breath_depth),
-            "sync_factor": float(breath_sync), "integration_strength": float(integration_strength),
-            "physical_energy_level": float(physical_energy), "spiritual_energy_level": float(spiritual_energy),
-            "timestamp": datetime.now().isoformat() }
+            "frequency_hz": float(mother_breath_freq), "amplitude_factor": breath_amplitude, "depth_factor": breath_depth,
+            "sync_factor": breath_sync, "integration_strength_factor": integration_strength,
+             # Store resulting SEU values
+            "physical_energy_seu": new_physical_energy_seu, "spiritual_energy_seu": new_spiritual_energy_seu,
+            "timestamp": breath_time }
 
-        # --- Update SoulSpark ---
+        # Update SoulSpark
         setattr(soul_spark, "breath_pattern", breath_config)
-        setattr(soul_spark, "earth_resonance", float(new_earth_resonance))
-        setattr(soul_spark, "physical_energy", float(physical_energy))
-        setattr(soul_spark, "spiritual_energy", float(spiritual_energy))
-        setattr(soul_spark, 'last_modified', breath_config['timestamp'])
+        setattr(soul_spark, "earth_resonance", new_earth_resonance) # Update 0-1 score
+        setattr(soul_spark, "physical_energy", new_physical_energy_seu) # Update SEU
+        setattr(soul_spark, "spiritual_energy", new_spiritual_energy_seu) # Update SEU
+        setattr(soul_spark, 'last_modified', breath_time)
 
-        # --- Calculate & Record Metrics ---
         phase_metrics = {
-            "integration_strength": float(integration_strength), "resonance_boost": float(resonance_boost),
-            "final_earth_resonance": float(new_earth_resonance), "physical_energy": float(physical_energy),
-            "spiritual_energy": float(spiritual_energy), "timestamp": breath_config['timestamp'] }
-        try: metrics.record_metrics('birth_first_breath', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record first breath metrics: {e}")
-
-        logger.info(f"First breath integrated. Integration: {integration_strength:.3f}, PhysEnergy: {physical_energy:.3f}")
+             "integration_strength_factor": integration_strength, "final_earth_resonance": new_earth_resonance,
+             "earth_resonance_gain": earth_resonance_gain,
+             "physical_energy_seu": new_physical_energy_seu, "spiritual_energy_seu": new_spiritual_energy_seu,
+             "mother_influence_applied": mother_profile is not None, "timestamp": breath_time }
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_first_breath', phase_metrics)
+        logger.info(f"First breath integrated. IntegrationFactor: {integration_strength:.3f}, PhysEnergy: {new_physical_energy_seu:.1f} SEU")
         return phase_metrics
 
     except Exception as e: logger.error(f"Error integrating first breath: {e}", exc_info=True); raise RuntimeError("First breath integration failed.") from e
 
 
-def _finalize_birth(soul_spark: SoulSpark, connection_strength: float, form_acceptance: float) -> Tuple[float, Dict[str, Any]]:
-    """Finalizes birth using constants. Modifies SoulSpark. Fails hard."""
+def _finalize_birth(soul_spark: SoulSpark, connection_strength: float, form_acceptance: float, mother_profile: Optional[Dict]) -> Tuple[float, Dict[str, Any]]:
+    """ Finalizes birth. Modifies frequency (Hz), stability (SU), physical_integration (0-1). """
     logger.info("Phase: Finalizing birth process...")
-
+    if not (0.0 <= connection_strength <= 1.0): raise ValueError("connection_strength invalid.")
+    if not (0.0 <= form_acceptance <= 1.0): raise ValueError("form_acceptance invalid.")
     try:
-        # Get breath integration strength if available
-        breath_integration = getattr(soul_spark, 'breath_pattern', {}).get('integration_strength', 0.7) # Default if missing
+        # Use factors for calculation
+        breath_integration = getattr(soul_spark, 'breath_pattern', {}).get('integration_strength_factor', 0.7)
+        mother_spirit_conn = mother_profile.get('spiritual', {}).get('connection', 0.5) if mother_profile else 0.5
 
-        # Calculate total integration using constants
-        total_integration = (connection_strength * BIRTH_FINAL_INTEGRATION_WEIGHT_CONN +
-                             form_acceptance * BIRTH_FINAL_INTEGRATION_WEIGHT_ACCEPT +
-                             breath_integration * BIRTH_FINAL_INTEGRATION_WEIGHT_BREATH)
-        total_integration = max(0.0, min(1.0, total_integration))
-        logger.debug(f"  Calculated Final Integration Level: {total_integration:.4f}")
+        # Total physical integration factor (0-1)
+        base_integration = (connection_strength * BIRTH_FINAL_INTEGRATION_WEIGHT_CONN + form_acceptance * BIRTH_FINAL_INTEGRATION_WEIGHT_ACCEPT + breath_integration * BIRTH_FINAL_INTEGRATION_WEIGHT_BREATH)
+        integration_boost = mother_spirit_conn * BIRTH_FINAL_MOTHER_INTEGRATION_BOOST
+        total_integration_factor = min(1.0, max(0.0, base_integration + integration_boost)) # Final 0-1 score
 
-        # Adjust core soul properties for physical existence using constants
-        original_frequency = getattr(soul_spark, "frequency")
-        original_stability = getattr(soul_spark, "stability")
-        physical_frequency = original_frequency * BIRTH_FINAL_FREQ_FACTOR
-        physical_stability = original_stability * BIRTH_FINAL_STABILITY_FACTOR
+        # Adjust core soul properties: Frequency (Hz) and Stability (SU)
+        original_frequency_hz = soul_spark.frequency
+        original_stability_su = soul_spark.stability
 
-        # Ensure frequency remains positive
-        physical_frequency = max(FLOAT_EPSILON, physical_frequency)
-        logger.debug(f"  Adjusted Properties: Freq={physical_frequency:.2f} (from {original_frequency:.2f}), Stab={physical_stability:.3f} (from {original_stability:.3f})")
+        # Frequency adjusts based on integration (e.g., lower frequency in physical)
+        physical_frequency_hz = original_frequency_hz * (1.0 - (1.0 - BIRTH_FINAL_FREQ_FACTOR) * total_integration_factor)
+        physical_frequency_hz = max(FLOAT_EPSILON * 10, physical_frequency_hz) # Ensure positive Hz
 
-        # --- Update SoulSpark ---
-        setattr(soul_spark, "frequency", float(physical_frequency))
-        setattr(soul_spark, "stability", float(physical_stability))
-        setattr(soul_spark, "physical_integration", float(total_integration))
-        setattr(soul_spark, "incarnated", True) # Mark as incarnated
+        # Stability adjusts based on integration (e.g., slight reduction due to physical constraints)
+        stability_adjustment_factor = (1.0 - (1.0 - BIRTH_FINAL_STABILITY_FACTOR) * total_integration_factor)
+        physical_stability_su = original_stability_su * stability_adjustment_factor
+        physical_stability_su = max(0.0, min(MAX_STABILITY_SU, physical_stability_su)) # Clamp SU
+        stability_change_su = physical_stability_su - original_stability_su
+
+        # Update SoulSpark
+        setattr(soul_spark, "frequency", float(physical_frequency_hz))
+        setattr(soul_spark, "stability", float(physical_stability_su))
+        setattr(soul_spark, "physical_integration", float(total_integration_factor)) # Store 0-1 score
+        setattr(soul_spark, FLAG_INCARNATED, True)
         birth_time = datetime.now().isoformat()
         setattr(soul_spark, "birth_time", birth_time)
         setattr(soul_spark, 'last_modified', birth_time)
+        if hasattr(soul_spark, 'update_state'): soul_spark.update_state() # Update derived scores
 
-        # --- Calculate & Record Metrics ---
         phase_metrics = {
-            "final_integration": float(total_integration), "final_frequency": float(physical_frequency),
-            "final_stability": float(physical_stability), "birth_timestamp": birth_time, "success": True }
-        try: metrics.record_metrics('birth_finalization', phase_metrics)
-        except Exception as e: logger.error(f"Failed to record finalization metrics: {e}")
-
-        logger.info(f"Birth finalized. Integration: {total_integration:.3f}, Final Freq: {physical_frequency:.2f}, Final Stab: {physical_stability:.3f}")
-        return float(total_integration), phase_metrics
+            "final_integration_factor": total_integration_factor,
+            "final_frequency_hz": physical_frequency_hz, "frequency_change_hz": physical_frequency_hz - original_frequency_hz,
+            "final_stability_su": physical_stability_su, "stability_change_su": stability_change_su,
+            "birth_timestamp": birth_time, "mother_influence_applied": mother_profile is not None, "success": True }
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_finalization', phase_metrics)
+        logger.info(f"Birth finalized. IntegrationFactor: {total_integration_factor:.3f}, Final Freq: {physical_frequency_hz:.1f} Hz, Final Stab: {physical_stability_su:.1f} SU")
+        return float(total_integration_factor), phase_metrics
 
     except Exception as e: logger.error(f"Error finalizing birth: {e}", exc_info=True); raise RuntimeError("Birth finalization failed.") from e
 
 
 # --- Orchestration Function ---
+def perform_birth(soul_spark: SoulSpark, intensity: float = BIRTH_INTENSITY_DEFAULT,
+                 mother_profile: Optional[Dict[str, Any]] = None,
+                 use_encoded_glyph: bool = True # Keep flag for external logic/logging
+                 ) -> Tuple[SoulSpark, Dict[str, Any]]:
+    """ Performs complete birth process using SU/SEU units where applicable. Modifies SoulSpark. """
+    # --- Input Validation ---
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
+    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity out of range.")
 
-def perform_birth(soul_spark: SoulSpark, intensity: float = 0.7) -> Tuple[SoulSpark, Dict[str, Any]]:
-    """
-    Performs the complete birth process for a soul spark. Modifies SoulSpark. Fails hard.
-
-    Args:
-        soul_spark (SoulSpark): The soul spark object (will be modified).
-        intensity (float): Intensity of the birth process (0.1-1.0). Affects speed,
-                           trauma, connection strength, veil strength.
-
-    Returns:
-        Tuple[SoulSpark, Dict[str, Any]]: A tuple containing:
-            - The modified (incarnated) SoulSpark object.
-            - overall_metrics (Dict): Summary metrics for the entire birth process.
-
-    Raises:
-        TypeError: If soul_spark is not a SoulSpark instance.
-        ValueError: If parameters invalid or prerequisites not met.
-        RuntimeError: If any phase fails critically.
-    """
-    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark must be a SoulSpark instance.")
-    if not (0.1 <= intensity <= 1.0): raise ValueError("Intensity must be between 0.1 and 1.0")
-
-    spark_id = getattr(soul_spark, 'spark_id', 'unknown')
-    logger.info(f"--- Starting Birth Process for Soul {spark_id} (Intensity={intensity:.2f}) ---")
-    start_time_iso = datetime.now().isoformat()
-    start_time_dt = datetime.fromisoformat(start_time_iso)
+    spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
+    active_mother_profile = mother_profile if use_encoded_glyph and mother_profile else None
+    log_msg_suffix = "with Mother Profile" if active_mother_profile else "without Mother Profile"
+    logger.info(f"--- Starting Birth Process for Soul {spark_id} (Int={intensity:.2f}) {log_msg_suffix} ---")
+    start_time_iso = datetime.now().isoformat(); start_time_dt = datetime.fromisoformat(start_time_iso)
     process_metrics_summary = {'steps': {}}
-    birth_successful = False # Flag to track success through phases
 
     try:
-        # --- Check Prerequisites ---
-        if not _check_prerequisites(soul_spark):
+        _ensure_soul_properties(soul_spark)
+        if not _check_prerequisites(soul_spark): # Uses 0-1 factors
             raise ValueError("Soul prerequisites for birth not met.")
-        logger.info("Prerequisites checked successfully.")
 
-        # --- Store Initial State ---
+        # Store Initial State (SEU/SU/Factors)
         initial_state = {
-            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
-            'frequency': getattr(soul_spark, 'frequency', 0.0), 'earth_resonance': getattr(soul_spark, 'earth_resonance', 0.0),
-            'cord_integrity': getattr(soul_spark, 'cord_integrity', 0.0) }
-        logger.info(f"Initial State: EarthRes={initial_state['earth_resonance']:.4f}, Freq={initial_state['frequency']:.2f}, Stab={initial_state['stability']:.4f}, CordInteg={initial_state['cord_integrity']:.3f}")
+            'stability_su': soul_spark.stability, 'frequency_hz': soul_spark.frequency,
+            'earth_resonance': soul_spark.earth_resonance, 'cord_integrity': soul_spark.cord_integrity,
+            'energy_seu': soul_spark.energy
+        }
 
-        # --- Run Phases (Fail hard within each) ---
-        logger.info("Step 1: Connect to Physical Form...")
-        connection_strength, form_acceptance, metrics1 = _connect_to_physical_form(soul_spark, intensity)
+        # Run Phases
+        connection_strength, form_acceptance, metrics1 = _connect_to_physical_form(soul_spark, intensity, active_mother_profile)
         process_metrics_summary['steps']['connection'] = metrics1
-
-        logger.info("Step 2: Transfer Life Cord...")
-        metrics2 = _transfer_life_cord(soul_spark, connection_strength, intensity)
+        metrics2 = _transfer_life_cord(soul_spark, connection_strength, intensity, active_mother_profile)
         process_metrics_summary['steps']['cord_transfer'] = metrics2
-
-        logger.info("Step 3: Deploy Memory Veil...")
-        metrics3 = _deploy_memory_veil(soul_spark, intensity)
+        metrics3 = _deploy_memory_veil(soul_spark, intensity, active_mother_profile)
         process_metrics_summary['steps']['memory_veil'] = metrics3
-
-        logger.info("Step 4: First Breath Integration...")
-        metrics4 = _first_breath_integration(soul_spark, connection_strength, intensity)
+        metrics4 = _first_breath_integration(soul_spark, connection_strength, intensity, active_mother_profile)
         process_metrics_summary['steps']['first_breath'] = metrics4
-
-        logger.info("Step 5: Finalize Birth...")
-        final_integration, metrics5 = _finalize_birth(soul_spark, connection_strength, form_acceptance)
+        final_integration, metrics5 = _finalize_birth(soul_spark, connection_strength, form_acceptance, active_mother_profile)
         process_metrics_summary['steps']['finalization'] = metrics5
-        birth_successful = metrics5.get("success", False) # Mark success only if finalization passes
+        birth_successful = metrics5.get("success", False)
 
-        # --- Compile Overall Metrics ---
+        # Compile Overall Metrics
         end_time_iso = datetime.now().isoformat(); end_time_dt = datetime.fromisoformat(end_time_iso)
-        final_state = { # Capture final state metrics relevant to this process
-            'stability': getattr(soul_spark, 'stability', 0.0), 'coherence': getattr(soul_spark, 'coherence', 0.0),
-            'frequency': getattr(soul_spark, 'frequency', 0.0), 'earth_resonance': getattr(soul_spark, 'earth_resonance', 0.0),
-            'cord_integrity': getattr(soul_spark, 'cord_integrity', 0.0),
-            'physical_integration': getattr(soul_spark, 'physical_integration', 0.0),
-            'incarnated': getattr(soul_spark, 'incarnated', False) }
-
+        final_state = { # Report state in correct units/scores
+             'stability_su': soul_spark.stability, 'frequency_hz': soul_spark.frequency,
+             'earth_resonance': soul_spark.earth_resonance, 'cord_integrity': soul_spark.cord_integrity,
+             'physical_integration': soul_spark.physical_integration,
+             'physical_energy_seu': soul_spark.physical_energy,
+             'spiritual_energy_seu': soul_spark.spiritual_energy,
+             FLAG_INCARNATED: getattr(soul_spark, FLAG_INCARNATED) }
         overall_metrics = {
             'action': 'birth', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
             'duration_seconds': (end_time_dt - start_time_dt).total_seconds(), 'intensity_setting': intensity,
+            'mother_influence_active': active_mother_profile is not None,
             'initial_state': initial_state, 'final_state': final_state,
-            'final_integration': final_integration, 'success': birth_successful,
-            # 'steps_metrics': process_metrics_summary['steps'] # Optional detail
-        }
-        try: metrics.record_metrics('birth_summary', overall_metrics)
-        except Exception as e: logger.error(f"Failed to record summary metrics for birth process: {e}")
+            'final_integration_factor': final_integration, 'success': birth_successful, }
+        if METRICS_AVAILABLE: metrics.record_metrics('birth_summary', overall_metrics)
 
         if birth_successful:
              logger.info(f"--- Birth Process Completed Successfully for Soul {spark_id} ---")
-             logger.info(f"Duration: {overall_metrics['duration_seconds']:.2f}s")
-             logger.info(f"Final Physical Integration: {final_integration:.4f}")
-             logger.info(f"Final Soul Stability: {final_state['stability']:.4f}")
-             logger.info(f"Incarnated Flag: {final_state['incarnated']}")
-        else:
-             # This path shouldn't be reached if finalization fails hard, but included for completeness
-             logger.error(f"--- Birth Process Completed BUT FAILED for Soul {spark_id} ---")
-
+             if hasattr(soul_spark, 'add_memory_echo'): soul_spark.add_memory_echo(f"Incarnated successfully. Integration: {final_integration:.3f}")
+        else: logger.error(f"--- Birth Process Completed BUT FAILED for Soul {spark_id} ---") # Should not happen if logic holds
 
         return soul_spark, overall_metrics
 
+    except (ValueError, TypeError, AttributeError) as e_val:
+         logger.error(f"Birth process failed for {spark_id} due to validation error: {e_val}", exc_info=True)
+         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'prerequisites'
+         record_birth_failure(spark_id, start_time_iso, failed_step, str(e_val), active_mother_profile is not None)
+         setattr(soul_spark, FLAG_INCARNATED, False)
+         raise
+    except RuntimeError as e_rt:
+         logger.critical(f"Birth process failed critically for {spark_id}: {e_rt}", exc_info=True)
+         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'runtime'
+         record_birth_failure(spark_id, start_time_iso, failed_step, str(e_rt), active_mother_profile is not None)
+         setattr(soul_spark, FLAG_INCARNATED, False)
+         raise
     except Exception as e:
-        end_time_iso = datetime.now().isoformat()
-        logger.critical(f"Birth process failed critically for soul {spark_id}: {e}", exc_info=True)
-        failed_step = "unknown"; steps_completed = list(process_metrics_summary['steps'].keys())
-        if steps_completed: failed_step = steps_completed[-1]
+         logger.critical(f"Unexpected error during birth process for {spark_id}: {e}", exc_info=True)
+         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'unexpected'
+         record_birth_failure(spark_id, start_time_iso, failed_step, str(e), active_mother_profile is not None)
+         setattr(soul_spark, FLAG_INCARNATED, False)
+         raise RuntimeError(f"Unexpected birth process failure: {e}") from e
 
-        # Mark soul as failed this stage
-        setattr(soul_spark, "incarnated", False)
-        setattr(soul_spark, "birth_time", None)
-
-        if METRICS_AVAILABLE:
-             try: metrics.record_metrics('birth_summary', {
-                  'action': 'birth', 'soul_id': spark_id, 'start_time': start_time_iso, 'end_time': end_time_iso,
-                  'duration_seconds': (datetime.fromisoformat(end_time_iso) - datetime.fromisoformat(start_time_iso)).total_seconds(),
-                  'intensity_setting': intensity, 'success': False, 'error': str(e), 'failed_step': failed_step })
-             except Exception as metric_e: logger.error(f"Failed to record failure metrics: {metric_e}")
-        raise RuntimeError(f"Birth process failed at step '{failed_step}'.") from e
-
-# --- Example Usage ---
-if __name__ == "__main__":
-    print("Running Birth Process Module Example...")
-    if not DEPENDENCIES_AVAILABLE:
-         print("ERROR: Core dependencies not available. Cannot run example.")
-    else:
-        test_soul = SoulSpark()
-        test_soul.spark_id="test_birth_001"
-        # Set state *after* identity crystallization
-        test_soul.stability = 0.90
-        test_soul.coherence = 0.92
-        test_soul.frequency = 174.0 # Grounded frequency
-        test_soul.formation_complete = True
-        test_soul.harmonically_strengthened = True
-        test_soul.cord_formation_complete = True
-        test_soul.earth_harmonized = True
-        test_soul.identity_crystallized = True # Prerequisite
-        test_soul.cord_integrity = 0.90 # Prerequisite
-        test_soul.earth_resonance = 0.85 # Prerequisite
-        test_soul.ready_for_birth = True # Prerequisite
-        test_soul.name = "TestSoulAlpha"
-        test_soul.soul_color = "gold"
-        test_soul.last_modified = datetime.now().isoformat()
-        test_soul.life_cord = {"bandwidth": 500.0} # Add dummy life cord dict needed by transfer phase
-
-        print(f"\nInitial Soul State ({test_soul.spark_id}):")
-        print(f"  Stability: {test_soul.stability:.4f}")
-        print(f"  Coherence: {test_soul.coherence:.4f}")
-        print(f"  Earth Resonance: {test_soul.earth_resonance:.4f}")
-        print(f"  Cord Integrity: {test_soul.cord_integrity:.4f}")
-        print(f"  Ready for Birth: {getattr(test_soul, 'ready_for_birth', False)}")
-
+# --- Failure Metric Helper ---
+def record_birth_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str, mother_active: bool):
+    """ Helper to record failure metrics consistently. """
+    if METRICS_AVAILABLE:
         try:
-            print("\n--- Running Birth Process ---")
-            modified_soul, summary_metrics_result = perform_birth(
-                soul_spark=test_soul,
-                intensity=0.75 # Example intensity
-            )
+            metrics.record_metrics('birth_summary', {
+                'action': 'birth', 'soul_id': spark_id, 'start_time': start_time_iso,
+                'end_time': datetime.now().isoformat(),
+                'duration_seconds': (datetime.now() - datetime.fromisoformat(start_time_iso)).total_seconds(),
+                'mother_influence_active': mother_active,
+                'success': False, 'error': error_msg, 'failed_step': failed_step })
+        except Exception as metric_e:
+            logger.error(f"Failed to record birth failure metrics for {spark_id}: {metric_e}")
 
-            print("\n--- Birth Complete ---")
-            print("Final Soul State Summary:")
-            print(f"  ID: {modified_soul.spark_id}")
-            print(f"  Incarnated Flag: {getattr(modified_soul, 'incarnated', False)}")
-            print(f"  Birth Time: {getattr(modified_soul, 'birth_time', 'N/A')}")
-            print(f"  Physical Integration: {getattr(modified_soul, 'physical_integration', 'N/A'):.4f}")
-            print(f"  Final Stability: {getattr(modified_soul, 'stability', 'N/A'):.4f}")
-            print(f"  Final Frequency: {getattr(modified_soul, 'frequency', 'N/A'):.2f} Hz")
-            if hasattr(modified_soul, 'memory_veil'): print(f"  Memory Veil Strength: {modified_soul.memory_veil.get('strength'):.3f}")
-            if hasattr(modified_soul, 'breath_pattern'): print(f"  Breath Integration: {modified_soul.breath_pattern.get('integration_strength'):.3f}")
-
-            print("\nOverall Process Metrics:")
-            # print(json.dumps(summary_metrics_result, indent=2, default=str))
-            print(f"  Duration: {summary_metrics_result.get('duration_seconds', 'N/A'):.2f}s")
-            print(f"  Success: {summary_metrics_result.get('success')}")
-            print(f"  Final Integration Level: {summary_metrics_result.get('final_integration', 'N/A'):.4f}")
-
-        except (ValueError, TypeError, RuntimeError, ImportError, AttributeError) as e:
-            print(f"\n--- ERROR during Birth Process Example ---")
-            print(f"An error occurred: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
-        except Exception as e:
-            print(f"\n--- UNEXPECTED ERROR during Birth Process Example ---")
-            print(f"An unexpected error occurred: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
-
-    print("\nBirth Process Module Example Finished.")
-
-
-# --- END OF FILE birth.py ---
-
+# --- END OF FILE src/stage_1/soul_formation/birth.py ---

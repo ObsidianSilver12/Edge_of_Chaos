@@ -16,16 +16,18 @@ import types  # For method injection
 from datetime import datetime
 
 # --- Constants ---
+OUTPUT_DIR_BASE = "output/sounds"  # Define this first since it's used in class initialization
 try:
-    from src.constants.constants import *
+    from constants.constants import *
 except ImportError:
     logging.warning("Could not import constants from src.constants. Using fallback values in SoundsOfSephiroth.")
     PHI = (1 + np.sqrt(5)) / 2
     FUNDAMENTAL_FREQUENCY_432 = 432.0
     SAMPLE_RATE = 44100
     MAX_AMPLITUDE = 0.8
-    OUTPUT_DIR_BASE = "output/sounds"
     PI = np.pi
+
+from constants.constants import *
 
 # --- Import Dependencies ---
 try:
@@ -62,7 +64,7 @@ except ImportError:
 # Import the Sephiroth aspect dictionary loader
 try:
     # Adjust path based on your structure
-    from stage_1.sephiroth.sephiroth_aspect_dictionary import aspect_dictionary
+    from stage_1.fields.sephiroth_aspect_dictionary import aspect_dictionary
     ASPECT_DICT_AVAILABLE = True
 except ImportError:
     logging.critical("Failed to import SephirothAspectDictionary. Sephiroth sound generation cannot function.")
@@ -96,7 +98,7 @@ class SephirothFrequencies:
         
         logger.info("Loading Sephiroth base frequencies from Aspect classes...")
         for sephirah_name in self.sephiroth_names:
-            aspect_instance = aspect_dictionary.load_aspect_instance(sephirah_name)
+            aspect_instance = aspect_dictionary[sephirah_name]
             if aspect_instance and hasattr(aspect_instance, 'base_frequency'):
                 freq = aspect_instance.base_frequency
                 if isinstance(freq, (int, float)) and freq > 0:
@@ -115,10 +117,25 @@ class SephirothFrequencies:
             # Don't fail here to allow partial functionality, but warn severely
             logger.critical("Some Sephiroth frequencies could not be loaded. System may fail when accessing those Sephiroth.")
         
-        # Harmonic counts and falloff rates (Consider moving these to Aspect classes too)
-        self.harmonic_counts = aspect_dictionary.get_harmonic_counts()  # Get from dictionary
-        self.phi_harmonic_counts = aspect_dictionary.get_phi_harmonic_counts()  # Get from dictionary
-        self.harmonic_falloff = aspect_dictionary.get_harmonic_falloff()  # Get from dictionary
+        # Default values for harmonic properties (Consider moving these to Aspect classes later)
+        self.harmonic_counts = {
+            "kether": 9, "chokmah": 8, "binah": 8,
+            "chesed": 7, "geburah": 7, "tiphareth": 8,
+            "netzach": 6, "hod": 6, "yesod": 5,
+            "malkuth": 4, "daath": 8
+        }
+        self.phi_harmonic_counts = {
+            "kether": 4, "chokmah": 3, "binah": 3,
+            "chesed": 3, "geburah": 3, "tiphareth": 4,
+            "netzach": 2, "hod": 2, "yesod": 2,
+            "malkuth": 2, "daath": 3
+        }
+        self.harmonic_falloff = {
+            "kether": 0.05, "chokmah": 0.08, "binah": 0.08,
+            "chesed": 0.1, "geburah": 0.1, "tiphareth": 0.07,
+            "netzach": 0.12, "hod": 0.12, "yesod": 0.15,
+            "malkuth": 0.2, "daath": 0.08
+        }
         
         # Relationship harmonics (ratios) - Keep these defined here for now
         self.relationship_harmonics = {
@@ -265,7 +282,7 @@ class SephirothSoundIntegration:
             tone = self.sound_generator.generate_harmonic_tone(
                 base_frequency=frequency,
                 harmonics=harmonics,
-                durations=[duration] * len(harmonics),
+                duration=duration,
                 amplitudes=amplitudes,
                 fade_in_out=min(1.0, duration / 10)
             )
@@ -709,12 +726,11 @@ class SephirothSoundIntegration:
             
             # Generate sacred chord from frequencies
             chord = self.sound_generator.generate_sacred_chord(
-                frequencies=frequencies,
+                base_frequency=frequencies[0],  # Use the first frequency if it's a list
                 duration=duration,
-                amplitudes=[MAX_AMPLITUDE * 0.6] * len(frequencies),
                 fade_in_out=min(1.0, duration / 10)
             )
-            
+
             if chord is None or len(chord) == 0:
                 error_msg = "Failed to generate sacred chord."
                 logger.error(error_msg)
@@ -747,8 +763,17 @@ class SephirothSoundIntegration:
             raise ValueError(error_msg)
         
         try:
+            # Define gateway to sephiroth mappings
+            GATEWAY_SEPHIROTH_MAP = {
+                "tetrahedron": ["geburah", "chesed", "netzach", "hod"],
+                "octahedron": ["kether", "tiphareth", "yesod", "malkuth"],
+                "hexahedron": ["binah", "chesed", "netzach", "malkuth"],
+                "icosahedron": ["chokmah", "tiphareth", "hod", "yesod"],
+                "dodecahedron": ["kether", "chokmah", "binah", "tiphareth", "daath"]
+            }
+            
             # Get sephiroth associated with this gateway
-            gateway_sephiroth = aspect_dictionary.get_gateway_sephiroth(gateway_key)
+            gateway_sephiroth = GATEWAY_SEPHIROTH_MAP.get(gateway_key)
             
             if not gateway_sephiroth:
                 error_msg = f"No Sephiroth associated with gateway key: {gateway_key}"
@@ -1013,7 +1038,7 @@ class SephirothSoundIntegration:
 def get_sound_generator():
     """Factory function to get a SephirothSoundGenerator instance."""
     try:
-        return SephirothSoundGenerator()
+        return SoundGenerator()
     except Exception as e:
         logger.critical(f"Failed to create SephirothSoundGenerator: {e}", exc_info=True)
         raise RuntimeError(f"Failed to create SephirothSoundGenerator: {e}")
@@ -1022,7 +1047,7 @@ def get_sound_generator():
 # Example usage
 if __name__ == "__main__":
     try:
-        generator = SephirothSoundGenerator()
+        generator = SephirothSoundIntegration()
         
         # Generate and save a Sephirah tone
         generator.save_sephirah_tone("tiphareth", duration=10.0)

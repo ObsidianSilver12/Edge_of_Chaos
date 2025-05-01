@@ -1,363 +1,712 @@
 # --- START OF FILE src/stage_1/fields/void_field.py ---
 
 """
-Void Field Module
+Void Field Module (Refactored V4.3 - Principle-Driven S/C, PEP8, Optimal Points)
 
-Implements the dynamic Void field, the base reality containing patterned potential,
-energy, and resonance phenomena. Incorporates noise, sacred geometry, and
-platonic solid potential during initialization.
+Represents the dynamic Void field using scaled Joules (SEU), Stability Units (SU),
+and Coherence Units (CU) for base values and interactions. Includes detailed
+resonance calculation, performance guards, improved error handling, and the
+find_optimal_development_points method. Adheres to PEP 8 formatting.
 """
 
 import logging
+logger = logging.getLogger(__name__)
+# Ensure logger level is set appropriately
+try:
+    import constants.constants as const # Use alias
+    logger.setLevel(const.LOG_LEVEL)
+except ImportError:
+    logger.warning(
+        "Constants not loaded, using default INFO level for VoidField logger."
+    )
+    logger.setLevel(logging.INFO)
+
 import numpy as np
 import random
 from typing import Dict, Any, Tuple, Optional, List
+from abc import ABC, abstractmethod
+from math import sqrt, pi as PI, exp
 
-# Assuming field_base is in the same directory
-from .field_base import FieldBase
-# Assuming constants are accessible via src path setup in main script/controller
-from constants.constants import *
-
-# --- Dependency Imports ---
-# Noise Generator
+# --- Constants Import (using alias 'const') ---
 try:
-    # Assuming sound folder is accessible
+    import constants.constants as const
+except ImportError as e:
+    logger.critical("CRITICAL ERROR: constants.py failed import in void_field.py")
+    raise ImportError(f"Essential constants missing: {e}") from e
+
+# --- Dependencies ---
+try:
+    # Noise Generator is optional
     from sound.noise_generator import NoiseGenerator
     NOISE_GEN_AVAILABLE = True
-except ImportError as e:
-    logging.error(f"NoiseGenerator import failed: {e}. Void noise initialization will be basic.")
+except ImportError:
     NOISE_GEN_AVAILABLE = False
-    NoiseGenerator = None # Define as None if not available
-
-# Sacred Geometry Functions (Assume they exist in src/geometry/ and provide influence grids)
+    NoiseGenerator = None # Define as None if unavailable
+    logger.warning("NoiseGenerator not found. Void field init will use uniform random.")
 try:
-    # Example imports - adjust based on actual function names/modules after refactor
-    from geometry.flower_of_life import get_flower_of_life_influence # Needs implementation
-    from geometry.seed_of_life import get_seed_of_life_influence   # Needs implementation
-    from geometry.metatrons_cube import get_metatrons_cube_influence # Needs implementation
-    # ... import other required geometry influence functions
-    GEOMETRY_FUNCS_AVAILABLE = True
-    # Map names to functions
-    GEOMETRY_FUNCTION_MAP = {
-        'flower_of_life': get_flower_of_life_influence,
-        'seed_of_life': get_seed_of_life_influence,
-        'metatrons_cube': get_metatrons_cube_influence,
-        # Add other mappings here...
-    }
-except ImportError as e:
-    logging.warning(f"Could not import geometry influence functions: {e}. Geometry potential disabled.")
-    GEOMETRY_FUNCS_AVAILABLE = False
-    GEOMETRY_FUNCTION_MAP = {}
+    from stage_1.fields.field_base import FieldBase
+except ImportError:
+    logger.critical("CRITICAL ERROR: Cannot import FieldBase")
+    # Define dummy ABC if import fails, to allow class definition
+    class FieldBase(ABC):
+        @abstractmethod
+        def initialize_grid(self):
+            pass  # etc.
 
-# Platonic Solid Functions (Assume they exist in src/platonics/ and provide influence fields)
-try:
-    # Example imports - adjust based on actual function names/modules after refactor
-    from platonics.tetrahedron import get_tetrahedron_influence # Needs implementation
-    from platonics.hexahedron import get_hexahedron_influence # Needs implementation
-    # ... import other required platonic influence functions
-    PLATONIC_FUNCS_AVAILABLE = True
-    # Map names to functions
-    PLATONIC_FUNCTION_MAP = {
-        'tetrahedron': get_tetrahedron_influence,
-        'hexahedron': get_hexahedron_influence,
-         # Add other mappings here...
-    }
-except ImportError as e:
-    logging.warning(f"Could not import platonic influence functions: {e}. Platonic potential disabled.")
-    PLATONIC_FUNCS_AVAILABLE = False
-    PLATONIC_FUNCTION_MAP = {}
+# --- Resonance Calculation Helper ---
+def _calculate_cell_resonance(freq1: np.ndarray, freq2: np.ndarray) -> np.ndarray:
+    """Vectorized resonance calculation between frequency grids."""
+    # Initialize resonance array
+    resonance = np.zeros_like(freq1, dtype=np.float32)
+    # Create mask for valid frequencies (avoid division by zero)
+    valid_mask = (freq1 > const.FLOAT_EPSILON) & (freq2 > const.FLOAT_EPSILON)
+    if not np.any(valid_mask):
+        return resonance # Return zeros if no valid pairs
 
+    # Calculate ratio only for valid pairs
+    f1_valid = freq1[valid_mask]
+    f2_valid = freq2[valid_mask]
+    # Ensure ratio is always >= 1
+    ratio = np.maximum(f1_valid, f2_valid) / np.maximum(np.minimum(f1_valid, f2_valid), const.FLOAT_EPSILON)
 
-logger = logging.getLogger(__name__)
+    # Integer Resonance (Vectorized)
+    int_res = np.zeros_like(ratio)
+    for i in range(1, 5):
+        for j in range(1, 5):
+            target_ratio = float(max(i, j)) / float(min(i, j))
+            # Closeness metric (sharper peak)
+            deviation = np.abs(ratio - target_ratio)
+            tolerance = const.RESONANCE_INTEGER_RATIO_TOLERANCE * target_ratio
+            closeness = np.maximum(0.0, 1.0 - (deviation / max(tolerance, const.FLOAT_EPSILON)))**2
+            int_res = np.maximum(int_res, closeness)
+
+    # Phi Resonance (Vectorized)
+    phi_res = np.zeros_like(ratio)
+    for i in [1, 2]: # Check Phi^1, Phi^2 and inverses
+        phi_pow = const.GOLDEN_RATIO ** i
+        dev_phi = np.abs(ratio - phi_pow)
+        tol_phi = const.RESONANCE_PHI_RATIO_TOLERANCE * phi_pow
+        closeness_phi = np.maximum(0.0, 1.0 - (dev_phi / max(tol_phi, const.FLOAT_EPSILON)))**2
+
+        inv_phi_pow = 1.0 / phi_pow
+        dev_inv_phi = np.abs(ratio - inv_phi_pow)
+        tol_inv_phi = const.RESONANCE_PHI_RATIO_TOLERANCE * inv_phi_pow
+        closeness_inv_phi = np.maximum(0.0, 1.0 - (dev_inv_phi / max(tol_inv_phi, const.FLOAT_EPSILON)))**2
+
+        phi_res = np.maximum(phi_res, closeness_phi)
+        phi_res = np.maximum(phi_res, closeness_inv_phi)
+
+    # Combine and store results back into the original shape using the mask
+    resonance[valid_mask] = np.maximum(int_res, phi_res)
+    return resonance
+
 
 class VoidField(FieldBase):
-    """
-    Represents the dynamic Void field, the foundation of the simulated reality.
-    It contains inherent patterns, energy fluctuations, and resonance potential.
-    """
+    """ Dynamic Void field using SEU, SU, CU. Includes detailed resonance. """
 
-    def __init__(self, grid_size: Tuple[int, int, int] = GRID_SIZE):
-        """
-        Initialize the Void field.
-
-        Args:
-            grid_size (Tuple[int, int, int]): Dimensions of the field grid.
-        """
+    # --- __init__ ---
+    def __init__(self, grid_size: Tuple[int, int, int] = const.GRID_SIZE):
+        """Initialize the Void Field."""
         super().__init__(name="VoidField", grid_size=grid_size)
 
-        # --- Initialize Void-Specific Properties ---
-        self.base_energy: float = VOID_BASE_ENERGY
-        self.base_frequency_range: Tuple[float, float] = VOID_BASE_FREQUENCY_RANGE
-        self.base_coherence: float = VOID_BASE_COHERENCE
-        self.chaos_order_balance: float = VOID_CHAOS_ORDER_BALANCE
+        # --- Base Properties (from constants) ---
+        self.base_energy_seu = const.VOID_BASE_ENERGY_SEU
+        self.base_frequency_range = const.VOID_BASE_FREQUENCY_RANGE
+        self.base_stability_su = const.VOID_BASE_STABILITY_SU
+        self.base_coherence_cu = const.VOID_BASE_COHERENCE_CU
+        self.dissipation_rate = const.ENERGY_DISSIPATION_RATE
+        self.propagation_speed = const.WAVE_PROPAGATION_SPEED
+        self.resonance_energy_boost_factor = const.HARMONIC_RESONANCE_ENERGY_BOOST
+        # Example: Coherence boost can be linked to energy boost
+        self.resonance_coherence_boost_factor = (
+            const.HARMONIC_RESONANCE_ENERGY_BOOST * 5.0 # Boost coherence more?
+        )
 
-        # Dynamics properties
-        self.dissipation_rate: float = ENERGY_DISSIPATION_RATE
-        self.propagation_speed: float = WAVE_PROPAGATION_SPEED
-        self.resonance_threshold: float = HARMONIC_RESONANCE_THRESHOLD
-        self.resonance_boost: float = HARMONIC_RESONANCE_ENERGY_BOOST
-
-        # Noise Generator Instance
-        self.noise_generator: Optional[NoiseGenerator] = None
+        # --- Noise Generator (Optional) ---
+        self.noise_generator = None
         if NOISE_GEN_AVAILABLE and NoiseGenerator:
             try:
-                self.noise_generator = NoiseGenerator(sample_rate=SAMPLE_RATE) # Assuming default SR for noise base
-                logger.info("NoiseGenerator instantiated for VoidField.")
+                self.noise_generator = NoiseGenerator(sample_rate=const.SAMPLE_RATE)
+                logger.info("NoiseGenerator initialized successfully for VoidField.")
+            except NameError:
+                logger.error("const.SAMPLE_RATE missing. Cannot initialize NoiseGenerator.")
             except Exception as e:
-                logger.error(f"Failed to instantiate NoiseGenerator: {e}. Noise generation will be basic.")
-                self.noise_generator = None
-        else:
-             logger.warning("NoiseGenerator class not available.")
+                logger.error(f"NoiseGenerator init failed: {e}")
 
+        # --- Grid Initialization ---
+        # Initialize grids to None initially, setup in initialize_grid
+        self.energy: Optional[np.ndarray] = None
+        self.frequency: Optional[np.ndarray] = None
+        self.stability: Optional[np.ndarray] = None
+        self.coherence: Optional[np.ndarray] = None
+        self.pattern_influence: Optional[np.ndarray] = None
+        self.color: Optional[np.ndarray] = None
+        self.order: Optional[np.ndarray] = None
+        self.chaos: Optional[np.ndarray] = None
+        # Call initialization
+        try:
+             self.initialize_grid()
+             logger.info(f"VoidField initialized with grid size {self.grid_size}.")
+        except Exception as init_err:
+             logger.critical("CRITICAL: Failed to initialize VoidField grids.",
+                             exc_info=True)
+             raise RuntimeError("VoidField grid initialization failed") from init_err
 
-        # Initialize the grids
-        self.initialize_grid() # This now includes noise and potential patterns
-        logger.info(f"VoidField initialized with grid size {self.grid_size}.")
-
+    # --- initialize_grid ---
     def initialize_grid(self) -> None:
-        """
-        Sets up the initial state of the Void field's grids.
-        Includes base energy, frequency noise, coherence, sparse patterns, and color.
-        """
-        logger.info(f"Initializing VoidField grid ({self.grid_size})...")
+        """Initializes the VoidField grids with base values and noise."""
+        logger.info(f"Initializing VoidField grid ({self.grid_size}) with "
+                    f"SEU/SU/CU units...")
         shape = self.grid_size
+        try:
+            # Energy (SEU)
+            self.energy = np.clip(
+                np.full(shape, self.base_energy_seu, dtype=np.float32) +
+                np.random.normal(0, self.base_energy_seu * 0.1, shape).astype(np.float32),
+                0.0, self.base_energy_seu * 5.0 # Allow higher initial peaks
+            )
+            logger.debug(f"Initialized energy grid. Shape: {self.energy.shape}")
 
-        # 1. Energy Grid: Baseline + small random fluctuations
-        self.energy = np.full(shape, self.base_energy, dtype=np.float32)
-        self.energy += np.random.normal(0, self.base_energy * 0.05, shape).astype(np.float32)
-        self.energy = np.clip(self.energy, 0.0, 1.0)
+            # Frequency (Hz) - Attempt noise, fallback to uniform
+            low_freq, high_freq = self.base_frequency_range
+            if self.noise_generator:
+                try:
+                    max_amp = getattr(const, 'MAX_AMPLITUDE', 0.95)
+                    num_needed = np.prod(shape)
+                    # Request slightly more duration than strictly needed
+                    duration_needed = (float(num_needed) / float(const.SAMPLE_RATE)) + 0.1
+                    logger.debug(f"Requesting noise duration: {duration_needed:.3f}s")
+                    # Use Pink Noise for more natural frequency distribution
+                    noise_data_raw = self.noise_generator.generate_noise(
+                        'pink', duration=duration_needed, amplitude=max_amp
+                    )
+                    if noise_data_raw is None or len(noise_data_raw) < num_needed:
+                         raise RuntimeError("Noise generator returned insufficient data")
+                    # Slice and reshape
+                    noise_data = noise_data_raw[:num_needed]
+                    # Check for invalid noise data (NaN, Inf, or flat)
+                    if not np.all(np.isfinite(noise_data)) or (num_needed > 1 and np.max(noise_data) == np.min(noise_data)):
+                         raise RuntimeError("Generated noise data is invalid (NaN/Inf/Flat).")
+                    min_noise, max_noise = np.min(noise_data), np.max(noise_data)
+                    range_noise = max_noise - min_noise
+                    # Normalize noise 0-1
+                    noise_normalized = (np.zeros_like(noise_data) if range_noise < const.FLOAT_EPSILON
+                                       else (noise_data - min_noise) / range_noise)
+                    # Scale to frequency range and reshape
+                    self.frequency = (noise_normalized * (high_freq - low_freq) + low_freq).reshape(shape).astype(np.float32)
+                    if self.frequency.shape != shape: # Safeguard reshape
+                         raise RuntimeError(f"Frequency grid reshape failed. Expected {shape}, got {self.frequency.shape}")
+                    logger.info("Initialized frequency grid with Pink Noise.")
+                except Exception as noise_err:
+                    logger.error(f"Noise generation failed: {noise_err}. "
+                                 f"Falling back to uniform random frequency.", exc_info=True)
+                    self.frequency = np.random.uniform(low_freq, high_freq, shape).astype(np.float32)
+            else:
+                logger.warning("NoiseGenerator unavailable. Initializing frequency with uniform random.")
+                self.frequency = np.random.uniform(low_freq, high_freq, shape).astype(np.float32)
+            # Final clip
+            self.frequency = np.clip(self.frequency, low_freq, high_freq)
+            logger.debug(f"Initialized frequency grid. Shape: {self.frequency.shape}")
 
-        # 2. Frequency Grid: Use NoiseGenerator for pink noise if available
-        if self.noise_generator:
+            # Stability (SU)
+            self.stability = np.clip(
+                np.full(shape, self.base_stability_su, dtype=np.float32) +
+                np.random.normal(0, self.base_stability_su * 0.15, shape).astype(np.float32),
+                0.0, const.MAX_STABILITY_SU
+            )
+            logger.debug(f"Initialized stability grid. Shape: {self.stability.shape}")
+
+            # Coherence (CU)
+            self.coherence = np.clip(
+                np.full(shape, self.base_coherence_cu, dtype=np.float32) +
+                np.random.normal(0, self.base_coherence_cu * 0.2, shape).astype(np.float32),
+                0.0, const.MAX_COHERENCE_CU
+            )
+            logger.debug(f"Initialized coherence grid. Shape: {self.coherence.shape}")
+
+            # Pattern Influence (0-1)
+            self.pattern_influence = np.random.uniform(0.0, 0.05, shape).astype(np.float32)
+            logger.debug(f"Initialized pattern_influence grid. Shape: {self.pattern_influence.shape}")
+
+            # Color (RGB, 0-1)
             try:
-                # Generate base white noise
-                white_noise_base = self.noise_generator.generate_noise('white', duration=1.0, amplitude=1.0) # Generate 1s sample
-                # Tile/repeat to fill the grid size (approximate way to get noise volume)
-                # This is computationally simpler than generating huge 3D noise directly
-                num_repeats = int(np.ceil(np.prod(shape) / len(white_noise_base)))
-                tiled_noise = np.tile(white_noise_base, num_repeats)[:np.prod(shape)]
-                # Apply pink noise filter
-                pink_noise = self.noise_generator._apply_filter(tiled_noise, self.noise_generator._generate_pink_noise)
-                # Reshape and scale to frequency range
-                self.frequency = pink_noise.reshape(shape).astype(np.float32)
-                # Scale noise from [-1, 1] range to frequency range
-                low, high = self.base_frequency_range
-                self.frequency = ((self.frequency + 1.0) / 2.0) * (high - low) + low # Map from [-1,1] to [low,high]
-                self.frequency = np.clip(self.frequency, low, high)
-                logger.info("Initialized frequency grid with Pink Noise via NoiseGenerator.")
-            except Exception as e:
-                logger.error(f"NoiseGenerator failed for frequency: {e}. Falling back to uniform.")
-                low, high = self.base_frequency_range
-                self.frequency = np.random.uniform(low, high, shape).astype(np.float32)
-        else: # Fallback
-            low, high = self.base_frequency_range
-            self.frequency = np.random.uniform(low, high, shape).astype(np.float32)
-            logger.warning("Initialized frequency grid with uniform random noise (NoiseGenerator unavailable).")
+                base_col = np.array([0.1, 0.05, 0.2], dtype=np.float32) # Base void color
+                color_noise = np.random.normal(0, 0.02, shape + (3,)).astype(np.float32)
+                # Tile base color and add noise
+                self.color = np.clip(
+                    np.tile(base_col, shape + (1,)).reshape(shape + (3,)) + color_noise,
+                    0.0, 1.0
+                )
+                logger.debug(f"Initialized color grid. Shape: {self.color.shape}")
+            except Exception as color_e:
+                logger.error(f"Error initializing color grid: {color_e}. Setting default grey.", exc_info=True)
+                self.color = np.full(shape + (3,), 0.5, dtype=np.float32)
+
+            # Order/Chaos (0-1, derived)
+            try:
+                norm_s = self.stability / const.MAX_STABILITY_SU
+                norm_c = self.coherence / const.MAX_COHERENCE_CU
+                self.order = np.clip((norm_s * 0.6 + norm_c * 0.4), 0.0, 1.0)
+                self.chaos = 1.0 - self.order
+                logger.debug(f"Initialized order grid. Shape: {self.order.shape}")
+                logger.debug(f"Initialized chaos grid. Shape: {self.chaos.shape}")
+            except Exception as order_e:
+                 logger.error(f"Error initializing order/chaos: {order_e}. Setting defaults.", exc_info=True)
+                 self.order = np.full(shape, 0.5, dtype=np.float32)
+                 self.chaos = np.full(shape, 0.5, dtype=np.float32)
+
+            logger.info("VoidField grid initialization complete.")
+
+        except Exception as e:
+             logger.critical("Critical error during grid array creation.", exc_info=True)
+             # Set grids to None to indicate failure
+             self.energy=self.frequency=self.stability=self.coherence=None
+             self.pattern_influence=self.color=self.order=self.chaos=None
+             raise RuntimeError("Failed to create VoidField grid arrays.") from e
 
 
-        # 3. Coherence Grid: Baseline + variations
-        self.coherence = np.full(shape, self.base_coherence, dtype=np.float32)
-        self.coherence += np.random.normal(0, self.base_coherence * 0.1, shape).astype(np.float32)
-        self.coherence = np.clip(self.coherence, 0.0, 1.0)
-
-        # 4. Pattern Influence Grid: Initialize with zeros
-        self.pattern_influence = np.zeros(shape, dtype=np.float32)
-
-        # 5. Color Grid: Base void color + noise
-        void_base_color = np.array([0.1, 0.05, 0.2], dtype=np.float32)
-        self.color = np.tile(void_base_color, shape + (1,)).reshape(shape + (3,))
-        self.color += np.random.normal(0, 0.02, shape + (3,)).astype(np.float32)
-        self.color = np.clip(self.color, 0.0, 1.0)
-
-        # 6. Chaos/Order Grids (derived)
-        self.order = self.coherence * 0.6 + self.energy * 0.4
-        self.chaos = 1.0 - self.order
-        self.chaos = np.clip(self.chaos, 0.0, 1.0)
-        self.order = np.clip(self.order, 0.0, 1.0)
-
-        # --- Sparsely Apply Base Geometric & Platonic Potential ---
-        num_patterns_to_place = 5 # Example: Place a few instances of each potential pattern
-        # Geometry
-        if GEOMETRY_FUNCS_AVAILABLE:
-            logger.info("Applying sparse sacred geometry potential...")
-            for pattern_name, pattern_func in GEOMETRY_FUNCTION_MAP.items():
-                for _ in range(num_patterns_to_place):
-                    try:
-                        # Determine a random size and location
-                        # Size should be smaller than grid dimensions
-                        pattern_size = tuple(np.random.randint(max(5, s // 10), max(10, s // 4)) for s in shape)
-                        location = tuple(np.random.randint(0, shape[i] - pattern_size[i]) for i in range(3))
-                        strength = VOID_GEOMETRY_DENSITY * (0.5 + random.random()) # Add some variation
-
-                        # Generate the influence grid for this pattern
-                        influence_grid = pattern_func(shape=pattern_size, strength=strength) # Assumes func exists
-                        if influence_grid is not None and influence_grid.shape == pattern_size:
-                            # Get slice for placement
-                            placement_slice = tuple(slice(loc, loc + size) for loc, size in zip(location, pattern_size))
-                            # Add influence (allow overlap)
-                            self.pattern_influence[placement_slice] += influence_grid
-                        else: logger.warning(f"Failed to generate valid influence grid for {pattern_name}")
-                    except Exception as e:
-                        logger.error(f"Error applying geometry potential for {pattern_name}: {e}", exc_info=False) # Less verbose logging for loop errors
-            self.pattern_influence = np.clip(self.pattern_influence, 0.0, 1.0) # Clamp total influence
-            logger.info("Sacred geometry potential applied.")
-        else: logger.warning("Skipping geometry potential application (functions unavailable).")
-
-        # Platonics
-        if PLATONIC_FUNCS_AVAILABLE:
-            logger.info("Applying sparse platonic solid potential...")
-            for solid_name, solid_func in PLATONIC_FUNCTION_MAP.items():
-                 for _ in range(num_patterns_to_place):
-                    try:
-                        solid_size = tuple(np.random.randint(max(5, s // 12), max(10, s // 5)) for s in shape)
-                        location = tuple(np.random.randint(0, shape[i] - solid_size[i]) for i in range(3))
-                        density = VOID_PLATONIC_DENSITY * (0.5 + random.random())
-
-                        influence_field = solid_func(shape=solid_size, strength=density) # Assumes func exists
-                        if influence_field is not None and influence_field.shape == solid_size:
-                            placement_slice = tuple(slice(loc, loc + size) for loc, size in zip(location, solid_size))
-                            # Add influence (e.g., to pattern grid, or maybe directly to energy/coherence?)
-                            # Let's add to pattern_influence for now
-                            self.pattern_influence[placement_slice] += influence_field
-                        else: logger.warning(f"Failed to generate valid influence field for {solid_name}")
-                    except Exception as e:
-                        logger.error(f"Error applying platonic potential for {solid_name}: {e}", exc_info=False)
-            self.pattern_influence = np.clip(self.pattern_influence, 0.0, 1.0) # Clamp total influence
-            logger.info("Platonic solid potential applied.")
-        else: logger.warning("Skipping platonic potential application (functions unavailable).")
-
-        logger.info("VoidField grid initialization complete.")
-
+    # --- update_step ---
     def update_step(self, delta_time: float) -> None:
-        """
-        Simulates the dynamic evolution of the Void field over one time step.
-        Includes resonance checks, energy dissipation, and wave propagation.
+        """Simulates Void dynamics: diffusion, dissipation, resonance, drift."""
+        # Check if grids are initialized
+        if self.energy is None or self.frequency is None or \
+           self.stability is None or self.coherence is None or \
+           self.pattern_influence is None or self.order is None or \
+           self.chaos is None or self.color is None:
+            logger.error("Cannot update VoidField: Grids not initialized.")
+            return
+        if delta_time <= 0: return # No change if no time passed
 
-        Args:
-            delta_time (float): The time step duration.
-        """
-        if self.energy is None or self.frequency is None or self.coherence is None:
-             logger.error("VoidField grids are not initialized. Cannot update.")
-             return
-        if delta_time <= 0:
-             logger.warning("delta_time must be positive for update_step.")
-             return
+        # Cap delta_time to prevent instability with large steps
+        effective_dt = min(delta_time, 0.5) # Max time step cap
+        if effective_dt != delta_time:
+             logger.warning(f"Large delta_time ({delta_time:.2f}s) capped to "
+                            f"{effective_dt:.2f}s for stability.")
 
-        # --- 1. Harmonic Resonance ---
-        freq = self.frequency
-        energy_boost = np.zeros_like(self.energy, dtype=np.float32)
-        coherence_boost = np.zeros_like(self.coherence, dtype=np.float32)
+        try:
+            # --- 1. Harmonic Resonance Effects ---
+            freq = self.frequency
+            energy_boost_factor = np.zeros_like(self.energy)
+            coherence_boost_factor = np.zeros_like(self.coherence)
+            # Iterate over neighbors (can optimize with convolution/kernel later)
+            for axis in range(self.dimensions):
+                for shift in [-1, 1]:
+                    neighbor_freq = np.roll(freq, shift, axis=axis)
+                    resonance_score = _calculate_cell_resonance(freq, neighbor_freq)
+                    # Pattern influence enhances resonance effect
+                    resonance_modifier = 1.0 + self.pattern_influence * 0.5
+                    boost_mask = resonance_score > 0.1 # Only apply boost above threshold
+                    if np.any(boost_mask):
+                        energy_boost_factor[boost_mask] += (
+                            self.resonance_energy_boost_factor *
+                            resonance_score[boost_mask] *
+                            resonance_modifier[boost_mask]
+                        )
+                        coherence_boost_factor[boost_mask] += (
+                            self.resonance_coherence_boost_factor *
+                            resonance_score[boost_mask] *
+                            resonance_modifier[boost_mask]
+                        )
+            # Apply boosts (SEU and CU gains)
+            self.energy *= (1.0 + energy_boost_factor * effective_dt)
+            self.coherence += (coherence_boost_factor * const.MAX_COHERENCE_CU *
+                               effective_dt)
 
-        for axis in range(3):
-            for shift in [-1, 1]:
-                neighbor_freq = np.roll(freq, shift, axis=axis)
-                # Simple resonance check (can be refined)
-                ratio = np.divide(np.maximum(freq, neighbor_freq),
-                                  np.maximum(np.minimum(freq, neighbor_freq), FLOAT_EPSILON),
-                                  where=np.minimum(freq, neighbor_freq) > FLOAT_EPSILON)
-                is_resonant = np.abs(ratio - np.round(ratio)) < self.resonance_threshold # Near integer ratios
-                is_resonant |= np.abs(ratio - GOLDEN_RATIO) < self.resonance_threshold # Near phi
-                is_resonant |= np.abs(ratio / GOLDEN_RATIO - np.round(ratio / GOLDEN_RATIO)) < self.resonance_threshold # Phi harmonics
+            # --- 2. Energy Diffusion & Dissipation ---
+            # Diffusion (Laplacian approximation)
+            neighbors_sum = np.zeros_like(self.energy)
+            for axis in range(self.dimensions):
+                for shift in [-1, 1]: neighbors_sum += np.roll(self.energy, shift, axis=axis)
+            # Diffusion effect = (Avg neighbor energy - Current energy) * rate
+            diffusion_effect = ((neighbors_sum / (2.0 * self.dimensions)) - self.energy)
+            diffusion_effect *= self.propagation_speed * effective_dt
+            self.energy += diffusion_effect
+            # Dissipation (simple exponential decay)
+            self.energy *= (1.0 - self.dissipation_rate * effective_dt)
 
-                # Apply boost where resonant, potentially modified by pattern influence
-                resonance_modifier = 1.0 + self.pattern_influence[is_resonant] # Higher pattern influence slightly increases boost
-                energy_boost[is_resonant] += self.resonance_boost * self.energy[is_resonant] * resonance_modifier
-                coherence_boost[is_resonant] += self.resonance_boost * 0.5 * resonance_modifier
+            # --- 3. Property Drifts & Noise ---
+            # Frequency drift (random walk)
+            freq_drift = np.random.normal(0, 1.0 * effective_dt,
+                                          self.grid_size).astype(np.float32)
+            self.frequency += freq_drift
+            # Drift towards baseline values (slow relaxation)
+            self.stability += ((self.base_stability_su - self.stability) *
+                               0.01 * effective_dt)
+            self.coherence += ((self.base_coherence_cu - self.coherence) *
+                               0.02 * effective_dt)
+            # Pattern influence decay
+            self.pattern_influence *= (1.0 - 0.005 * effective_dt)
 
-        self.energy += energy_boost * delta_time # Scale boost by time step
-        self.coherence += coherence_boost * delta_time
+            # --- 4. Clamping ---
+            self.energy = np.clip(self.energy, 0.0, const.MAX_SOUL_ENERGY_SEU * 5) # Allow higher peaks in void
+            self.stability = np.clip(self.stability, 0.0, const.MAX_STABILITY_SU)
+            self.coherence = np.clip(self.coherence, 0.0, const.MAX_COHERENCE_CU)
+            self.frequency = np.clip(self.frequency, self.base_frequency_range[0],
+                                     self.base_frequency_range[1])
+            self.pattern_influence = np.clip(self.pattern_influence, 0.0, 1.0)
 
-        # --- 2. Energy Dissipation & Propagation (Simplified Diffusion) ---
-        # Simple neighbor averaging for diffusion/propagation effect
-        neighbors_sum = np.zeros_like(self.energy)
-        for axis in range(3):
-            for shift in [-1, 1]:
-                neighbors_sum += np.roll(self.energy, shift, axis=axis)
-        diffusion_effect = (neighbors_sum / 6.0 - self.energy) * self.propagation_speed * delta_time
+            # --- 5. Update Derived Properties (Order/Chaos, Color) ---
+            norm_s = self.stability / const.MAX_STABILITY_SU
+            norm_c = self.coherence / const.MAX_COHERENCE_CU
+            self.order = np.clip((norm_s * 0.6 + norm_c * 0.4), 0.0, 1.0)
+            self.chaos = 1.0 - self.order
+            # Color update (example: brighter with energy, hue shifts with coherence)
+            energy_factor = np.clip(self.energy / (self.base_energy_seu * 5.0), 0.1, 1.0)
+            coherence_factor = np.clip(self.coherence / const.MAX_COHERENCE_CU, 0.0, 1.0)
+            hue_shift = (coherence_factor - 0.5) * 0.2 # Shift hue based on coherence deviation
+            # Blend towards target void color [0.1, 0.05, 0.2] + hue shift
+            self.color[..., 0] = np.clip(self.color[..., 0]*0.99 + 0.01*(0.1 + hue_shift), 0, 1) # R
+            self.color[..., 1] = np.clip(self.color[..., 1]*0.99 + 0.01*(0.05), 0, 1) # G
+            self.color[..., 2] = np.clip(self.color[..., 2]*0.99 + 0.01*(0.2 - hue_shift), 0, 1) # B
+            # Modulate brightness by energy
+            self.color *= energy_factor[..., np.newaxis]
+            self.color = np.clip(self.color, 0.0, 1.0)
 
-        # Apply dissipation and diffusion
-        self.energy += diffusion_effect
-        self.energy *= (1.0 - self.dissipation_rate * delta_time)
+        except Exception as e:
+            logger.error(f"Error during VoidField update step: {e}", exc_info=True)
+            # Potentially reset grids or handle error gracefully? For now, log and continue.
 
-        # --- 3. Update Frequency (Slow drift + noise) ---
-        freq_drift = np.random.normal(0, 0.5 * delta_time, self.grid_size).astype(np.float32)
-        self.frequency += freq_drift
-        self.frequency = np.clip(self.frequency, self.base_frequency_range[0], self.base_frequency_range[1])
-
-        # --- 4. Update Coherence (Drift towards target influenced by energy) ---
-        coherence_target = self.base_coherence + (self.energy - self.base_energy) * 0.3 # Coherence influenced by energy deviation
-        coherence_target = np.clip(coherence_target, 0.0, 1.0)
-        self.coherence += (coherence_target - self.coherence) * 0.1 * delta_time # Slow adjustment
-        self.coherence = np.clip(self.coherence, 0.0, 1.0)
-
-        # --- 5. Update Chaos/Order ---
-        self.order = self.coherence * 0.6 + self.energy * 0.4
-        self.chaos = 1.0 - self.order
-        self.order = np.clip(self.order, 0.0, 1.0)
-        self.chaos = np.clip(self.chaos, 0.0, 1.0)
-
-        # --- 6. Clamp energy ---
-        self.energy = np.clip(self.energy, 0.0, 1.0) # Final clamp
-
-
+    # --- get_properties_at ---
     def get_properties_at(self, coordinates: Tuple[int, int, int]) -> Dict[str, Any]:
-        """ Get properties, handling potential None grids during initialization issues. """
+        """Gets field properties (SEU/SU/CU) at specific coordinates."""
         if not self._validate_coordinates(coordinates):
-            raise IndexError(f"Coordinates {coordinates} out of bounds {self.grid_size}.")
+            raise IndexError(f"Coordinates {coordinates} out of grid bounds {self.grid_size}")
+        x, y, z = coordinates
+
+        # Check grid initialization before access
+        if any(g is None for g in [self.energy, self.frequency, self.stability,
+                                    self.coherence, self.pattern_influence,
+                                    self.color, self.order, self.chaos]):
+            logger.error(f"Grid not initialized when accessing {coordinates}.")
+            # Return minimal dict or raise error? Returning dict allows caller checks.
+            return {"field_type": "void", "error": "Uninitialized grid"}
+
+        try:
+            properties = {"field_type": "void"}
+            # Return properties in defined units
+            properties["energy_seu"] = float(self.energy[x, y, z])
+            properties["frequency_hz"] = float(self.frequency[x, y, z])
+            properties["stability_su"] = float(self.stability[x, y, z])
+            properties["coherence_cu"] = float(self.coherence[x, y, z])
+            properties["pattern_influence"] = float(self.pattern_influence[x, y, z]) # 0-1
+            properties["color_rgb"] = self.color[x, y, z].tolist() # List [r,g,b] 0-1
+            properties["order_factor"] = float(self.order[x, y, z]) # 0-1
+            properties["chaos_factor"] = float(self.chaos[x, y, z]) # 0-1
+            return properties
+        except IndexError: # Should be caught by _validate_coordinates, but safeguard
+            raise IndexError(f"Coordinates {coordinates} caused IndexError during property access.")
+        except Exception as e:
+            logger.error(f"Unexpected error in get_properties_at({coordinates}): {e}", exc_info=True)
+            raise # Re-raise unexpected errors
+
+
+    # --- apply_influence ---
+    def apply_influence(self, position: Tuple[float, float, float],
+                        influence_type: str, strength: float, radius: float) -> None:
+        """Applies external influence (e.g., from soul) to the VoidField."""
+        logger.debug(f"Applying influence '{influence_type}' at {position} "
+                     f"str={strength:.2f}, rad={radius:.1f}")
+        try:
+            center_x, center_y, center_z = [int(round(p)) for p in position]
+            if not self._validate_coordinates((center_x, center_y, center_z)):
+                logger.warning(f"Influence center {position} is out of bounds.")
+                return # Ignore influence outside grid
+
+            radius_sq = radius * radius
+            # Define bounding box, ensure it's within grid limits
+            min_x = max(0, center_x - int(radius)); max_x = min(self.grid_size[0], center_x + int(radius) + 1)
+            min_y = max(0, center_y - int(radius)); max_y = min(self.grid_size[1], center_y + int(radius) + 1)
+            min_z = max(0, center_z - int(radius)); max_z = min(self.grid_size[2], center_z + int(radius) + 1)
+
+            # Check if bounding box is valid
+            if min_x >= max_x or min_y >= max_y or min_z >= max_z: return # No volume to affect
+
+            # Create index grids ONLY for the bounding box slice
+            x_idx, y_idx, z_idx = np.meshgrid(
+                np.arange(min_x, max_x), np.arange(min_y, max_y), np.arange(min_z, max_z),
+                indexing='ij'
+            )
+            # Calculate squared distance from center within the box
+            dist_sq = ((x_idx - center_x)**2 + (y_idx - center_y)**2 +
+                       (z_idx - center_z)**2)
+            # Create mask for points within the sphere AND within the box
+            mask = dist_sq <= radius_sq
+            if not np.any(mask): return # No points affected
+
+            # Calculate falloff factor based on distance (0 at edge, 1 at center)
+            falloff = np.maximum(0.0, 1.0 - np.sqrt(dist_sq[mask] / max(const.FLOAT_EPSILON, radius_sq)))
+
+            # Define slice for the affected bounding box
+            box_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
+
+            # Check grids before applying influence
+            if any(g is None for g in [self.energy, self.stability, self.coherence,
+                                        self.frequency, self.pattern_influence,
+                                        self.order, self.chaos]):
+                 logger.error("Cannot apply influence: VoidField grids not initialized.")
+                 return
+
+            # Apply influence based on type (vectorized on the masked slice)
+            if influence_type == 'energy_infusion':
+                self.energy[box_slice][mask] += strength * falloff # Add SEU
+            elif influence_type == 'stabilizing':
+                # Push towards target SU (strength defines the target SU)
+                target_su = strength
+                current_su = self.stability[box_slice][mask]
+                change = (target_su - current_su) * 0.1 * falloff # Gradual push
+                self.stability[box_slice][mask] += change
+            elif influence_type == 'coherence_boost':
+                 # Push towards target CU (strength defines the target CU)
+                target_cu = strength
+                current_cu = self.coherence[box_slice][mask]
+                change = (target_cu - current_cu) * 0.1 * falloff # Gradual push
+                self.coherence[box_slice][mask] += change
+            elif influence_type == 'frequency_shift':
+                # Shift frequency by strength * falloff (Hz change)
+                self.frequency[box_slice][mask] += strength * falloff
+            elif influence_type == 'pattern_imprint':
+                 # Increase pattern influence factor (0-1)
+                self.pattern_influence[box_slice][mask] += strength * falloff
+            else:
+                logger.warning(f"Unknown influence type requested: '{influence_type}'")
+                return # Do nothing for unknown types
+
+            # --- Re-clamp and update derived properties for the affected region ---
+            affected_indices = tuple(idx[mask] for idx in (x_idx,y_idx,z_idx)) # Get affected indices
+
+            if influence_type in ['energy_infusion']:
+                 self.energy[affected_indices] = np.clip(self.energy[affected_indices], 0.0, const.MAX_SOUL_ENERGY_SEU * 5)
+            if influence_type in ['stabilizing', 'coherence_boost']:
+                 self.stability[affected_indices] = np.clip(self.stability[affected_indices], 0.0, const.MAX_STABILITY_SU)
+                 self.coherence[affected_indices] = np.clip(self.coherence[affected_indices], 0.0, const.MAX_COHERENCE_CU)
+                 # Update order/chaos only if stability/coherence changed
+                 norm_s_affected = self.stability[affected_indices] / const.MAX_STABILITY_SU
+                 norm_c_affected = self.coherence[affected_indices] / const.MAX_COHERENCE_CU
+                 new_order_affected = np.clip((norm_s_affected * 0.6 + norm_c_affected * 0.4), 0.0, 1.0)
+                 self.order[affected_indices] = new_order_affected
+                 self.chaos[affected_indices] = 1.0 - new_order_affected
+            if influence_type in ['frequency_shift']:
+                 self.frequency[affected_indices] = np.clip(self.frequency[affected_indices], self.base_frequency_range[0], self.base_frequency_range[1])
+            if influence_type in ['pattern_imprint']:
+                 self.pattern_influence[affected_indices] = np.clip(self.pattern_influence[affected_indices], 0.0, 1.0)
+
+        except IndexError:
+            logger.error(f"IndexError applying influence at {position}. "
+                         f"Calculated box slice: {box_slice}, Mask shape: {mask.shape}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Unexpected error applying influence: {e}", exc_info=True)
+
+    # --- calculate_edge_of_chaos ---
+    def calculate_edge_of_chaos(self, coordinates: Tuple[int, int, int],
+                                radius: int = 3) -> float:
+        """Calculates edge of chaos metric (0-1) in a local region."""
+        if not self._validate_coordinates(coordinates):
+            logger.warning(f"Invalid coordinates for EoC calculation: {coordinates}")
+            return 0.0 # Return default/neutral value for invalid coords
 
         x, y, z = coordinates
-        properties = {"field_type": "void"}
-        # Safely access attributes, providing defaults if None (shouldn't happen after init)
-        properties["energy"] = float(self.energy[x, y, z]) if self.energy is not None else self.base_energy
-        properties["frequency"] = float(self.frequency[x, y, z]) if self.frequency is not None else np.mean(self.base_frequency_range)
-        properties["coherence"] = float(self.coherence[x, y, z]) if self.coherence is not None else self.base_coherence
-        properties["pattern_influence"] = float(self.pattern_influence[x, y, z]) if self.pattern_influence is not None else 0.0
-        properties["color"] = self.color[x, y, z].tolist() if self.color is not None else [0.1, 0.05, 0.2]
-        properties["chaos"] = float(self.chaos[x, y, z]) if self.chaos is not None else (1.0 - (self.base_coherence*0.6+self.base_energy*0.4))
-        properties["order"] = float(self.order[x, y, z]) if self.order is not None else (self.base_coherence*0.6+self.base_energy*0.4)
-        return properties
+        # Define local region bounds, clamped to grid size
+        min_x = max(0, x - radius); max_x = min(self.grid_size[0], x + radius + 1)
+        min_y = max(0, y - radius); max_y = min(self.grid_size[1], y + radius + 1)
+        min_z = max(0, z - radius); max_z = min(self.grid_size[2], z + radius + 1)
 
-    def apply_influence(self, position: Tuple[float, float, float], influence_type: str, strength: float, radius: float) -> None:
-        """ Apply external influence (basic implementation). """
-        logger.debug(f"Applying influence '{influence_type}' at {position} str={strength:.2f}, rad={radius:.1f}")
-        center_x, center_y, center_z = [int(round(p)) for p in position]
+        # Check if region is valid
+        if min_x >= max_x or min_y >= max_y or min_z >= max_z:
+             logger.warning(f"Invalid region slice for EoC at {coordinates}")
+             return 0.0
+
+        try:
+            # Slice the order grid for the local region
+            region_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
+            if self.order is None:
+                logger.error("Order grid not initialized for EoC calculation.")
+                return 0.0
+            order_vals = self.order[region_slice]
+            if order_vals.size == 0: return 0.0 # Empty region
+
+            # Calculate metrics: Balance (avg closeness to 0.5) and Complexity (variance)
+            avg_order = np.mean(order_vals)
+            # Balance: Higher when avg_order is near 0.5
+            balance = 1.0 - 2.0 * abs(avg_order - 0.5)
+            # Complexity: Higher variance indicates more complex patterns
+            variance = np.var(order_vals)
+            # Scale variance to 0-1 roughly (e.g., max variance is 0.25 for 0/1 values)
+            # Multiply by balance: complexity requires balance
+            complexity = np.clip(sqrt(variance) * 4.0 * balance, 0.0, 1.0)
+
+            # Combine balance and complexity (weighted average)
+            edge_metric = balance * 0.6 + complexity * 0.4
+            return float(np.clip(edge_metric, 0.0, 1.0)) # Final clamp 0-1
+
+        except Exception as e:
+            logger.error(f"Error calculating EoC at {coordinates} (radius {radius}): {e}",
+                         exc_info=True)
+            return 0.0 # Return default/neutral value on error
+
+    # --- get_edge_of_chaos_grid ---
+    def get_edge_of_chaos_grid(self, low_res: bool = True) -> np.ndarray:
+        """Calculates the Edge of Chaos metric for the entire grid."""
+        if self.order is None:
+            logger.error("Cannot calculate EoC grid: Order grid not initialized.")
+            return np.zeros(self.grid_size if not low_res else tuple(max(1, s//4) for s in self.grid_size))
+
+        # Performance check for full resolution
+        if not low_res and np.prod(self.grid_size) > 100**3: # Arbitrary limit
+            logger.warning("Calculating full-res EoC grid for large size - "
+                           "this might be slow.")
+
+        target_shape = tuple(max(1, s // 4) for s in self.grid_size) if low_res else self.grid_size
+        result = np.zeros(target_shape, dtype=np.float32)
+        sample_factor = 4 if low_res else 1
+        local_radius = 2 if low_res else 3 # Smaller radius for low-res sampling
+
+        # Iterate over the target grid (low-res or full-res)
+        it = np.nditer(result, flags=['multi_index'], op_flags=['writeonly'])
+        with it:
+             for x in it:
+                 # Map target grid index back to original grid index
+                 # Take the center of the sampled block
+                 orig_coords = tuple(min(self.grid_size[i] - 1,
+                                     int(round((it.multi_index[i] + 0.5) * sample_factor)))
+                                 for i in range(self.dimensions))
+
+                 # Calculate EoC centered at this original coordinate
+                 eoc_value = self.calculate_edge_of_chaos(orig_coords, radius=local_radius)
+                 x[...] = eoc_value # Assign value to the target grid
+
+        return result
+
+    # --- find_optimal_development_points ---
+    def find_optimal_development_points(self, count: int = 5
+                                       ) -> List[Tuple[int, int, int]]:
+        """Find points with high Edge of Chaos values."""
+        if count <= 0: return []
+        logger.debug(f"Finding {count} optimal development points...")
+        try:
+            # Calculate low-res EoC grid for performance
+            edge_grid = self.get_edge_of_chaos_grid(low_res=True)
+            if edge_grid is None or np.prod(edge_grid.shape) == 0:
+                logger.warning("EoC grid is empty. Returning random points.")
+                return [tuple(np.random.randint(0, d)) for d in self.grid_size
+                        for _ in range(count)] # Generate 'count' random points
+
+            # Get indices sorted by EoC value (highest first)
+            # Flatten the grid and get indices that would sort it descendingly
+            flat_indices_desc = np.argsort(edge_grid.flatten())[::-1]
+
+            optimal_points_candidates = []
+            sample_factor = 4 # Factor used in get_edge_of_chaos_grid (low_res=True)
+            lowres_shape = edge_grid.shape
+            seen_coords = set() # Track added coords to avoid duplicates
+
+            for flat_idx in flat_indices_desc:
+                # Convert flat index back to 3D low-res coordinates
+                coords_lowres = np.unravel_index(flat_idx, lowres_shape)
+
+                # Map low-res coords back to original grid coords (approx center of block)
+                orig_coords = tuple(min(self.grid_size[i] - 1, # Clamp to max index
+                                     max(0, int(round((coords_lowres[i] + 0.5) * sample_factor))))
+                                for i in range(self.dimensions))
+
+                # Validate and add if not already seen
+                if self._validate_coordinates(orig_coords) and orig_coords not in seen_coords:
+                    optimal_points_candidates.append(orig_coords)
+                    seen_coords.add(orig_coords)
+
+                # Stop when we have enough points
+                if len(optimal_points_candidates) >= count:
+                    break
+
+            # Fill with random points if fewer optimal points were found than requested
+            while len(optimal_points_candidates) < count:
+                rand_coords = tuple(np.random.randint(0, d) for d in self.grid_size)
+                if rand_coords not in seen_coords:
+                     optimal_points_candidates.append(rand_coords)
+                     seen_coords.add(rand_coords)
+
+            logger.info(f"Found {len(optimal_points_candidates)} candidate points. "
+                        f"Returning top {count}: {optimal_points_candidates[:count]}")
+            return optimal_points_candidates[:count] # Return only the requested number
+
+        except Exception as e:
+            logger.error(f"Error finding optimal development points: {e}", exc_info=True)
+            # Fallback to random points on error
+            return [tuple(np.random.randint(0, d)) for d in self.grid_size
+                    for _ in range(count)]
+
+    # --- Other Helper Methods ---
+    def _validate_coordinates(self, coordinates: Tuple[int, int, int]) -> bool:
+        """Checks if grid coordinates are within the field bounds."""
+        try:
+            # Check type and length first for robustness
+            if not isinstance(coordinates, tuple) or len(coordinates) != self.dimensions:
+                return False
+            # Check bounds for each dimension
+            return all(0 <= coordinates[i] < self.grid_size[i]
+                       for i in range(self.dimensions))
+        except:
+             return False # Handle any unexpected errors during check
+
+    def apply_geometric_pattern(self, pattern_type: str, location: Tuple[int, int, int],
+                               radius: float, strength: float) -> None:
+        """Applies a predefined geometric pattern influence."""
+        # This method relies on the pattern influence grid being present
+        if self.pattern_influence is None:
+             logger.error("Cannot apply geometric pattern: Pattern grid not initialized.")
+             return
+        if not self._validate_coordinates(location):
+             logger.warning(f"Cannot apply pattern '{pattern_type}' at invalid "
+                            f"location {location}.")
+             return
+        if radius <= 0 or strength <= 0: return # No effect
+
+        logger.debug(f"Applying geometric pattern '{pattern_type}' at {location} "
+                     f"(rad={radius:.1f}, str={strength:.2f})")
+        # --- Bounding Box & Mask ---
+        center_x, center_y, center_z = location
         radius_sq = radius * radius
+        min_x=max(0,center_x-int(radius)); max_x=min(self.grid_size[0],center_x+int(radius)+1)
+        min_y=max(0,center_y-int(radius)); max_y=min(self.grid_size[1],center_y+int(radius)+1)
+        min_z=max(0,center_z-int(radius)); max_z=min(self.grid_size[2],center_z+int(radius)+1)
+        if min_x>=max_x or min_y>=max_y or min_z>=max_z: return
 
-        min_x = max(0, center_x - int(radius)); max_x = min(self.grid_size[0], center_x + int(radius) + 1)
-        min_y = max(0, center_y - int(radius)); max_y = min(self.grid_size[1], center_y + int(radius) + 1)
-        min_z = max(0, center_z - int(radius)); max_z = min(self.grid_size[2], center_z + int(radius) + 1)
-
-        # Use indices for efficient slicing and calculation
-        x_idx, y_idx, z_idx = np.meshgrid(np.arange(min_x, max_x), np.arange(min_y, max_y), np.arange(min_z, max_z), indexing='ij')
-        dist_sq = (x_idx - center_x)**2 + (y_idx - center_y)**2 + (z_idx - center_z)**2
+        x_idx, y_idx, z_idx = np.meshgrid(
+            np.arange(min_x, max_x), np.arange(min_y, max_y), np.arange(min_z, max_z),
+            indexing='ij'
+        )
+        dist_sq = ((x_idx - center_x)**2 + (y_idx - center_y)**2 +
+                   (z_idx - center_z)**2)
         mask = dist_sq <= radius_sq
+        if not np.any(mask): return
 
-        if not np.any(mask): return # No cells within radius
+        # --- Calculate Pattern Influence ---
+        # Example: Increase pattern_influence grid based on pattern type & falloff
+        # More complex patterns could use precomputed grids (see FieldHarmonics idea)
+        falloff = np.maximum(0.0, 1.0 - np.sqrt(dist_sq[mask] / max(const.FLOAT_EPSILON, radius_sq)))
+        # Base influence increase
+        influence_increase = strength * falloff
+        # Modify increase based on pattern type (simple example)
+        if 'flower' in pattern_type or 'tree' in pattern_type: influence_increase *= 1.2 # Harmony boost
+        elif 'tetrahedron' in pattern_type: influence_increase *= 0.8 # Structure focus
+        elif 'merkaba' in pattern_type: influence_increase *= 1.1 # Transformative boost
 
-        # Calculate falloff based on distance (e.g., linear or gaussian)
-        falloff = np.maximum(0.0, 1.0 - np.sqrt(dist_sq[mask] / max(FLOAT_EPSILON, radius_sq)))
+        # --- Apply to Grid ---
+        box_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
+        current_influence = self.pattern_influence[box_slice][mask]
+        self.pattern_influence[box_slice][mask] = np.clip(
+            current_influence + influence_increase, 0.0, 1.0
+        )
 
-        # Get grid slices corresponding to the mask
-        grid_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
-        masked_slice_indices = tuple(idx[mask] for idx in (x_idx, y_idx, z_idx)) # Indices within the full grid
 
-        # Apply based on type
-        if influence_type == 'energy_infusion':
-            self.energy[masked_slice_indices] += strength * falloff
-            self.energy[masked_slice_indices] = np.clip(self.energy[masked_slice_indices], 0.0, 1.0)
-        elif influence_type == 'stabilizing':
-            self.coherence[masked_slice_indices] += strength * 0.1 * falloff
-            self.coherence[masked_slice_indices] = np.clip(self.coherence[masked_slice_indices], 0.0, 1.0)
-            # Update order/chaos derived from coherence
-            self.order[masked_slice_indices] = self.coherence[masked_slice_indices] * 0.6 + self.energy[masked_slice_indices] * 0.4
-            self.chaos[masked_slice_indices] = 1.0 - self.order[masked_slice_indices]
-            self.order[masked_slice_indices] = np.clip(self.order[masked_slice_indices], 0.0, 1.0)
-            self.chaos[masked_slice_indices] = np.clip(self.chaos[masked_slice_indices], 0.0, 1.0)
-        elif influence_type == 'frequency_shift':
-             self.frequency[masked_slice_indices] += strength * falloff # Strength here is the Hz shift
-             self.frequency[masked_slice_indices] = np.clip(self.frequency[masked_slice_indices], self.base_frequency_range[0], self.base_frequency_range[1])
-        else:
-            logger.warning(f"Unknown influence type '{influence_type}' requested.")
-
+    # --- __str__ ---
+    def __str__(self) -> str:
+        """String representation of the VoidField."""
+        status = []
+        status.append(f"Size:{self.grid_size}")
+        if self.energy is not None: status.append(f"E:{np.mean(self.energy):.1f}SEU")
+        if self.stability is not None: status.append(f"S:{np.mean(self.stability):.1f}SU")
+        if self.coherence is not None: status.append(f"C:{np.mean(self.coherence):.1f}CU")
+        if self.order is not None: status.append(f"Order:{np.mean(self.order):.2f}")
+        return f"VoidField({', '.join(status)})"
 
 # --- END OF FILE src/stage_1/fields/void_field.py ---

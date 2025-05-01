@@ -25,7 +25,7 @@ except ImportError:
 # --- Constants ---
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from src.constants.constants import *
+    from constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. UniverseSounds cannot function.")
@@ -48,6 +48,15 @@ logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, 
 logger = logging.getLogger('sounds_of_universe')
 
 # --- Module Specific Constants & Data ---
+
+OUTPUT_DIR_BASE = "output/sounds"  # Default base directory for sound output
+
+# Base frequencies for dimensional transitions
+VOID_BASE_FREQUENCY = 50.0  # Hz - Low frequency for void dimension
+GUFF_BASE_FREQUENCY = 432.0  # Hz - Base frequency for guff dimension
+
+# Solfeggio frequencies (common in sacred sound work)
+SOLFEGGIO_MI = 528.0  # Hz - "MI" frequency, transformation and miracles
 
 # Cosmic constants mapped to audible frequencies (Example mapping, adjust as needed)
 # Ensure these frequencies are positive
@@ -111,7 +120,7 @@ class UniverseSounds:
         self.sample_rate: int = sample_rate
         self.output_dir: str = os.path.join(output_dir, "universe") # Subdirectory
         # Optional: Initialize SoundGenerator for saving
-        self._sound_saver: Optional[SoundGenerator] = None
+        self._sound_saver = None  
         if SOUND_GENERATOR_AVAILABLE:
              try: self._sound_saver = SoundGenerator(sample_rate=self.sample_rate, output_dir=self.output_dir)
              except Exception as e: logger.error(f"Failed to initialize SoundGenerator for saving: {e}")
@@ -498,13 +507,13 @@ if __name__ == "__main__":
 
     except (ValueError, TypeError, IOError, RuntimeError, ImportError) as e:
         print(f"\n--- ERROR during Sounds of Universe Example ---")
-        print(f"An error occurred: {type(e).__name__}: {e}")
+        print(f"An error occurred: {e.__class__.__name__}: {e}")
         import traceback
         traceback.print_exc()
         print("---------------------------------------------")
     except Exception as e:
         print(f"\n--- UNEXPECTED ERROR during Sounds of Universe Example ---")
-        print(f"An unexpected error occurred: {type(e).__name__}: {e}")
+        print(f"An unexpected error occurred: {e.__class__.__name__}: {e}")
         import traceback
         traceback.print_exc()
         print("------------------------------------------------------")
