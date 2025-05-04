@@ -11,14 +11,14 @@ Assumes `from constants.constants import *`.
 """
 
 import logging
-import numpy as np
 import os
 import sys
 import uuid
 import json
 from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional
-from math import log10, pi as PI_MATH, exp, sqrt, tanh, atan2, cos, sin
+from math import log10, pi as PI, exp, sqrt, tanh
+import numpy as np # Make sure numpy is imported as np
 from constants.constants import * # Import constants for the module
 # --- Constants Import ---
 # Assume constants are imported at the top level
@@ -137,6 +137,7 @@ class SoulSpark:
         self.creation_time: str = datetime.now().isoformat()
         self.last_modified: str = self.creation_time
         data = initial_data if initial_data is not None else {}
+        self.toroidal_flow_strength = float(data.get('toroidal_flow_strength', 0.05)) # Start low
         if not data:
             raise ValueError("SoulSpark requires non-empty initial_data.")
 
@@ -342,10 +343,68 @@ class SoulSpark:
         else:
             final_frequencies = np.array([base_freq])
             final_amplitudes = np.array([1.0])
-        initial_phases=(final_frequencies/base_freq)*PI_MATH; initial_coherence_estimate=getattr(self,'pattern_coherence',0.15); phase_noise_mag=PI_MATH*(1.0-initial_coherence_estimate)*0.5; phase_noise=np.random.uniform(-phase_noise_mag,phase_noise_mag,len(final_frequencies)); final_phases=(initial_phases+phase_noise)%(2*PI_MATH)
+        initial_phases=(final_frequencies/base_freq)*np.pi; initial_coherence_estimate=getattr(self,'pattern_coherence',0.15); phase_noise_mag=np.pi*(1.0-initial_coherence_estimate)*0.5; phase_noise=np.random.uniform(-phase_noise_mag,phase_noise_mag,len(final_frequencies)); final_phases=(initial_phases+phase_noise)%(2*np.pi)
         self.frequency_signature={'base_frequency':float(base_freq),'frequencies':final_frequencies.tolist(),'amplitudes':final_amplitudes.tolist(),'phases':final_phases.tolist(),'num_frequencies':len(final_frequencies)}
         self.harmonics=final_frequencies.tolist(); logger.debug(f"Generated Phi/Int harmonic structure for {self.spark_id}. NumHarmonics: {len(self.harmonics)}")
 
+    def _optimize_phase_coherence(self, target_factor: float = 0.1) -> float:
+        """
+        Optimize phase coherence by reducing circular variance.
+        Returns improvement amount (0-1 scale).
+        """
+        if not isinstance(self.frequency_signature, dict):
+            return 0.0
+        
+        # Get current phases
+        if 'phases' not in self.frequency_signature:
+            return 0.0
+            
+        phases_data = self.frequency_signature['phases']
+        
+        # Check if phases_data is None or empty 
+        if phases_data is None:
+            return 0.0
+        
+        # If it's a list, check if it's empty
+        if isinstance(phases_data, list) and len(phases_data) == 0:
+            return 0.0
+            
+        # Convert to numpy array if it's a list
+        phases = np.array(phases_data) if not isinstance(phases_data, np.ndarray) else phases_data
+        
+        if phases.size <= 1:
+            return 0.0
+        
+        # Calculate initial circular statistics
+        mean_cos = np.mean(np.cos(phases))
+        mean_sin = np.mean(np.sin(phases))
+        initial_r = np.sqrt(mean_cos**2 + mean_sin**2)  # Mean resultant length
+        initial_var = 1.0 - initial_r  # Circular variance
+        
+        # Calculate target phases based on mean phase
+        mean_phase = np.arctan2(mean_sin, mean_cos)
+        
+        # Adjust phases toward mean, strength based on target_factor
+        # Partial alignment preserves some variability
+        new_phases = phases * (1.0 - target_factor) + mean_phase * target_factor
+        
+        # Wrap to 0-2π
+        new_phases = new_phases % (2 * np.pi)
+        
+        # Calculate new circular variance
+        new_mean_cos = np.mean(np.cos(new_phases))
+        new_mean_sin = np.mean(np.sin(new_phases))
+        new_r = np.sqrt(new_mean_cos**2 + new_mean_sin**2)
+        new_var = 1.0 - new_r
+        
+        # Update frequency signature if improved
+        if new_var < initial_var:
+            self.frequency_signature['phases'] = new_phases.tolist()
+            logger.debug(f"Phase coherence optimized: {initial_var:.4f} -> {new_var:.4f}")
+            return (initial_var - new_var)  # Return improvement amount
+        
+        return 0.0
+    
     # --- Core Calculation Methods (_calculate_stability_score, _calculate_coherence_score) ---
     # --- Implementations from V4.3.1 / V4.3.6 ---
     def _calculate_stability_score(self) -> float:
@@ -369,7 +428,21 @@ class SoulSpark:
             guff_influence=getattr(self,'guff_influence_factor',0.0)
             seph_influence=getattr(self,'cumulative_sephiroth_influence',0.0)
             field_influence_factor=np.clip(guff_influence+seph_influence,0.0,1.0)
-            stability_score=(freq_stability_factor*STABILITY_WEIGHT_FREQ + pattern_integrity_factor*STABILITY_WEIGHT_PATTERN + field_influence_factor*STABILITY_WEIGHT_FIELD) * MAX_STABILITY_SU
+            torus_factor = getattr(self, 'toroidal_flow_strength', 0.0)
+            stability_score = (freq_stability_factor * STABILITY_WEIGHT_FREQ +
+                   pattern_integrity_factor * STABILITY_WEIGHT_PATTERN +
+                   field_influence_factor * STABILITY_WEIGHT_FIELD +
+                   torus_factor * STABILITY_WEIGHT_TORUS # <-- ADDED
+                  ) * MAX_STABILITY_SU
+            # Normalize weights if necessary (sum should ideally be ~1.0)
+            total_weight = (STABILITY_WEIGHT_FREQ + STABILITY_WEIGHT_PATTERN +
+                            STABILITY_WEIGHT_FIELD + STABILITY_WEIGHT_TORUS)
+            if abs(total_weight - 1.0) > FLOAT_EPSILON:
+                # Optional: Normalize if weights don't sum to 1
+                # stability_score *= (1.0 / total_weight)
+                logger.warning(f"Stability weights do not sum to 1.0 (Sum={total_weight:.3f})")
+
+            logger.debug(f"  _calc_stability: TorusFactor={torus_factor:.3f}, Weight={STABILITY_WEIGHT_TORUS:.2f}")
             logger.debug(f"  _calc_stability: FreqFactor={freq_stability_factor:.3f} (RelVar={relative_variance:.4E})")
             logger.debug(f"  _calc_stability: PatternFactor={pattern_integrity_factor:.3f} (L={layers_count}, A={aspects_count}, AvgStr={avg_aspect_strength:.2f}, PhiRes={phi_resonance:.2f}, Align={creator_alignment:.2f})")
             logger.debug(f"  _calc_stability: FieldInfluence={field_influence_factor:.3f} (Guff={guff_influence:.3f}, Seph={seph_influence:.3f})")
@@ -378,49 +451,149 @@ class SoulSpark:
             return max(0.0,min(MAX_STABILITY_SU,stability_score))
         except Exception as e: logger.error(f"Error calculating stability score: {e}",exc_info=True); return getattr(self,'stability',0.0)
 
+# In SoulSpark class in soul_spark.py
+
     def _calculate_coherence_score(self) -> float:
-        """Calculates coherence (0-100 CU) from underlying factors."""
-        # (Implementation from V4.3.6 - using direct constant names)
-        try:
-            phase_coherence_factor=0.1; circ_variance=1.0; phases_list=None; num_phases=0
-            if isinstance(self.frequency_signature,dict) and 'phases' in self.frequency_signature:
-                phases_list=self.frequency_signature.get('phases',[])
-                if phases_list:
-                    phases=np.array(phases_list)
-                    num_phases=len(phases)
-                    if num_phases>1:
-                        mean_cos=np.mean(cos(phases))
-                        mean_sin=np.mean(sin(phases))
-                        circ_variance=1-sqrt(mean_cos**2+mean_sin**2)
-                        phase_coherence_factor=(1.0-circ_variance)
-                    elif num_phases==1:
-                        phase_coherence_factor=0.75
-            harmonic_purity_factor=0.1; harmonics_list=getattr(self,'harmonics',[])
-            if harmonics_list and self.frequency>FLOAT_EPSILON:
-                valid_harmonics=[h for h in harmonics_list if isinstance(h,(int,float)) and h>FLOAT_EPSILON]; ratios=[h/self.frequency for h in valid_harmonics]
+        """ Calculates coherence (0-100 CU) from underlying factors. Includes detailed logging and robust error handling. """
+        logger.debug(f"--- Running update_state for {self.spark_id} ---")
+        try: # Wrap the entire calculation for safety
+            # --- Initialize factors with defaults ---
+            phase_coherence_factor = 0.1
+            harmonic_purity_factor = 0.1
+            # Read factors directly from self, using 0.0 as default if missing
+            pattern_coherence_factor = getattr(self, 'pattern_coherence', 0.0)
+            guff_influence = getattr(self, 'guff_influence_factor', 0.0)
+            seph_influence = getattr(self, 'cumulative_sephiroth_influence', 0.0)
+            creator_factor = getattr(self, 'creator_connection_strength', 0.0)
+            torus_factor = getattr(self, 'toroidal_flow_strength', 0.0)
+
+            circ_variance = 1.0 # Default variance if no phases
+            phases_debug = "N/A" # For logging
+
+            # --- 1. Phase Alignment Component ---
+            # Access frequency_signature safely
+            freq_sig = getattr(self, 'frequency_signature', {})
+            if isinstance(freq_sig, dict) and 'phases' in freq_sig:
+                phases_data = freq_sig.get('phases')
+                # Check if phases_data is actually a list or numpy array
+                if isinstance(phases_data, (list, np.ndarray)):
+                    phases = np.array(phases_data) # Ensure numpy array
+                    phases_debug = f"{phases.size}"
+                    if phases.size > 1:
+                        mean_cos = np.mean(np.cos(phases))
+                        mean_sin = np.mean(np.sin(phases))
+                        # Protect sqrt from negative values due to precision issues
+                        sqrt_arg = max(0.0, mean_cos**2 + mean_sin**2)
+                        mean_r = sqrt(sqrt_arg) # Resultant vector length R
+                        circ_variance = 1.0 - mean_r # Variance = 1 - R
+                        # Ensure factor is between 0 and 1
+                        phase_coherence_factor = np.clip(1.0 - circ_variance, 0.0, 1.0)
+                    elif phases.size == 1:
+                        phase_coherence_factor = 0.75 # Single phase is coherent
+                        circ_variance = 0.25 # Assign indicative variance
+                    # else: phases.size == 0, keep default factor and variance
+                else: # phases_data is None or not a list/array
+                    logger.warning(f"_calc_coherence: 'phases' data is invalid type ({type(phases_data)}) or None.")
+                    phases_debug = f"InvalidType({type(phases_data).__name__})"
+            else: # frequency_signature is not a dict or missing 'phases'
+                 logger.warning(f"_calc_coherence: frequency_signature invalid type ({type(freq_sig).__name__}) or missing 'phases'.")
+                 phases_debug = "MissingKey/NotDict"
+
+
+            # --- 2. Harmonic Purity Component ---
+            deviations = []
+            harmonics_list = getattr(self, 'harmonics', [])
+            base_freq = self.frequency
+
+            # Ensure base_freq is valid before proceeding
+            if harmonics_list and isinstance(base_freq, (int, float)) and base_freq > FLOAT_EPSILON:
+                valid_harmonics = [h for h in harmonics_list if isinstance(h, (int, float)) and h > FLOAT_EPSILON]
+                ratios = [h / base_freq for h in valid_harmonics]
                 if ratios:
-                    deviations = []
                     for r in ratios:
-                        int_dev = min([abs(r-n) for n in range(1,5)])
-                        phi_dev = min([abs(r-PHI**n) for n in [1,-1]])
-                        deviations.append(min(int_dev,phi_dev))
-                avg_deviation = np.mean(deviations) if deviations else float('inf')
-                harmonic_purity_factor=exp(-avg_deviation*10.0)
-            harmonic_purity_factor=np.clip(harmonic_purity_factor,0.0,1.0)
-            pattern_coherence_factor=getattr(self,'pattern_coherence',0.0)
-            guff_influence=getattr(self,'guff_influence_factor',0.0); seph_influence=getattr(self,'cumulative_sephiroth_influence',0.0); field_influence_factor=np.clip(guff_influence+seph_influence,0.0,1.0)
-            creator_factor=getattr(self,'creator_connection_strength',0.0)
-            coherence_score=(phase_coherence_factor*COHERENCE_WEIGHT_PHASE + harmonic_purity_factor*COHERENCE_WEIGHT_HARMONY + pattern_coherence_factor*COHERENCE_WEIGHT_PATTERN + field_influence_factor*COHERENCE_WEIGHT_FIELD + creator_factor*COHERENCE_WEIGHT_CREATOR) * MAX_COHERENCE_CU
-            log_circ_var=circ_variance if num_phases>1 else np.nan
-            logger.debug(f"  _calc_coherence: PhaseFactor={phase_coherence_factor:.3f} (CircVar={log_circ_var:.4f}, Phases={num_phases})")
-            logger.debug(f"  _calc_coherence: HarmonyFactor={harmonic_purity_factor:.3f}")
-            logger.debug(f"  _calc_coherence: PatternFactor={pattern_coherence_factor:.3f}")
-            logger.debug(f"  _calc_coherence: FieldInfluence={field_influence_factor:.3f} (Guff={guff_influence:.3f}, Seph={seph_influence:.3f})")
-            logger.debug(f"  _calc_coherence: CreatorFactor={creator_factor:.3f}")
-            logger.debug(f"  _calc_coherence: WEIGHTS: Ph={COHERENCE_WEIGHT_PHASE:.2f}, Hm={COHERENCE_WEIGHT_HARMONY:.2f}, Pt={COHERENCE_WEIGHT_PATTERN:.2f}, Fld={COHERENCE_WEIGHT_FIELD:.2f}, Cr={COHERENCE_WEIGHT_CREATOR:.2f}")
-            logger.debug(f"  _calc_coherence: Final Score = {coherence_score:.1f} CU")
-            return max(0.0,min(MAX_COHERENCE_CU,coherence_score))
-        except Exception as e: logger.error(f"Error calculating coherence score: {e}",exc_info=True); return getattr(self,'coherence',0.0)
+                        if not np.isfinite(r): continue # Skip invalid ratios
+                        # Check simple integer ratios
+                        int_dev = min([abs(r-n) for n in range(1,6)])
+                        # Check Phi ratios
+                        phi_dev1 = abs(r - PHI); phi_dev2 = abs(r - (1/PHI)); phi_dev3 = abs(r - PHI**2)
+                        phi_dev = min(phi_dev1, phi_dev2, phi_dev3)
+                        deviations.append(min(int_dev, phi_dev))
+
+                # Calculate purity factor
+                avg_deviation = np.mean(deviations) if deviations else 10.0
+                if not np.isfinite(avg_deviation): avg_deviation = 10.0
+                harmonic_purity_factor = exp(-avg_deviation * 10.0)
+            else: # No harmonics or invalid base_freq
+                 logger.debug("_calc_coherence: No valid harmonics or base frequency for purity calculation.")
+                 harmonic_purity_factor = 0.1
+
+            harmonic_purity_factor = np.clip(harmonic_purity_factor, 0.0, 1.0)
+
+
+            # --- 3. Field Influence Component (Enhanced) ---
+            seph_influence_enhanced = np.power(seph_influence, 0.8) if seph_influence > FLOAT_EPSILON else 0.0
+            field_influence_factor = np.clip(guff_influence * 0.4 + seph_influence_enhanced * 0.6, 0.0, 1.0)
+
+
+            # --- 4. Weighted Sum ---
+            # Ensure all factors are valid numbers before summing
+            factors = [phase_coherence_factor, harmonic_purity_factor, pattern_coherence_factor,
+                       field_influence_factor, creator_factor, torus_factor]
+            if not all(isinstance(f, (int, float)) and np.isfinite(f) for f in factors):
+                logger.error(f"One or more coherence factors are non-numeric/non-finite! Factors: {factors}")
+                # Fallback: return previous coherence or 0
+                previous_coherence = getattr(self, 'coherence', 0.0)
+                return float(previous_coherence) if isinstance(previous_coherence, (int, float)) else 0.0
+
+            raw_coherence_score = (phase_coherence_factor * COHERENCE_WEIGHT_PHASE +
+                                   harmonic_purity_factor * COHERENCE_WEIGHT_HARMONY +
+                                   pattern_coherence_factor * COHERENCE_WEIGHT_PATTERN +
+                                   field_influence_factor * COHERENCE_WEIGHT_FIELD +
+                                   creator_factor * COHERENCE_WEIGHT_CREATOR +
+                                   torus_factor * COHERENCE_WEIGHT_TORUS)
+
+
+            # --- 5. Normalization ---
+            total_weight = (COHERENCE_WEIGHT_PHASE + COHERENCE_WEIGHT_HARMONY +
+                            COHERENCE_WEIGHT_PATTERN + COHERENCE_WEIGHT_FIELD +
+                            COHERENCE_WEIGHT_CREATOR + COHERENCE_WEIGHT_TORUS)
+            normalized_score = raw_coherence_score
+            if abs(total_weight - 1.0) > FLOAT_EPSILON:
+                # Only normalize if total_weight is positive to avoid division issues
+                if total_weight > FLOAT_EPSILON:
+                    logger.warning(f"_calc_coherence: Total weight = {total_weight:.3f}. Normalizing.")
+                    normalized_score = raw_coherence_score / total_weight
+                else:
+                    logger.error(f"_calc_coherence: Total weight is zero or negative ({total_weight:.3f}). Cannot normalize. Setting score to 0.")
+                    normalized_score = 0.0
+
+
+            # --- 6. Scale and Clamp ---
+            final_coherence_cu = normalized_score * MAX_COHERENCE_CU
+            clamped_coherence = max(0.0, min(MAX_COHERENCE_CU, final_coherence_cu))
+
+
+            # --- 7. Detailed Debug Logging ---
+            log_circ_var_str = f"{circ_variance:.4f}" if np.isfinite(circ_variance) else "N/A"
+            logger.debug(f"  _calc_coherence FACTORS: Phase={phase_coherence_factor:.4f}, Harmony={harmonic_purity_factor:.4f}, Pattern={pattern_coherence_factor:.4f}, Field={field_influence_factor:.4f}, Creator={creator_factor:.4f}, Torus={torus_factor:.4f}")
+            logger.debug(f"  _calc_coherence WEIGHTS: Ph={COHERENCE_WEIGHT_PHASE:.2f}, Hm={COHERENCE_WEIGHT_HARMONY:.2f}, Pt={COHERENCE_WEIGHT_PATTERN:.2f}, Fld={COHERENCE_WEIGHT_FIELD:.2f}, Cr={COHERENCE_WEIGHT_CREATOR:.2f}, Tor={COHERENCE_WEIGHT_TORUS:.2f}")
+            logger.debug(f"  _calc_coherence: Raw={raw_coherence_score:.3f}, Norm={normalized_score:.3f}, Scaled={final_coherence_cu:.1f}, Clamped={clamped_coherence:.1f} CU")
+
+
+            # --- 8. Final Return Value Check ---
+            if not isinstance(clamped_coherence, (int, float)) or not np.isfinite(clamped_coherence):
+                logger.error(f"Coherence calculation resulted in invalid final value: {clamped_coherence}. Returning 0.0")
+                return 0.0
+            return float(clamped_coherence)
+
+        except Exception as e:
+            # Catch any unexpected error during calculation
+            logger.error(f"CRITICAL ERROR calculating coherence score: {e}", exc_info=True)
+            
+            raise RuntimeError(f"Coherence calculation failed internally: {e}") from e
+
+# --- END OF CORRECTED _calculate_coherence_score ---
+        
 
     # --- update_state (Unchanged from V4.3.6) ---
     def update_state(self):
@@ -431,15 +604,58 @@ class SoulSpark:
             self.frequency_history.append(self.frequency);
             if len(self.frequency_history)>20: self.frequency_history.pop(0)
         elif not hasattr(self,'frequency_history'): self.frequency_history=[self.frequency]*5
-        original_stability=getattr(self,'stability',0.0); original_coherence=getattr(self,'coherence',0.0)
-        new_stability=self._calculate_stability_score(); new_coherence=self._calculate_coherence_score()
-        logger.debug(f"  update_state: Calculated New S={new_stability:.1f}, New C={new_coherence:.1f}. Current S={original_stability:.1f}, C={original_coherence:.1f}")
-        self.stability=float(new_stability); self.coherence=float(new_coherence)
-        if abs(self.stability-original_stability)>0.05: print(f"DEBUG: SoulSpark {self.spark_id} stability updated: {original_stability:.1f} -> {self.stability:.1f}")
-        if abs(self.coherence-original_coherence)>0.05: print(f"DEBUG: SoulSpark {self.spark_id} coherence updated: {original_coherence:.1f} -> {self.coherence:.1f}")
-        logger.debug(f"  update_state: VERIFICATION - After assignment S={self.stability:.1f}, C={self.coherence:.1f}")
-        logger.debug(f"--- Finished update_state. Final S={self.stability:.1f}, C={self.coherence:.1f} ---")
+        
+        # Save original values
+        original_stability = getattr(self,'stability', 0.0)
+        original_coherence = getattr(self,'coherence', 0.0)
+
+        # *** Log key factors BEFORE calculation ***
+        logger.debug(f"  update_state PRE-CALC FACTORS: Freq={self.frequency:.1f}, PatternCoh={self.pattern_coherence:.4f}, "
+                    f"GuffInf={self.guff_influence_factor:.4f}, SephInf={self.cumulative_sephiroth_influence:.4f}, "
+                    f"CreatorConn={self.creator_connection_strength:.4f}, Torus={self.toroidal_flow_strength:.4f}, "
+                    f"#Harmonics={len(self.harmonics)}, #Phases={len(self.frequency_signature.get('phases', []))}")
+
+        try:
+            new_stability = self._calculate_stability_score()
+            new_coherence = self._calculate_coherence_score()
+                
+            # Safety check the calculated values
+            if new_stability is None or not isinstance(new_stability, (int, float)):
+                logger.warning(f"Stability calculation returned None or non-numeric. Using previous value.")
+                new_stability = original_stability
+                
+            if new_coherence is None or not isinstance(new_coherence, (int, float)):
+                logger.warning(f"Coherence calculation returned None or non-numeric. Using previous value.")
+                new_coherence = original_coherence
+            
+            # Apply max caps with safety checks
+            new_stability = max(0.0, min(MAX_STABILITY_SU, new_stability)) 
+            new_coherence = max(0.0, min(MAX_COHERENCE_CU, new_coherence))
+            
+            # Safe logging
+            logger.debug(f"  update_state: Calculated New S={new_stability:.1f}, New C={new_coherence:.1f}. Current S={original_stability:.1f}, C={original_coherence:.1f}")
+            
+            # Update values
+            self.stability = float(new_stability)
+            self.coherence = float(new_coherence)
+            
+            # Additional logging if values change significantly
+            if abs(self.stability-original_stability)>0.05: 
+                print(f"DEBUG: SoulSpark {self.spark_id} stability updated: {original_stability:.1f} -> {self.stability:.1f}")
+            if abs(self.coherence-original_coherence)>0.05: 
+                print(f"DEBUG: SoulSpark {self.spark_id} coherence updated: {original_coherence:.1f} -> {self.coherence:.1f}")
+                
+            logger.debug(f"  update_state: VERIFICATION - After assignment S={self.stability:.1f}, C={self.coherence:.1f}")
+            logger.debug(f"--- Finished update_state. Final S={self.stability:.1f}, C={self.coherence:.1f} ---")
+            
+        except Exception as e:
+            logger.error(f"Error during update_state: {e}", exc_info=True)
+            # Keep original values on error
+            self.stability = original_stability
+            self.coherence = original_coherence
+            
         self._validate_soul_state()
+
 
     # --- Other Methods (add_layer, visualization, save/load, validation etc.) ---
     # --- Ensure these are present and correct from V4.3.6 ---

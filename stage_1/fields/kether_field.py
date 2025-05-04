@@ -142,10 +142,15 @@ class KetherField(SephirothField):
         except Exception as e: logger.error(f"Unexpected error applying Guff mods: {e}", exc_info=True)
 
     # --- is_in_guff (Added coordinate validation) ---
+# In kether_field.py -> is_in_guff
     def is_in_guff(self, coords: Tuple[int, int, int]) -> bool:
-        if not self._validate_coordinates(coords): return False # Use internal validation
+        if not self._validate_coordinates(coords): return False
         dist_sq = sum((coords[i] - self.location[i])**2 for i in range(3))
-        return dist_sq <= self.guff_radius_sq
+        # Add a small tolerance, e.g., half diagonal of a cell squared (sqrt(3)/2)^2 = 0.75
+        check_radius_sq = self.guff_radius_sq + 0.75
+        # Or simpler: check against radius + 0.5 grid units squared
+        # check_radius_sq = (self.guff_radius + 0.5)**2
+        return dist_sq <= check_radius_sq # Use slightly larger radius for check
 
     # --- _validate_coordinates (Helper for bounds checking) ---
     def _validate_coordinates(self, coordinates: Tuple[int, int, int]) -> bool:

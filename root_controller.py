@@ -49,7 +49,8 @@ except ImportError as e:
 except Exception as e:
     print(f"FATAL: Error loading constants: {e}")
     sys.exit(1)
-
+logging.getLogger('stage_1.soul_formation.creator_entanglement').setLevel(logging.DEBUG)
+logging.getLogger('stage_1.soul_spark.soul_spark').setLevel(logging.DEBUG)
 # --- Core Controller & Stage Imports ---
 try:
     print("DEBUG: Importing FieldController...")
@@ -59,6 +60,13 @@ try:
     print("DEBUG: Importing SephirothField...")
     from stage_1.fields.sephiroth_field import SephirothField
     print("DEBUG: Importing Stage Functions...")
+    
+    from stage_1.soul_formation.soul_visualizer import visualize_soul_state # ADD THIS
+    VISUALIZATION_ENABLED = True
+except ImportError as e:
+    # ... existing error handling ...
+    print("WARNING: Soul visualization module not found.")
+    VISUALIZATION_ENABLED = False
     # Import ALL stage functions
     from stage_1.soul_formation.spark_harmonization import perform_spark_harmonization # NEW
     from stage_1.soul_formation.guff_strengthening import perform_guff_strengthening
@@ -82,23 +90,53 @@ except Exception as e:
 # --- Logger Initialization ---
 logger = logging.getLogger('root_controller')
 if not logger.hasHandlers():
-    try: logger.setLevel(LOG_LEVEL)
-    except NameError: logger.setLevel(logging.INFO) # Fallback
-    log_formatter = logging.Formatter(LOG_FORMAT) # Assumes LOG_FORMAT exists
+    logger.setLevel(LOG_LEVEL) # Set root logger level
+    log_formatter = logging.Formatter(LOG_FORMAT)
+
+    # Terminal Handler (ensure level is low enough)
     ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO) # <<< SET LEVEL FOR TERMINAL OUTPUT HERE
     ch.setFormatter(log_formatter)
     logger.addHandler(ch)
-    try: # File handler
+
+       # File Handler (Corrected)
+    try: # Added try/except for file path issues
         log_file_path = os.path.join("logs", "root_controller_run.log")
         os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
         fh = logging.FileHandler(log_file_path, mode='w')
+        fh.setLevel(logging.DEBUG) # <<< GOOD: File handler captures DEBUG and above
         fh.setFormatter(log_formatter)
         logger.addHandler(fh)
-        logger.info("Logging configured.")
+        logger.info("Logging configured (Terminal: INFO, File: DEBUG).") # Corrected message
     except Exception as log_err:
-        logger.error(f"File logging disabled: {log_err}")
+         logger.error(f"File logging setup failed: {log_err}", exc_info=True)
+         logger.info("Logging configured (Terminal: INFO, File: Disabled).")
+
 else:
-    logger.info("Logger already configured.")
+    logger.info("Logger 'root_controller' already has handlers.")
+
+try:
+    import metrics_tracking as metrics # Define 'metrics' globally here
+    METRICS_AVAILABLE = True
+    logger.info("Metrics tracking module loaded successfully.")
+except ImportError:
+    logger.warning("Metrics tracking module not found. Using placeholder.")
+    # Define placeholder globally if module not found
+    class MetricsPlaceholder:
+        @staticmethod
+        def record_metric(*args, **kwargs): pass
+        @staticmethod
+        def record_metrics(*args, **kwargs): pass
+        # ... (add other methods if needed) ...
+    metrics = MetricsPlaceholder() # Assign placeholder instance to global 'metrics'
+    METRICS_AVAILABLE = False
+except Exception as e:
+    logger.critical(f"CRITICAL ERROR during metrics import: {e}", exc_info=True)
+    class MetricsPlaceholder: # Repeat placeholder definition
+        # ... (methods) ...
+        pass
+    metrics = MetricsPlaceholder()
+    METRICS_AVAILABLE = False
 
 # --- Check for Mother Glyph ---
 MOTHER_GLYPH_AVAILABLE = False
@@ -118,32 +156,7 @@ try:
 except Exception as e:
     logger.error(f"Error checking mother glyph: {e}")
 
-# --- Metrics Import ---
-try:
-    import metrics_tracking as metrics
-    METRICS_AVAILABLE = True
-    logger.info("Metrics tracking module loaded successfully.")
-except ImportError:
-    logger.warning("Metrics tracking module not found. Using placeholder.")
-    class MetricsPlaceholder:
-        record_metric = lambda *a, **kw: None
-        record_metrics = lambda *a, **kw: None
-        get_category_metrics = lambda *a, **kw: {}
-        get_all_metrics = lambda *a, **kw: {}
-        analyze_metrics = lambda *a, **kw: None
-    metrics = MetricsPlaceholder()
-    METRICS_AVAILABLE = False
-except Exception as e:
-    logger.critical(f"CRITICAL ERROR during metrics import: {e}", exc_info=True)
-    # Use placeholder on critical error
-    class MetricsPlaceholder: # Repeat placeholder definition
-        record_metric = lambda *a, **kw: None
-        record_metrics = lambda *a, **kw: None
-        get_category_metrics = lambda *a, **kw: {}
-        get_all_metrics = lambda *a, **kw: {}
-        analyze_metrics = lambda *a, **kw: None
-    metrics = MetricsPlaceholder()
-    METRICS_AVAILABLE = False
+# --- Metrics Import --- # Duplicate removed
 
 # --- Helper Function for Metrics Display ---
 def display_stage_metrics(stage_name, metrics_dict):
@@ -151,16 +164,42 @@ def display_stage_metrics(stage_name, metrics_dict):
     # (Implementation from V4.3.6)
     print(f"\n{'='*20} {stage_name} Metrics Summary {'='*20}")
     if not metrics_dict: print("  No metrics captured."); print("="*(40+len(stage_name))); return
-    success = metrics_dict.get('success');
-    if success is not None: print(f"  Success: {success}");
-    if not success: print(f"  Error: {metrics_dict.get('error','Unknown')}"); print(f"  Failed Step: {metrics_dict.get('failed_step','N/A')}")
-    else:
-        if 'error' not in metrics_dict: print("  Success: True (implied)")
-        else: print(f"  Success: False (implied by error: {metrics_dict.get('error')})"); print(f"  Failed Step: {metrics_dict.get('failed_step','N/A')}")
-    skip_keys = {'success','error','failed_step','action','soul_id','start_time','end_time','timestamp','duration_seconds','initial_state','final_state','guff_properties_used','imparted_aspect_strengths','aspects_touched_names','initial_state_changes','geometric_changes','local_entanglement_changes','element_details','cycle_details','components','missing_attributes','gained_aspect_names','strengthened_aspect_names','transfers','memory_retentions','layer_formation_changes','imparted_aspect_strengths_summary'}
+    success = metrics_dict.get('success')
+    if success is not None: print(f"  Success: {success}")
+    else: # Handle cases where 'success' key might be missing
+        if 'error' in metrics_dict:
+            print("  Success: False (Implied by error)")
+        else:
+            # If no error and no success key, assume success but log warning
+            print("  Success: True (Assumed - key missing)")
+            logger.warning(f"Metrics dictionary for stage '{stage_name}' is missing the 'success' key.")
+
+    if not success and success is not None: # Only print error details if explicitly failed
+        print(f"  Error: {metrics_dict.get('error','Unknown')}")
+        print(f"  Failed Step: {metrics_dict.get('failed_step','N/A')}")
+
+    # Keys to generally exclude from the concise printout
+    skip_keys = {'success','error','failed_step','action','soul_id','start_time','end_time','timestamp',
+                 'duration_seconds','initial_state','final_state','guff_properties_used',
+                 'imparted_aspect_strengths','aspects_touched_names','initial_state_changes',
+                 'geometric_changes','local_entanglement_changes','element_details','cycle_details',
+                 'components','missing_attributes','gained_aspect_names','strengthened_aspect_names',
+                 'transfers','memory_retentions','layer_formation_changes',
+                 'imparted_aspect_strengths_summary', 'detailed_metrics', 'guff_targets_used',
+                 'initial_stability_su', 'initial_coherence_cu', 'initial_energy_seu',
+                 'initial_pattern_coherence', 'initial_phi_resonance', 'initial_harmony',
+                 'initial_toroidal_flow', 'peak_stability_su_during_stabilization',
+                 'peak_coherence_cu_during_stabilization' # Added peak skip
+                 }
     display_keys = sorted([str(k) for k in metrics_dict.keys() if str(k) not in skip_keys])
+    if not display_keys and success is not False:
+        print("  (No specific metrics to display for this stage)")
+
     for key in display_keys:
         value=metrics_dict[key]; unit=""; formatted_val=""
+        key_display = key # Start with original key
+
+        # Unit detection and key cleaning
         if key.endswith('_seu'): unit=" SEU"; key_display=key[:-4]
         elif key.endswith('_su'): unit=" SU"; key_display=key[:-3]
         elif key.endswith('_cu'): unit=" CU"; key_display=key[:-3]
@@ -170,25 +209,34 @@ def display_stage_metrics(stage_name, metrics_dict):
         elif key.endswith('_level'): unit=""; key_display=key[:-6]
         elif key.endswith('_pct'): unit="%"; key_display=key[:-4]
         elif key.endswith('_count'): unit=""; key_display=key[:-6]
-        else: key_display=key
+        # Add more specific units if needed (e.g., _sec, _iter)
+
+        # Formatting based on type and unit
         if isinstance(value,float):
             if unit in [" SU"," CU"," Hz"]: formatted_val=f"{value:.1f}"
             elif unit == " SEU": formatted_val=f"{value:.2f}"
             elif unit == "%": formatted_val=f"{value:.1f}"
-            else: formatted_val=f"{value:.3f}"
-        elif isinstance(value,int) and unit=="": formatted_val=str(value)
+            elif key.endswith('_gain'): formatted_val=f"{value:+.2f}" # Show sign for gains
+            elif key.endswith('_factor') or key.endswith('_score') or key.endswith('_level') or key.endswith('_resonance') or key.endswith('_strength') or key.endswith('_change'):
+                formatted_val=f"{value:.3f}"
+            else: formatted_val=f"{value:.3f}" # Default float format
+        elif isinstance(value,int): formatted_val=str(value)
         elif isinstance(value,bool): formatted_val=str(value)
         elif isinstance(value,list): formatted_val = f"<List ({len(value)} items)>" if len(value)>5 else str(value)
         elif isinstance(value,dict): formatted_val=f"<Dict ({len(value)} keys)>"
-        else: formatted_val=str(value)
-        print(f"  {key_display.replace('_',' ').title():<30}: {formatted_val}{unit}")
+        else: formatted_val=str(value) # Fallback to string
+
+        # Clean up key display name
+        key_display_cleaned = key_display.replace('_',' ').title()
+        print(f"  {key_display_cleaned:<30}: {formatted_val}{unit}")
+
     print("="*(40+len(stage_name)))
 
 
 # --- Spark Emergence Function ---
 def create_spark_from_field(field_controller: FieldController,
                            base_id: str,
-                           creation_location_coords: Tuple[int, int, int]
+                           creation_location_coords: tuple[int, int, int]
                            ) -> SoulSpark:
     """
     Creates a SoulSpark by sampling field properties at a location,
@@ -278,12 +326,14 @@ def create_spark_from_field(field_controller: FieldController,
 
     except Exception as e:
         logger.critical(f"CRITICAL ERROR during spark creation at {creation_location_coords}: {e}", exc_info=True)
+        # Hard fail
         raise RuntimeError(f"Failed to create SoulSpark from field state: {e}") from e
 
 # --- Main Simulation Logic ---
 def run_simulation(num_souls: int = 1,
                    journey_duration_per_sephirah: float = 2.0, # Defaulted from log
-                   report_path: str = "output/reports/simulation_report_final.json"
+                   report_path: str = "output/reports/simulation_report_final.json",
+                   **kwargs  # Add kwargs parameter
                    ) -> None:
     """
     Runs the main simulation flow including emergence and harmonization stages.
@@ -393,7 +443,9 @@ def run_simulation(num_souls: int = 1,
                         raise RuntimeError(f"Could not get SephirothField for '{sephirah_name}'.")
                     # Process interaction using principle-driven function
                     _, step_metrics = process_sephirah_interaction(
-                        soul_spark, sephirah_influencer, field_controller,
+                        soul_spark,
+                        sephirah_influencer,
+                        field_controller,
                         journey_duration_per_sephirah
                     )
                     journey_step_metrics[sephirah_name] = step_metrics
@@ -418,19 +470,28 @@ def run_simulation(num_souls: int = 1,
                 process_summary['stages_metrics'][current_stage_name] = entanglement_metrics
                 display_stage_metrics(current_stage_name, entanglement_metrics)
                 logger.info("Creator Entanglement complete.")
+                logger.info(f"STATE PRE-HS: S={soul_spark.stability:.1f} SU, C={soul_spark.coherence:.1f} CU") # Logging before HS
 
                 # --- Stage 8: Harmonic Strengthening ---
                 current_stage_name = FLAG_HARMONICALLY_STRENGTHENED.replace('_', ' ').title()
                 logger.info(f"Stage: {current_stage_name}...")
-                _, hs_metrics = perform_harmonic_strengthening(soul_spark)
+                # Get stage-specific overrides from kwargs if provided
+                hs_intensity = kwargs.get('hs_intensity', HARMONIC_STRENGTHENING_INTENSITY_DEFAULT)
+                hs_duration = kwargs.get('hs_duration_factor', HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT)
+                # Call the single HS function
+                _, hs_metrics = perform_harmonic_strengthening(
+                    soul_spark, intensity=hs_intensity, duration_factor=hs_duration
+                )
                 process_summary['stages_metrics'][current_stage_name] = hs_metrics
                 display_stage_metrics(current_stage_name, hs_metrics)
                 logger.info("Harmonic Strengthening complete.")
+                logger.info(f"STATE PRE-LC: S={soul_spark.stability:.1f} SU, C={soul_spark.coherence:.1f} CU") # Logging AFTER HS
 
                 # --- Stage 9: Life Cord Formation ---
                 current_stage_name = FLAG_CORD_FORMATION_COMPLETE.replace('_', ' ').title()
                 logger.info(f"Stage: {current_stage_name}...")
-                _, lc_metrics = form_life_cord(soul_spark)
+                lc_complexity = kwargs.get('lc_complexity', LIFE_CORD_COMPLEXITY_DEFAULT) # Example override
+                _, lc_metrics = form_life_cord(soul_spark, complexity=lc_complexity) # Pass relevant args
                 process_summary['stages_metrics'][current_stage_name] = lc_metrics
                 display_stage_metrics(current_stage_name, lc_metrics)
                 logger.info("Life Cord Formation complete.")
@@ -438,7 +499,12 @@ def run_simulation(num_souls: int = 1,
                 # --- Stage 10: Earth Harmonization ---
                 current_stage_name = FLAG_EARTH_HARMONIZED.replace('_', ' ').title()
                 logger.info(f"Stage: {current_stage_name}...")
-                _, eh_metrics = perform_earth_harmonization(soul_spark)
+                # Allow overrides if needed
+                earth_intensity = kwargs.get('earth_intensity', EARTH_HARMONY_INTENSITY_DEFAULT)
+                earth_duration = kwargs.get('earth_duration_factor', EARTH_HARMONY_DURATION_FACTOR_DEFAULT)
+                _, eh_metrics = perform_earth_harmonization(
+                    soul_spark, intensity=earth_intensity, duration_factor=earth_duration
+                )
                 process_summary['stages_metrics'][current_stage_name] = eh_metrics
                 display_stage_metrics(current_stage_name, eh_metrics)
                 logger.info("Earth Harmonization complete.")
@@ -446,8 +512,11 @@ def run_simulation(num_souls: int = 1,
                 # --- Stage 11: Identity Crystallization ---
                 current_stage_name = FLAG_IDENTITY_CRYSTALLIZED.replace('_', ' ').title()
                 logger.info(f"Stage: {current_stage_name}...")
-                # Pass None to prompt user for name
-                _, id_metrics = perform_identity_crystallization(soul_spark, specified_name=None)
+                # Collect relevant kwargs for this stage
+                id_kwargs = {k: v for k, v in kwargs.items() if k in ['specified_name', 'train_cycles', 'entrainment_bpm', 'entrainment_duration', 'love_cycles', 'geometry_stages', 'crystallization_threshold']}
+                # Pass None for specified_name to trigger user input if not in kwargs
+                id_kwargs.setdefault('specified_name', None)
+                _, id_metrics = perform_identity_crystallization(soul_spark, **id_kwargs)
                 process_summary['stages_metrics'][current_stage_name] = id_metrics
                 display_stage_metrics(current_stage_name, id_metrics)
                 logger.info("Identity Crystallization complete.")
@@ -455,14 +524,18 @@ def run_simulation(num_souls: int = 1,
                 # --- Stage 12: Birth Process ---
                 current_stage_name = "Birth"
                 logger.info(f"Stage: {current_stage_name}...")
+                birth_intensity = kwargs.get('birth_intensity', BIRTH_INTENSITY_DEFAULT)
+                # Check if mother glyph is available (constant defined in root or here)
+                try: from constants.constants import MOTHER_GLYPH_AVAILABLE as BIRTH_MOTHER_GLYPH_CHECK
+                except ImportError: BIRTH_MOTHER_GLYPH_CHECK = False # Fallback if constant missing
                 _, birth_metrics = perform_birth(
-                    soul_spark, intensity=BIRTH_INTENSITY_DEFAULT,
-                    mother_profile=None, # Pass actual profile if available
-                    use_encoded_glyph=MOTHER_GLYPH_AVAILABLE
+                     soul_spark, intensity=birth_intensity,
+                     mother_profile=kwargs.get('mother_profile'), # Pass profile if provided in kwargs
+                     use_encoded_glyph=BIRTH_MOTHER_GLYPH_CHECK
                 )
                 process_summary['stages_metrics'][current_stage_name] = birth_metrics
                 display_stage_metrics(current_stage_name, birth_metrics)
-                logger.info(f"Birth Process complete. Mother glyph influence: {MOTHER_GLYPH_AVAILABLE}")
+                logger.info(f"Birth Process complete. Mother glyph influence: {BIRTH_MOTHER_GLYPH_CHECK}")
 
                 # --- Soul Completion Finalization ---
                 process_summary['final_soul_state'] = soul_spark.get_spark_metrics()
@@ -494,6 +567,8 @@ def run_simulation(num_souls: int = 1,
                 print(f"  Stage: {failed_stage_name}")
                 print(f"  Error: {soul_err}")
                 print("="*70)
+                # HARD FAIL - Stop processing further souls if one fails
+                raise soul_err # Re-raise the exception to stop the loop
 
         # --- End of Simulation Loop ---
 
@@ -508,55 +583,76 @@ def run_simulation(num_souls: int = 1,
                 'journey_duration_per_sephirah': journey_duration_per_sephirah,
                 'grid_size': GRID_SIZE,
                 'mother_glyph_available': MOTHER_GLYPH_AVAILABLE,
-                # Add other key parameters if needed
+                **kwargs # Include any override parameters passed in
             },
             'souls_processed': len(all_souls_final_results),
             'results_per_soul': all_souls_final_results
         }
+
+        # Define NumpyEncoder class before using it
+        class NumpyEncoder(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, (np.int_, np.intc, np.intp, np.int8,
+                                np.int16, np.int32, np.int64, np.uint8,
+                                np.uint16, np.uint32, np.uint64)):
+                    return int(o)
+                elif isinstance(o, (np.float64, np.float16, np.float32)): # Use np.float64
+                    if np.isnan(o): return None # Represent NaN as null
+                    if np.isinf(o): return str(o) # Represent Inf as string
+                    # Round floats for cleaner output
+                    return round(float(o), 6)
+                elif isinstance(o, np.ndarray):
+                     # Clean array before converting
+                     cleaned_list = []
+                     for item in o.tolist():
+                         if isinstance(item, float):
+                             if np.isnan(item): cleaned_list.append(None)
+                             elif np.isinf(item): cleaned_list.append(str(item))
+                             else: cleaned_list.append(round(item, 6))
+                         elif isinstance(item, (int, bool, str)) or item is None:
+                             cleaned_list.append(item)
+                         else: # Handle other types within arrays if needed
+                             cleaned_list.append(str(item)) # Fallback to string
+                     return cleaned_list
+                elif isinstance(o, (datetime, uuid.UUID)):
+                    return str(o)
+                try:
+                    # Let the base class default method raise the TypeError
+                    return super().default(o)
+                except TypeError:
+                    # Log warning for unserializable types
+                    logger.warning(f"Could not serialize object of type {type(o)}. Using string representation.")
+                    return str(o) # Use string representation as fallback
+
 
         if report_path:
             try:
                 report_dir = os.path.dirname(report_path)
                 if report_dir: os.makedirs(report_dir, exist_ok=True)
                 with open(report_path, 'w') as f:
-                    class NumpyEncoder(json.JSONEncoder): # Nested encoder class
-                        def default(self, o):
-                            if isinstance(o, (np.int_, np.intc, np.intp, np.int8,
-                                             np.int16, np.int32, np.int64, np.uint8,
-                                             np.uint16, np.uint32, np.uint64)): return int(o)
-                            elif isinstance(o, (np.float_, np.float16, np.float32,
-                                               np.float64)): return float(o)
-                            elif isinstance(o, np.ndarray): return o.tolist()
-                            elif isinstance(o, (datetime, uuid.UUID)): return str(o)
-                            try: return super().default(o)
-                            except TypeError: return f"<Unserializable:{type(o).__name__}>"
-                    json.dump(final_report_data, f, indent=2, cls=NumpyEncoder)
-                logger.info(f"Final simulation report saved to: {report_path}")
-            except TypeError as json_err:
-                 logger.error(f"JSON Serialization Error saving report: {json_err}. Saving partial.", exc_info=True)
-                 try:
-                      partial_path = report_path.replace('.json','_partial.json')
-                      partial_data = {k:v for k,v in final_report_data.items() if k!='results_per_soul'}
-                      with open(partial_path, 'w') as f: json.dump(partial_data, f, indent=2, cls=NumpyEncoder)
-                      logger.info(f"Partial report saved to {partial_path}")
-                 except Exception as partial_err: logger.error(f"Failed to save partial report: {partial_err}")
-            except Exception as report_err: logger.error(f"Failed to save final report: {report_err}", exc_info=True)
+                    json.dump(final_report_data, f, cls=NumpyEncoder, indent=2)
+                logger.info(f"Final report saved to {report_path}")
+            except Exception as report_err:
+                logger.error(f"Failed to save final report: {report_err}")
+                print(f"ERROR: Could not save report to {report_path}")
 
         # --- Display Final Summary ---
         print("\n" + "="*80)
         print(f"SIMULATION COMPLETE - Processed {num_souls} souls")
         print(f"Total duration: {time.time() - overall_start_time:.2f} seconds")
         successful_souls = sum(1 for res in all_souls_final_results.values() if res.get('success'))
-        print(f"Successful souls: {successful_souls}/{num_souls}")
-        print(f"Failed souls: {num_souls - successful_souls}/{num_souls}")
+        print(f"Successful souls: {successful_souls}/{len(all_souls_final_results)}") # Use len(results)
+        print(f"Failed souls: {len(all_souls_final_results) - successful_souls}/{len(all_souls_final_results)}") # Use len(results)
         if report_path: print(f"Report saved to: {report_path}")
         print("="*80)
         logger.info(f"--- Soul Development Simulation Finished ---")
 
     except Exception as main_err:
+        # Log critical errors that stop the entire simulation run
         logger.critical(f"Simulation aborted due to critical error: {main_err}", exc_info=True)
         print("\n" + "="*80); print("CRITICAL ERROR - SIMULATION ABORTED")
         print(f"Error: {main_err}"); print("See log for details."); print("="*80)
+        # Ensure exit on critical failure
         sys.exit(1)
 
 # --- Main Execution Block ---
@@ -564,17 +660,21 @@ if __name__ == "__main__":
     print("DEBUG: Starting main execution block of root_controller...")
     try:
         # Configure simulation parameters here
+        # Example: Pass override kwargs if needed: hs_intensity=0.8
         run_simulation(
             num_souls=1,
             journey_duration_per_sephirah=2.0, # Keep shorter duration from logs
             report_path="output/reports/simulation_report_emergence_v1.json"
+            # Add stage overrides here, e.g., lc_complexity=0.8
         )
         print("DEBUG: run_simulation completed.")
     except Exception as e:
+         # Ensure errors in the main block are fatal
          log_func = logger.critical if logger.hasHandlers() else print
          log_func(f"FATAL ERROR in main execution block: {e}", exc_info=True)
          print(f"\nFATAL ERROR in main execution block: {type(e).__name__}: {e}")
-         traceback.print_exc(); sys.exit(1)
+         traceback.print_exc()
+         sys.exit(1) # Ensure exit
     finally:
         print("DEBUG: Main execution block finished.")
         if METRICS_AVAILABLE:
@@ -583,6 +683,8 @@ if __name__ == "__main__":
                 metrics.persist_metrics()
                 print("Final metrics persistence successful.")
             except Exception as persist_e:
+                # Log persistence error but don't necessarily exit, simulation already done/failed
+                logger.error(f"ERROR during final metrics persistence: {persist_e}")
                 print(f"ERROR during final metrics persistence: {persist_e}")
         logging.shutdown()
 

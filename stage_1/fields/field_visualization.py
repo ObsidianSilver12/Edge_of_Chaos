@@ -12,7 +12,6 @@ import os
 from typing import Dict, Any, Optional, List, Tuple, Union
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.cm import plasma
 from mpl_toolkits.mplot3d import Axes3D
 import plotly.graph_objects as go
 import plotly.express as px
