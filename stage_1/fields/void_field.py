@@ -9,6 +9,7 @@ resonance calculation, performance guards, improved error handling, and the
 find_optimal_development_points method. Adheres to PEP 8 formatting.
 """
 
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 # Ensure logger level is set appropriately
@@ -29,7 +30,7 @@ from math import sqrt, pi as PI, exp
 
 # --- Constants Import (using alias 'const') ---
 try:
-    import constants.constants as const
+    from constants.constants import *
 except ImportError as e:
     logger.critical("CRITICAL ERROR: constants.py failed import in void_field.py")
     raise ImportError(f"Essential constants missing: {e}") from e
@@ -68,7 +69,6 @@ def _calculate_cell_resonance(freq1: np.ndarray, freq2: np.ndarray) -> np.ndarra
     f2_valid = freq2[valid_mask]
     # Ensure ratio is always >= 1
     ratio = np.maximum(f1_valid, f2_valid) / np.maximum(np.minimum(f1_valid, f2_valid), const.FLOAT_EPSILON)
-
     # Integer Resonance (Vectorized)
     int_res = np.zeros_like(ratio)
     for i in range(1, 5):
@@ -111,9 +111,10 @@ class VoidField(FieldBase):
 
         # --- Base Properties (from constants) ---
         self.base_energy_seu = const.VOID_BASE_ENERGY_SEU
+        self.update_counter: int = 0
+        self.base_energy_seu = const.VOID_BASE_ENERGY_SEU
         self.base_frequency_range = const.VOID_BASE_FREQUENCY_RANGE
         self.base_stability_su = const.VOID_BASE_STABILITY_SU
-        self.base_coherence_cu = const.VOID_BASE_COHERENCE_CU
         self.dissipation_rate = const.ENERGY_DISSIPATION_RATE
         self.propagation_speed = const.WAVE_PROPAGATION_SPEED
         self.resonance_energy_boost_factor = const.HARMONIC_RESONANCE_ENERGY_BOOST
@@ -218,8 +219,8 @@ class VoidField(FieldBase):
 
             # Coherence (CU)
             self.coherence = np.clip(
-                np.full(shape, self.base_coherence_cu, dtype=np.float32) +
-                np.random.normal(0, self.base_coherence_cu * 0.2, shape).astype(np.float32),
+                np.full(shape, VOID_BASE_COHERENCE_CU, dtype=np.float32) +
+                np.random.normal(0, VOID_BASE_COHERENCE_CU * 0.2, shape).astype(np.float32),
                 0.0, const.MAX_COHERENCE_CU
             )
             logger.debug(f"Initialized coherence grid. Shape: {self.coherence.shape}")
@@ -282,46 +283,147 @@ class VoidField(FieldBase):
         if effective_dt != delta_time:
              logger.warning(f"Large delta_time ({delta_time:.2f}s) capped to "
                             f"{effective_dt:.2f}s for stability.")
+             self.update_counter += 1
 
         try:
             # --- 1. Harmonic Resonance Effects ---
             freq = self.frequency
             energy_boost_factor = np.zeros_like(self.energy)
             coherence_boost_factor = np.zeros_like(self.coherence)
+            stability_boost_factor = np.zeros_like(self.stability)
+            light_emission_points = np.zeros(self.grid_size, dtype=bool)
+
             # Iterate over neighbors (can optimize with convolution/kernel later)
             for axis in range(self.dimensions):
                 for shift in [-1, 1]:
                     neighbor_freq = np.roll(freq, shift, axis=axis)
                     resonance_score = _calculate_cell_resonance(freq, neighbor_freq)
+                    
                     # Pattern influence enhances resonance effect
                     resonance_modifier = 1.0 + self.pattern_influence * 0.5
                     boost_mask = resonance_score > 0.1 # Only apply boost above threshold
+                    
                     if np.any(boost_mask):
+                        # Calculate energy boost (standard from original)
                         energy_boost_factor[boost_mask] += (
                             self.resonance_energy_boost_factor *
                             resonance_score[boost_mask] *
                             resonance_modifier[boost_mask]
                         )
+                        
+                        # Calculate coherence boost (standard from original)
                         coherence_boost_factor[boost_mask] += (
                             self.resonance_coherence_boost_factor *
                             resonance_score[boost_mask] *
                             resonance_modifier[boost_mask]
                         )
-            # Apply boosts (SEU and CU gains)
+                        
+                        # Add stability boost (new)
+                        stability_boost_factor[boost_mask] += (
+                            resonance_score[boost_mask] * 0.5 * 
+                            resonance_modifier[boost_mask]
+                        )
+                        
+                        # Mark high resonance points for light emission (new)
+                        light_emission_mask = resonance_score > 0.8
+                        if np.any(light_emission_mask):
+                            light_emission_points[light_emission_mask] = True
+                            
+            # Apply boosts to SU, CU, and SEU (with logging for significant changes)
+            old_energy = self.energy.copy()
+            old_coherence = self.coherence.copy()
+            old_stability = self.stability.copy()
+
+            # Apply energy boost (SEU)
             self.energy *= (1.0 + energy_boost_factor * effective_dt)
-            self.coherence += (coherence_boost_factor * const.MAX_COHERENCE_CU *
-                               effective_dt)
+            energy_change = np.sum(self.energy - old_energy)
+            if abs(energy_change) > 1000:  # Log if total energy change is significant
+                logger.info(f"Harmonic resonance caused energy change of {energy_change:.1f} SEU")
+
+            # Apply coherence boost (CU)
+            coherence_boost = coherence_boost_factor * const.MAX_COHERENCE_CU * effective_dt
+            self.coherence += coherence_boost
+            coherence_change = np.sum(self.coherence - old_coherence)
+            if abs(coherence_change) > 10:  # Log if total coherence change is significant
+                logger.info(f"Harmonic resonance caused coherence change of {coherence_change:.1f} CU")
+
+            # Apply stability boost (SU)
+            stability_boost = stability_boost_factor * const.MAX_STABILITY_SU * effective_dt
+            self.stability += stability_boost
+            stability_change = np.sum(self.stability - old_stability)
+            if abs(stability_change) > 10:  # Log if total stability change is significant
+                logger.info(f"Harmonic resonance caused stability change of {stability_change:.1f} SU")
+
+            # Handle light emission at high resonance points
+            if np.any(light_emission_points):
+                # Generate light emission as energy transfer to neighbors
+                emission_grid = np.zeros_like(self.energy)
+                emission_grid[light_emission_points] = self.energy[light_emission_points] * 0.05
+                
+                # Apply emission as energy boost to surrounding points
+                for axis in range(self.dimensions):
+                    for shift in [-1, 1]:
+                        # Transfer energy to neighbors, creating light-like propagation
+                        target_grid = np.roll(emission_grid, shift, axis=axis)
+                        self.energy += target_grid * 0.2  # Attenuate by distance
+                
+                # Reduce energy at emission points (conservation)
+                self.energy[light_emission_points] *= 0.9
+                
+                # Log significant light emissions
+                num_emission_points = np.sum(light_emission_points)
+                if num_emission_points > 100:
+                    logger.info(f"High harmonic resonance caused light emission at {num_emission_points} points")
 
             # --- 2. Energy Diffusion & Dissipation ---
             # Diffusion (Laplacian approximation)
             neighbors_sum = np.zeros_like(self.energy)
             for axis in range(self.dimensions):
                 for shift in [-1, 1]: neighbors_sum += np.roll(self.energy, shift, axis=axis)
-            # Diffusion effect = (Avg neighbor energy - Current energy) * rate
+            # Basic diffusion effect (reduced strength compared to original)
             diffusion_effect = ((neighbors_sum / (2.0 * self.dimensions)) - self.energy)
-            diffusion_effect *= self.propagation_speed * effective_dt
-            self.energy += diffusion_effect
-            # Dissipation (simple exponential decay)
+            diffusion_effect *= (self.propagation_speed * 0.5) * effective_dt  # Reduced to 50%
+
+            # Add light-like directional energy propagation
+            light_energy = np.zeros_like(self.energy)
+            # Emission probability based on local energy and chaos (more chaos = more emission)
+            emission_probability = np.clip(self.energy * 0.001 * (0.5 + self.chaos * 0.5), 0, 0.2)
+            # Random emissions based on probability (vectorized)
+            random_values = np.random.random(self.energy.shape)
+            new_emissions = (random_values < emission_probability) * (self.energy * 0.01)
+            # Zero out emissions with insufficient energy
+            new_emissions = np.where(self.energy > const.FLOAT_EPSILON * 100, new_emissions, 0)
+
+            # Propagate emissions in all directions (light-like behavior)
+            for axis in range(self.dimensions):
+                for direction in [-1, 1]:
+                    # Directional propagation (apply smaller dt for light-speed effect)
+                    shifted_emissions = np.roll(new_emissions, direction, axis=axis) * effective_dt * 10.0
+                    light_energy += shifted_emissions
+
+            # Apply combined effects (diffusion + light propagation)
+            self.energy += diffusion_effect + light_energy
+
+            # Energy interaction effects (occasional "bursts" of energy)
+            if hasattr(self, 'update_counter') and self.update_counter % 3 == 0:  # Only calculate sometimes for performance
+                energy_threshold = self.base_energy_seu * 3.0
+                high_energy_points = self.energy > energy_threshold
+                if np.any(high_energy_points):
+                    # Energy bursts at high energy points (simulates energy release)
+                    local_chaos = self.chaos[high_energy_points]
+                    # Scale burst intensity by chaos (more chaos = larger bursts)
+                    burst_intensity = local_chaos * 0.2 * energy_threshold
+                    # Apply bursts (add energy to neighbors, remove from source)
+                    energy_mask = np.zeros_like(self.energy)
+                    energy_mask[high_energy_points] = burst_intensity
+                    # Spread to neighbors
+                    for axis in range(self.dimensions):
+                        for shift in [-1, 1]:
+                            self.energy += np.roll(energy_mask, shift, axis=axis) * 0.2
+                    # Reduce source energy (conservation)
+                    self.energy[high_energy_points] *= 0.8
+
+            # Dissipation (simple exponential decay - retain this from original)
             self.energy *= (1.0 - self.dissipation_rate * effective_dt)
 
             # --- 3. Property Drifts & Noise ---
@@ -332,7 +434,7 @@ class VoidField(FieldBase):
             # Drift towards baseline values (slow relaxation)
             self.stability += ((self.base_stability_su - self.stability) *
                                0.01 * effective_dt)
-            self.coherence += ((self.base_coherence_cu - self.coherence) *
+            self.coherence += ((VOID_BASE_COHERENCE_CU - self.coherence) *
                                0.02 * effective_dt)
             # Pattern influence decay
             self.pattern_influence *= (1.0 - 0.005 * effective_dt)
@@ -350,15 +452,112 @@ class VoidField(FieldBase):
             norm_c = self.coherence / const.MAX_COHERENCE_CU
             self.order = np.clip((norm_s * 0.6 + norm_c * 0.4), 0.0, 1.0)
             self.chaos = 1.0 - self.order
-            # Color update (example: brighter with energy, hue shifts with coherence)
+            # Color update with light-like spectral response
             energy_factor = np.clip(self.energy / (self.base_energy_seu * 5.0), 0.1, 1.0)
             coherence_factor = np.clip(self.coherence / const.MAX_COHERENCE_CU, 0.0, 1.0)
-            hue_shift = (coherence_factor - 0.5) * 0.2 # Shift hue based on coherence deviation
-            # Blend towards target void color [0.1, 0.05, 0.2] + hue shift
-            self.color[..., 0] = np.clip(self.color[..., 0]*0.99 + 0.01*(0.1 + hue_shift), 0, 1) # R
-            self.color[..., 1] = np.clip(self.color[..., 1]*0.99 + 0.01*(0.05), 0, 1) # G
-            self.color[..., 2] = np.clip(self.color[..., 2]*0.99 + 0.01*(0.2 - hue_shift), 0, 1) # B
-            # Modulate brightness by energy
+            frequency_factor = np.clip((self.frequency - self.base_frequency_range[0]) / 
+                                    (self.base_frequency_range[1] - self.base_frequency_range[0]), 0.0, 1.0)
+
+            # Map frequency to visible spectrum approximation
+            r_component = np.clip((1.0 - frequency_factor) * 2.0, 0.0, 1.0)  # Higher at low frequencies (red)
+            g_component = np.clip(1.0 - np.abs(frequency_factor * 2.0 - 1.0), 0.0, 1.0)  # Peak in middle
+            b_component = np.clip((frequency_factor - 0.5) * 2.0, 0.0, 1.0)  # Higher at high frequencies (blue)
+
+            # Create target color based on frequency
+            hue_shift = (coherence_factor - 0.5) * 0.2
+            target_r = np.clip(r_component + hue_shift, 0.0, 1.0)
+            target_g = np.clip(g_component, 0.0, 1.0)
+            target_b = np.clip(b_component - hue_shift, 0.0, 1.0)
+
+            # Blend current color with target (slow transition for stability)
+            blend_rate = 0.02 * effective_dt  # Adjust rate based on time step
+            self.color[..., 0] = np.clip(self.color[..., 0] * (1.0 - blend_rate) + target_r * blend_rate, 0, 1)
+            self.color[..., 1] = np.clip(self.color[..., 1] * (1.0 - blend_rate) + target_g * blend_rate, 0, 1)
+            self.color[..., 2] = np.clip(self.color[..., 2] * (1.0 - blend_rate) + target_b * blend_rate, 0, 1)
+
+            # Add "flashes" of light at high-energy points (bursts of brightness)
+            if hasattr(self, 'update_counter') and self.update_counter % 5 == 0:
+                high_energy_points = self.energy > (self.base_energy_seu * 4.0)
+                if np.any(high_energy_points):
+                    # Create flash effect at these points
+                    flash_intensity = np.zeros_like(self.energy)
+                    flash_intensity[high_energy_points] = 1.0
+                    # Apply flash to color (temporary brightness boost)
+                    self.color[high_energy_points, :] = np.clip(self.color[high_energy_points, :] * 1.5, 0, 1)
+                    flash_count = np.sum(high_energy_points)
+                    if flash_count > 100:
+                        logger.info(f"Light flash event at {flash_count} high-energy points")
+                        
+                        # Generate sound for significant energy flash events
+                        try:
+                            # Import locally to avoid circular dependencies
+                            try:
+                                from sound.sound_generator import SoundGenerator
+                                sound_gen_available = True
+                            except ImportError:
+                                sound_gen_available = False
+                                logger.debug("SoundGenerator not available for burst sound generation")
+                            
+                            if sound_gen_available:
+                                # Create a sound generator
+                                sound_gen = SoundGenerator(output_dir="output/sounds/energy_events")
+                                
+                                # Define radius for bounding box calculation
+                                burst_radius = 5.0  # Use fixed radius for sound burst area
+                                
+                                # Calculate center point from high energy points
+                                center_points = np.where(high_energy_points)
+                                center_x = int(np.mean(center_points[0]))
+                                center_y = int(np.mean(center_points[1]))
+                                center_z = int(np.mean(center_points[2]))
+                                
+                                # Calculate bounding box for the affected area
+                                min_x = max(0, center_x - int(burst_radius))
+                                max_x = min(self.grid_size[0], center_x + int(burst_radius) + 1)
+                                min_y = max(0, center_y - int(burst_radius))
+                                max_y = min(self.grid_size[1], center_y + int(burst_radius) + 1)
+                                min_z = max(0, center_z - int(burst_radius))
+                                max_z = min(self.grid_size[2], center_z + int(burst_radius) + 1)
+                                
+                                # Define box slice using the calculated bounds
+                                box_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
+                                # Create mask for points within the burst radius
+                                x_idx, y_idx, z_idx = np.meshgrid(
+                                    np.arange(min_x, max_x),
+                                    np.arange(min_y, max_y),
+                                    np.arange(min_z, max_z),
+                                    indexing='ij'
+                                )
+                                dist_sq = ((x_idx - center_x)**2 + 
+                                         (y_idx - center_y)**2 + 
+                                         (z_idx - center_z)**2)
+                                mask = dist_sq <= burst_radius**2
+                                
+                                # Calculate average frequency from affected points
+                                avg_freq = np.mean(self.frequency[box_slice][mask])
+                                
+                                # Create parameters for energy burst sound
+                                sound = sound_gen.generate_harmonic_tone(
+                                    base_frequency=avg_freq,
+                                    harmonics=[1.0, 1.5, 2.0, 2.5],  # More harmonics for a rich sound
+                                    amplitudes=[0.8, 0.4, 0.2, 0.1],  # Decreasing amplitudes
+                                    duration=3.0,
+                                    fade_in_out=0.5
+                                )
+                                
+                                # Generate and save the sound
+                                burst_sound = sound
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                filename = f"energy_burst_{timestamp}.wav"
+                                sound_file = sound_gen.save_sound(burst_sound, filename)
+                                
+                                if sound_file:
+                                    logger.info(f"Generated sound file for energy burst: {sound_file}")
+                        except Exception as sound_err:
+                            logger.error(f"Error generating energy burst sound: {sound_err}", exc_info=True)
+                            # Non-critical, continue execution
+
+            # Final modulation by energy (brighter where more energy)
             self.color *= energy_factor[..., np.newaxis]
             self.color = np.clip(self.color, 0.0, 1.0)
 
@@ -412,11 +611,16 @@ class VoidField(FieldBase):
                 logger.warning(f"Influence center {position} is out of bounds.")
                 return # Ignore influence outside grid
 
+            # Calculate radius squared once
             radius_sq = radius * radius
+            
             # Define bounding box, ensure it's within grid limits
-            min_x = max(0, center_x - int(radius)); max_x = min(self.grid_size[0], center_x + int(radius) + 1)
-            min_y = max(0, center_y - int(radius)); max_y = min(self.grid_size[1], center_y + int(radius) + 1)
-            min_z = max(0, center_z - int(radius)); max_z = min(self.grid_size[2], center_z + int(radius) + 1)
+            min_x = max(0, center_x - int(radius))
+            max_x = min(self.grid_size[0], center_x + int(radius) + 1)
+            min_y = max(0, center_y - int(radius))
+            max_y = min(self.grid_size[1], center_y + int(radius) + 1)
+            min_z = max(0, center_z - int(radius))
+            max_z = min(self.grid_size[2], center_z + int(radius) + 1)
 
             # Check if bounding box is valid
             if min_x >= max_x or min_y >= max_y or min_z >= max_z: return # No volume to affect

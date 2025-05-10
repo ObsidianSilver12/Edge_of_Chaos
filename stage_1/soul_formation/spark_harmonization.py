@@ -16,28 +16,18 @@ import time
 from typing import Dict, Any, Tuple, List
 import logging
 from datetime import datetime
-from math import sqrt, pi as PI, exp, atan2 # Use atan2 for mean phase angle
+from math import sqrt, pi as PI, exp, atan2
+from constants.constants import *
+# --- Logging ---
+logger = logging.getLogger(__name__)
 
-# --- Constants Import ---
+# Ensure constants are properly imported
 try:
-    from constants.constants import * 
-    
+    from constants.constants import *
 except ImportError as e:
-    logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: constants.py failed import in spark_harmonization.py")
-    # Define minimal fallbacks
-    HARMONIZATION_ITERATIONS = 144; HARMONIZATION_PATTERN_COHERENCE_RATE = 0.003
-    HARMONIZATION_PHI_RESONANCE_RATE = 0.002; HARMONIZATION_HARMONY_RATE = 0.0015
-    HARMONIZATION_ENERGY_GAIN_RATE = 0.1; MAX_SOUL_ENERGY_SEU = 1e6
-    MAX_STABILITY_SU = 100.0; MAX_COHERENCE_CU = 100.0
-    LOG_LEVEL = logging.INFO; LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    FLOAT_EPSILON = 1e-9; PHI = 1.618; GOLDEN_RATIO = PHI
-    # Fallbacks for NEW constants
-    HARMONIZATION_PHASE_ADJUST_RATE = 0.01
-    HARMONIZATION_HARMONIC_ADJUST_RATE = 0.005
-    HARMONIZATION_CIRC_VAR_THRESHOLD = 0.1
-    HARMONIZATION_HARM_DEV_THRESHOLD = 0.05
-    raise ImportError(f"Essential constants missing: {e}") from e
+    raise ImportError(f"Essential constants missing: {e}")
+
 
 # --- Dependency Imports ---
 try:
@@ -56,10 +46,6 @@ if not logger.handlers:
     ch = logging.StreamHandler(sys.stdout); ch.setFormatter(log_formatter); logger.addHandler(ch)
 
 # --- Metrics Tracking ---
-# ... (metrics import/placeholder as before) ...
-class MetricsPlaceholder:
-    @staticmethod
-    def record_metrics(*args, **kwargs): pass
 try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
@@ -67,13 +53,12 @@ try:
 except ImportError:
     logger.error("Metrics tracking module not found. Metrics will not be recorded.")
     METRICS_AVAILABLE = False
-    metrics = MetricsPlaceholder()
-except Exception as e:
-    logger.error(f"Unexpected error importing metrics: {e}")
-    METRICS_AVAILABLE = False
+    class MetricsPlaceholder:
+        def record_metrics(self, *args, **kwargs): pass
     metrics = MetricsPlaceholder()
 
-# --- Helper: Calculate Circular Variance ---
+
+# --- Helper Functions for Harmonization ---
 def _calculate_circular_variance(phases_array: np.ndarray) -> float:
     """Calculates circular variance (0=sync, 1=uniform)."""
     if phases_array is None or phases_array.size < 2:
@@ -101,6 +86,284 @@ def _calculate_harmonic_deviation(harmonics: List[float], base_freq: float) -> f
         deviations.append(min(int_dev, phi_dev))
     return np.mean(deviations) if deviations else 1.0
 
+def calculate_resonance(freq1: float, freq2: float) -> float:
+    """
+    Calculate resonance between two frequencies.
+    Returns a value between 0 (no resonance) and 1 (perfect resonance).
+    """
+    if freq1 <= FLOAT_EPSILON or freq2 <= FLOAT_EPSILON:
+        return 0.0
+        
+    # Get ratio between frequencies (ensure smaller freq is denominator)
+    ratio = max(freq1, freq2) / min(freq1, freq2)
+    
+    # Check for simple integer ratios (1:1, 2:1, 3:2, etc)
+    int_resonance = 0.0
+    for n in range(1, 6):
+        for d in range(1, 6):
+            if d == 0: continue
+            target_ratio = n / d
+            ratio_diff = abs(ratio - target_ratio)
+            if ratio_diff < 0.1:  # Close to integer ratio
+                res_score = 1.0 - ratio_diff * 10  # Scale: 0.0 to 1.0
+                int_resonance = max(int_resonance, res_score)
+    
+    # Check for phi-based ratios
+    phi_resonance = 0.0
+    phi_ratios = [PHI, 1/PHI, PHI**2, 1/(PHI**2)]
+    for phi_r in phi_ratios:
+        ratio_diff = abs(ratio - phi_r)
+        if ratio_diff < 0.1:  # Close to phi ratio
+            res_score = 1.0 - ratio_diff * 10  # Scale: 0.0 to 1.0
+            phi_resonance = max(phi_resonance, res_score)
+    
+    # Return the strongest resonance found
+    return max(int_resonance, phi_resonance)
+
+def _enhance_layer_integration(soul_spark) -> float:
+    """
+    Enhance integration between existing aura layers.
+    Returns coherence gain from the process.
+    """
+    if not hasattr(soul_spark, 'layers') or len(soul_spark.layers) < 2:
+        logger.debug(f"Not enough layers for integration: {getattr(soul_spark, 'spark_id', 'unknown')}")
+        return 0.0
+    
+    integration_improved = 0.0
+    coherence_gain = 0.0
+    layer_integration_metrics = []
+    
+    # Process all adjacent layer pairs
+    for i in range(1, len(soul_spark.layers)):
+        prev_layer = soul_spark.layers[i-1]
+        curr_layer = soul_spark.layers[i]
+        
+        # Initialize integration data if needed
+        if 'integration' not in curr_layer:
+            curr_layer['integration'] = {}
+        
+        integration_data = curr_layer['integration']
+        if f'with_layer_{i-1}' not in integration_data:
+            integration_data[f'with_layer_{i-1}'] = 0.2  # Start with basic connection
+        
+        # Calculate integration factors
+        frequency_match = 0.0
+        density_harmony = 0.0
+        harmonic_match = 0.0
+        
+        # Check frequency resonance between layers
+        if ('resonant_frequencies' in prev_layer and 
+            'resonant_frequencies' in curr_layer):
+            
+            # Find strongest frequency resonance between layers
+            best_resonance = 0.0
+            for f1 in prev_layer['resonant_frequencies']:
+                for f2 in curr_layer['resonant_frequencies']:
+                    res = calculate_resonance(f1, f2)
+                    best_resonance = max(best_resonance, res)
+            
+            frequency_match = best_resonance
+        
+        # Check density compatibility
+        if ('density' in prev_layer and 'density' in curr_layer):
+            prev_density = prev_layer['density'].get('base_density', 0.5)
+            curr_density = curr_layer['density'].get('base_density', 0.5)
+            
+            # Small density differences are better for integration
+            density_diff = abs(prev_density - curr_density)
+            density_harmony = 1.0 - min(1.0, density_diff * 2.0)
+        
+        # Check harmonic relationships
+        if ('harmonic_data' in prev_layer and 'harmonic_data' in curr_layer):
+            # Compare harmonic ratios - similar ratios integrate better
+            prev_ratios = []
+            curr_ratios = []
+            
+            for h in prev_layer['harmonic_data'].values():
+                if isinstance(h, dict) and 'ratio_value' in h:
+                    prev_ratios.append(h['ratio_value'])
+                    
+            for h in curr_layer['harmonic_data'].values():
+                if isinstance(h, dict) and 'ratio_value' in h:
+                    curr_ratios.append(h['ratio_value'])
+            
+            if prev_ratios and curr_ratios:
+                # Find closest ratio match
+                best_match = 0.0
+                for r1 in prev_ratios:
+                    for r2 in curr_ratios:
+                        if r1 <= 0 or r2 <= 0:
+                            continue
+                        ratio_diff = abs(r1 - r2) / max(r1, r2)
+                        match_score = 1.0 - min(1.0, ratio_diff * 2.0)
+                        best_match = max(best_match, match_score)
+                
+                harmonic_match = best_match
+        
+        # Calculate overall integration improvement
+        current_integration = integration_data[f'with_layer_{i-1}']
+        integration_factor = (
+            frequency_match * 0.5 + 
+            density_harmony * 0.3 + 
+            harmonic_match * 0.2
+        )
+        
+        # Apply gradual improvement based on factor
+        max_improvement = 0.15  # Cap per cycle for stability
+        improvement = max_improvement * integration_factor * (1.0 - current_integration)
+        new_integration = min(1.0, current_integration + improvement)
+        
+        integration_data[f'with_layer_{i-1}'] = float(new_integration)
+        integration_improved += (new_integration - current_integration)
+        
+        # Record metrics for this layer pair
+        layer_pair_metrics = {
+            'layer_pair': f"{i-1}_{i}",
+            'frequency_match': float(frequency_match),
+            'density_harmony': float(density_harmony),
+            'harmonic_match': float(harmonic_match),
+            'integration_before': float(current_integration),
+            'integration_after': float(new_integration),
+            'improvement': float(new_integration - current_integration)
+        }
+        layer_integration_metrics.append(layer_pair_metrics)
+        
+        logger.debug(f"Layer {i} integration with {i-1}: {current_integration:.3f}->{new_integration:.3f} "
+                    f"(FreqMatch={frequency_match:.2f}, DensityHarm={density_harmony:.2f}, "
+                    f"HarmMatch={harmonic_match:.2f})")
+    
+    # Calculate coherence gain from integration improvements
+    # Scale to meaningful CU gain - calibrate based on testing
+    coherence_gain = integration_improved * 6.0
+    
+    # Record integration process in soul history if available
+    if integration_improved > 0.001 and hasattr(soul_spark, 'interaction_history'):
+        integration_record = {
+            'type': 'layer_integration_enhancement',
+            'timestamp': datetime.now().isoformat(),
+            'layer_pairs_count': len(layer_integration_metrics),
+            'total_integration_improved': float(integration_improved),
+            'coherence_gain': float(coherence_gain),
+            'layer_details': layer_integration_metrics
+        }
+        soul_spark.interaction_history.append(integration_record)
+    
+    logger.debug(f"Layer integration improved by {integration_improved:.4f}, coherence gain: {coherence_gain:.2f} CU")
+    
+    # If we have metrics tracking available, record the data
+    if METRICS_AVAILABLE:
+        try:
+            metrics_data = {
+                'action': 'layer_integration',
+                'soul_id': getattr(soul_spark, 'spark_id', 'unknown'),
+                'timestamp': datetime.now().isoformat(),
+                'layer_count': len(soul_spark.layers),
+                'integration_improved': float(integration_improved),
+                'coherence_gain': float(coherence_gain),
+                'layer_pairs': layer_integration_metrics
+            }
+            metrics.record_metrics('layer_integration', metrics_data)
+        except Exception as e:
+            logger.error(f"Error recording layer integration metrics: {e}")
+    
+    return coherence_gain
+
+def _enhance_aspect_layer_resonance(soul_spark) -> float:
+    """
+    Enhance resonance between aspects and aura layers.
+    Returns coherence gain from the process.
+    """
+    if not hasattr(soul_spark, 'aspects') or not soul_spark.aspects:
+        logger.debug(f"No aspects found for resonance enhancement: {getattr(soul_spark, 'spark_id', 'unknown')}")
+        return 0.0
+        
+    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
+        logger.debug(f"No layers found for resonance enhancement: {getattr(soul_spark, 'spark_id', 'unknown')}")
+        return 0.0
+    
+    aspect_resonance_improved = 0.0
+    coherence_gain = 0.0
+    
+    # Process each aspect
+    for aspect_name, aspect_data in soul_spark.aspects.items():
+        # Initialize aspect-layer resonance data
+        if 'layer_resonance' not in aspect_data:
+            aspect_data['layer_resonance'] = {}
+        
+        # Get aspect properties that might resonate with layers
+        aspect_freq = aspect_data.get('details', {}).get('frequency', None)
+        aspect_strength = aspect_data.get('strength', 0.1)
+        
+        # If no frequency, try to infer from other properties
+        if aspect_freq is None or aspect_freq <= FLOAT_EPSILON:
+            aspect_harmonics = aspect_data.get('details', {}).get('harmonics', [])
+            if aspect_harmonics and len(aspect_harmonics) > 0:
+                aspect_freq = aspect_harmonics[0]
+        
+        # Skip aspects without usable frequency information
+        if aspect_freq is None or aspect_freq <= FLOAT_EPSILON:
+            continue
+        
+        # Find most resonant layer for this aspect
+        best_layer_idx = None
+        best_resonance = 0.1  # Minimum threshold for resonance
+        
+        for i, layer in enumerate(soul_spark.layers):
+            # Check direct frequency match with layer's resonant frequencies
+            if 'resonant_frequencies' in layer:
+                for layer_freq in layer['resonant_frequencies']:
+                    if layer_freq <= FLOAT_EPSILON:
+                        continue
+                    
+                    # Calculate frequency resonance
+                    res_score = calculate_resonance(aspect_freq, layer_freq)
+                    if res_score > best_resonance:
+                        best_resonance = res_score
+                        best_layer_idx = i
+            
+            # Also check harmonic data for more sophisticated matching
+            if 'harmonic_data' in layer:
+                for harmonic_id, harmonic in layer['harmonic_data'].items():
+                    if isinstance(harmonic, dict) and 'target_frequency' in harmonic:
+                        h_freq = harmonic['target_frequency']
+                        if h_freq <= FLOAT_EPSILON:
+                            continue
+                            
+                        res_score = calculate_resonance(aspect_freq, h_freq)
+                        if res_score > best_resonance:
+                            best_resonance = res_score
+                            best_layer_idx = i
+        
+        # If a resonant layer was found, enhance the connection
+        if best_layer_idx is not None:
+            layer_key = f'layer_{best_layer_idx}'
+            
+            # Get current resonance or initialize
+            current_resonance = aspect_data['layer_resonance'].get(layer_key, 0.1)
+            
+            # Calculate resonance improvement based on strength and current level
+            max_improvement = 0.15 * aspect_strength  # Stronger aspects improve faster
+            potential = best_resonance * (1.0 - current_resonance)
+            improvement = max_improvement * potential
+            
+            # Apply improvement
+            new_resonance = min(1.0, current_resonance + improvement)
+            aspect_data['layer_resonance'][layer_key] = float(new_resonance)
+            
+            # Track improvement
+            aspect_resonance_improved += (new_resonance - current_resonance) * aspect_strength
+            
+            logger.debug(f"Aspect '{aspect_name}' resonance with {layer_key}: "
+                        f"{current_resonance:.3f}->{new_resonance:.3f} (score={best_resonance:.2f})")
+    
+    # Calculate coherence gain from aspect-layer resonance improvements
+    # Scale to meaningful CU gain - calibrate based on testing
+    coherence_gain = aspect_resonance_improved * 8.0
+    
+    logger.debug(f"Aspect-layer resonance improved by {aspect_resonance_improved:.4f}, "
+                f"coherence gain: {coherence_gain:.2f} CU")
+    return coherence_gain
+    return coherence_gain
 
 def perform_spark_harmonization(soul_spark: SoulSpark, iterations: int = HARMONIZATION_ITERATIONS) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
@@ -143,7 +406,20 @@ def perform_spark_harmonization(soul_spark: SoulSpark, iterations: int = HARMONI
         # --- Perform Harmonization Process ---
         # Phase 1: Establish Base Pattern (10% of iterations)
         phase1_steps = max(20, int(iterations * 0.1))
-        detailed_metrics['phase1'] = _harmonize_phase1_establish_pattern(soul_spark, phase1_steps)
+        phase1_metrics = _harmonize_phase1_establish_pattern(soul_spark, phase1_steps)
+
+        # Add layer integration enhancement
+        layer_integration_gain = _enhance_layer_integration(soul_spark)
+        phase1_metrics['layer_integration_gain'] = layer_integration_gain
+        phase1_metrics['coherence_gain'] += layer_integration_gain
+        logger.debug(f"  Phase 1: Added layer integration gain: +{layer_integration_gain:.2f} CU")
+
+        detailed_metrics['phase1'] = phase1_metrics
+
+        if hasattr(soul_spark, 'frequency_signature') and 'phases' in soul_spark.frequency_signature:
+            phases = np.array(soul_spark.frequency_signature['phases'])
+            phase_var = _calculate_circular_variance(phases)
+            logger.debug(f"  Final P1 Phase coherence: {1.0-phase_var:.3f}")
         
         # Log after phase 1
         phase1_state = {
@@ -173,9 +449,18 @@ def perform_spark_harmonization(soul_spark: SoulSpark, iterations: int = HARMONI
                    f"PhiRes={phase2_state['phi_resonance']:.3f} (+{detailed_metrics['phase2']['phi_gain']:.3f}), "
                    f"Torus={phase2_state['toroidal_flow_strength']:.3f} (+{detailed_metrics['phase2']['torus_gain']:.3f})")
         
+
         # Phase 3: Harmonic Alignment (20% of iterations)
         phase3_steps = max(50, int(iterations * 0.2))
-        detailed_metrics['phase3'] = _harmonize_phase3_align_harmonics(soul_spark, phase3_steps)
+        phase3_metrics = _harmonize_phase3_align_harmonics(soul_spark, phase3_steps)
+
+        # Add aspect-layer resonance enhancement
+        aspect_resonance_gain = _enhance_aspect_layer_resonance(soul_spark)
+        phase3_metrics['aspect_resonance_gain'] = aspect_resonance_gain
+        phase3_metrics['coherence_gain'] += aspect_resonance_gain
+        logger.debug(f"  Phase 3: Added aspect-layer resonance gain: +{aspect_resonance_gain:.2f} CU")
+
+        detailed_metrics['phase3'] = phase3_metrics
         
         # Log after phase 3
         phase3_state = {
@@ -465,6 +750,11 @@ def _harmonize_phase3_align_harmonics(soul_spark: SoulSpark, steps: int) -> Dict
                            f"Harmony={soul_spark.harmony:.3f}, "
                            f"Torus={getattr(soul_spark, 'toroidal_flow_strength', 0.05):.3f}, "
                            f"C={soul_spark.coherence:.1f}")
+        harmonics_list = soul_spark.harmonics
+        base_freq = soul_spark.frequency
+        if harmonics_list and base_freq > FLOAT_EPSILON:
+            harm_dev = _calculate_harmonic_deviation(harmonics_list, base_freq)
+            logger.debug(f"  P3 Step {steps}/{steps}: Harmonic purity: {1.0-harm_dev:.3f}")
     
     # Update final metrics
     metrics['harmony_gain'] = soul_spark.harmony - initial_harmony
@@ -619,162 +909,3 @@ def _harmonize_phase5_optimize_coherence(soul_spark: SoulSpark, steps: int) -> D
     metrics['torus_gain'] = getattr(soul_spark, 'toroidal_flow_strength', 0.05) - initial_torus
     
     return metrics
-
-
-
-
-
-
-
-# def perform_spark_harmonization(
-#     soul_spark: SoulSpark,
-#     iterations: int = HARMONIZATION_ITERATIONS
-# ) -> Tuple[SoulSpark, Dict[str, Any]]:
-#     """
-#     Performs initial self-harmonization with active phase/harmonic refinement.
-#     """
-#     global metrics # Ensure access to global metrics object
-#     # --- Input Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("Input must be a SoulSpark instance.")
-#     if not isinstance(iterations, int) or iterations <= 0: raise ValueError("Iterations must be positive.")
-
-#     spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#     logger.info(f"--- Starting Spark Harmonization for {spark_id} ({iterations} iterations) ---")
-#     start_time = time.time()
-#     i = 0 # Initialize loop counter
-
-#     # --- Record Initial State ---
-#     initial_s = soul_spark.stability; initial_c = soul_spark.coherence; initial_e = soul_spark.energy
-#     initial_p_coh = getattr(soul_spark, 'pattern_coherence', 0.0); initial_phi_res = getattr(soul_spark, 'phi_resonance', 0.0); initial_harmony = getattr(soul_spark, 'harmony', 0.0)
-#     logger.info(f"  Initial Harmonization State: S={initial_s:.1f}, C={initial_c:.1f}, E={initial_e:.1f}, P.Coh={initial_p_coh:.3f}, PhiRes={initial_phi_res:.3f}")
-
-#     # --- Harmonization Loop ---
-#     try:
-#         for i in range(iterations):
-#             # --- 1. Structure Building (Pattern Coherence) ---
-#             rate_p_coh = HARMONIZATION_PATTERN_COHERENCE_RATE
-#             current_p_coh = getattr(soul_spark, 'pattern_coherence', 0.0)
-#             increase_p_coh = rate_p_coh * (1.0 - current_p_coh**0.5) # Faster increase when low
-#             soul_spark.pattern_coherence = min(1.0, current_p_coh + increase_p_coh)
-
-#             # --- 2. Internal Resonance (Phi & Harmony Factors) ---
-#             rate_phi = HARMONIZATION_PHI_RESONANCE_RATE
-#             current_phi = getattr(soul_spark, 'phi_resonance', 0.0)
-#             increase_phi = rate_phi * (1.0 - current_phi**0.5)
-#             soul_spark.phi_resonance = min(1.0, current_phi + increase_phi)
-
-#             rate_harm = HARMONIZATION_HARMONY_RATE
-#             current_harm = getattr(soul_spark, 'harmony', 0.0)
-#             increase_harm = rate_harm * (1.0 - current_harm**0.5)
-#             soul_spark.harmony = min(1.0, current_harm + increase_harm)
-
-#             # --- 3. *** Active Phase Alignment *** ---
-#             phases = np.array(soul_spark.frequency_signature.get('phases', []))
-#             if phases.size > 1:
-#                 current_circ_var = _calculate_circular_variance(phases)
-#                 if current_circ_var > HARMONIZATION_CIRC_VAR_THRESHOLD: # Only adjust if variance is high
-#                     # Calculate mean angle (-pi to pi)
-#                     mean_angle = atan2(np.mean(np.sin(phases)), np.mean(np.cos(phases)))
-#                     # Calculate adjustment needed for each phase towards mean angle
-#                     # Ensure shortest path adjustment (handle wrap-around)
-#                     delta_angle = mean_angle - phases
-#                     delta_angle = (delta_angle + PI) % (2 * PI) - PI # Wrap to [-pi, pi]
-#                     # Apply adjustment scaled by variance and rate
-#                     phase_adjustment = delta_angle * current_circ_var * HARMONIZATION_PHASE_ADJUST_RATE
-#                     phases = (phases + phase_adjustment) % (2 * PI) # Apply and wrap
-#                     soul_spark.frequency_signature['phases'] = phases.tolist()
-#                     # logger.debug(f"   Phase Adj (Iter {i+1}): CircVar={current_circ_var:.3f} -> Adjusted towards {mean_angle:.3f}")
-
-#             # --- 4. *** Active Harmonic Purity Adjustment *** ---
-#             harmonics_list = soul_spark.harmonics
-#             base_freq = soul_spark.frequency
-#             if harmonics_list and base_freq > FLOAT_EPSILON:
-#                 current_harm_dev = _calculate_harmonic_deviation(harmonics_list, base_freq)
-#                 if current_harm_dev > HARMONIZATION_HARM_DEV_THRESHOLD: # Only adjust if deviation is high
-#                     new_harmonics = []
-#                     for h in harmonics_list:
-#                         ratio = h / base_freq
-#                         if ratio <= 0: new_harmonics.append(h); continue
-#                         # Find nearest ideal ratio
-#                         int_dists = [abs(ratio - n) for n in range(1, 6)]
-#                         phi_dists = [abs(ratio - PHI**n) for n in [1, -1, 2, -2]]
-#                         all_dists = int_dists + phi_dists
-#                         best_dist_idx = np.argmin(all_dists)
-#                         if best_dist_idx < len(int_dists): # Integer match
-#                             nearest_ideal_ratio = range(1, 6)[best_dist_idx]
-#                         else: # Phi match
-#                             phi_powers = [PHI**n for n in [1, -1, 2, -2]]
-#                             nearest_ideal_ratio = phi_powers[best_dist_idx - len(int_dists)]
-
-#                         target_harmonic = base_freq * nearest_ideal_ratio
-#                         # Nudge harmonic towards target, scaled by deviation and rate
-#                         adjustment = (target_harmonic - h) * current_harm_dev * HARMONIZATION_HARMONIC_ADJUST_RATE
-#                         new_harmonics.append(h + adjustment)
-#                     # Update harmonics lists (both simple and in signature)
-#                     soul_spark.harmonics = sorted(new_harmonics)
-#                     soul_spark.frequency_signature['frequencies'] = sorted(new_harmonics)
-#                     # logger.debug(f"   Harmonic Adj (Iter {i+1}): AvgDev={current_harm_dev:.3f} -> Adjusted")
-
-
-#             # --- 5. Energy Gain from Internal Harmony ---
-#             internal_order_proxy = (soul_spark.pattern_coherence + soul_spark.phi_resonance) / 2.0
-#             energy_gain = internal_order_proxy * HARMONIZATION_ENERGY_GAIN_RATE
-#             soul_spark.energy = min(MAX_SOUL_ENERGY_SEU, soul_spark.energy + energy_gain)
-
-#             # --- 6. Update State (Recalculates SU/CU based on ALL factor changes) ---
-#             soul_spark.update_state()
-            
-#             # --- 7. Develop Toroidal Flow ---
-#             # Flow develops based on pattern coherence and harmony
-#             rate_torus = HARMONIZATION_TORUS_RATE # Add this constant (e.g., 0.002)
-#             current_torus = getattr(soul_spark, 'toroidal_flow_strength', 0.0)
-#             # Drive torus development by coherence/harmony, faster when low
-#             driver = (soul_spark.pattern_coherence + soul_spark.harmony) / 2.0
-#             increase_torus = rate_torus * driver * (1.0 - current_torus**0.7)
-#             soul_spark.toroidal_flow_strength = min(1.0, current_torus + increase_torus)
-
-#             # --- 8. Energy Gain (Modify to include Torus) ---
-#             internal_order_proxy = (soul_spark.pattern_coherence + soul_spark.phi_resonance + soul_spark.toroidal_flow_strength) / 3.0 # Average including torus
-#             energy_gain = internal_order_proxy * HARMONIZATION_ENERGY_GAIN_RATE # Use the potentially boosted rate
-#             soul_spark.energy = min(MAX_SOUL_ENERGY_SEU, soul_spark.energy + energy_gain)
-            
-#             # --- Logging (Periodic) ---
-#             if (i + 1) % (iterations // 10 or 1) == 0:
-#                 logger.debug(f"  Harmonization {i+1}/{iterations}: S={soul_spark.stability:.1f}, "
-#                              f"C={soul_spark.coherence:.1f}, E={soul_spark.energy:.1f}, "
-#                              f"P.Coh={soul_spark.pattern_coherence:.3f}, PhiRes={soul_spark.phi_resonance:.3f}")
-#             soul_spark.update_state()
-#     except Exception as e:
-#         # ... (Error handling as before) ...
-#         logger.error(f"Error during harmonization loop for {spark_id} at iteration {i+1}: {e}", exc_info=True)
-#         metrics_summary_fail = {'action': 'spark_harmonization', 'soul_id': spark_id, 'duration_sec': time.time() - start_time, 'iterations_run': i + 1, 'success': False, 'error': str(e)}
-#         if METRICS_AVAILABLE:
-#             try: metrics.record_metrics('spark_harmonization_summary', metrics_summary_fail)
-#             except Exception as metric_err: logger.error(f"Failed record fail metrics: {metric_err}")
-#         raise RuntimeError(f"Spark harmonization failed: {e}") from e
-
-#     # --- Finalization & Metrics ---
-#     # ... (Metrics calculation and logging as before) ...
-#     final_s = soul_spark.stability; final_c = soul_spark.coherence; final_e = soul_spark.energy
-#     final_p_coh = soul_spark.pattern_coherence; final_phi_res = soul_spark.phi_resonance; final_harmony = soul_spark.harmony
-#     duration = time.time() - start_time
-#     metrics_summary = {
-#         'action': 'spark_harmonization','soul_id': spark_id,'duration_sec': duration,'iterations_run': iterations,
-#         'initial_stability_su': initial_s, 'final_stability_su': final_s, 'stability_gain_su': final_s - initial_s,
-#         'initial_coherence_cu': initial_c, 'final_coherence_cu': final_c, 'coherence_gain_cu': final_c - initial_c,
-#         'initial_energy_seu': initial_e, 'final_energy_seu': final_e, 'energy_gain_seu': final_e - initial_e,
-#         'initial_pattern_coherence': initial_p_coh, 'final_pattern_coherence': final_p_coh,
-#         'initial_phi_resonance': initial_phi_res, 'final_phi_resonance': final_phi_res,
-#         'initial_harmony': initial_harmony, 'final_harmony': final_harmony, 'success': True
-#     }
-#     if METRICS_AVAILABLE:
-#         try: metrics.record_metrics('spark_harmonization_summary', metrics_summary)
-#         except Exception as metric_err: logger.error(f"Failed record success metrics: {metric_err}")
-
-#     logger.info(f"--- Spark Harmonization Complete for {spark_id}. ---")
-#     logger.info(f"  Final State: S={final_s:.1f}, C={final_c:.1f}, E={final_e:.1f}, "
-#                 f"P.Coh={final_p_coh:.3f}, PhiRes={final_phi_res:.3f}")
-
-#     return soul_spark, metrics_summary
-
-# --- END OF FILE src/stage_1/soul_formation/spark_harmonization.py ---

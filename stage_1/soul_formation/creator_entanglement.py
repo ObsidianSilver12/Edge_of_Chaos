@@ -1,12 +1,11 @@
-# --- START OF FILE src/stage_1/soul_formation/creator_entanglement.py ---
-
 """
-Creator Entanglement Functions (Refactored V4.3.8 - Principle-Driven)
+Creator Entanglement Functions (Refactored V4.4.0 - Light-Wave & Aura Integration)
 
-Establishes connection post-Sephiroth journey using SU/CU prerequisites.
-Connection strength/quality and aspect transfer are modulated by frequency resonance.
-Stability/Coherence emerge via update_state after factor changes. No artificial stabilization loop.
-Operates on SoulSpark object, using KetherField properties conceptually. Hard fails on critical errors.
+Establishes connection post-Sephiroth journey using wave physics and quantum entanglement.
+Connection forms through resonant field between soul layers and Kether field.
+Aspects transfer via resonant exchange, not direct property modification.
+Stability/Coherence emerge naturally through layer-based resonance patterns.
+Operates on SoulSpark object using KetherField properties conceptually. Hard fails.
 """
 
 import logging
@@ -16,26 +15,28 @@ import sys
 from datetime import datetime
 import uuid
 import json
-from math import pi as PI, sqrt, atan2, exp
+from math import pi as PI, sqrt, atan2, exp, sin, cos, tanh
 from typing import Dict, List, Any, Tuple, Optional
 from constants.constants import *
 
 # Set up logger
 logger = logging.getLogger(__name__)
 
-# --- Constants ---
-try:
-    from constants.constants import *
-except ImportError as e:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.critical(f"CRITICAL ERROR: Could not import constants: {e}. Creator Entanglement cannot function.")
-
-    raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
 try:
     from stage_1.soul_spark.soul_spark import SoulSpark
     from stage_1.fields.kether_field import KetherField
+    
+    # Sound integration - try to import sound modules if available
+    try:
+        from sound.sound_generator import SoundGenerator
+        from sound.sounds_of_universe import UniverseSounds
+        SOUND_AVAILABLE = True
+        logger.info("Sound modules successfully imported for Creator Entanglement.")
+    except ImportError:
+        SOUND_AVAILABLE = False
+        logger.warning("Sound modules not available. Creator Entanglement will run without sound generation.")
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}")
     raise ImportError(f"Core dependencies missing: {e}") from e
@@ -52,6 +53,20 @@ except ImportError:
     metrics = MetricsPlaceholder()
 
 # --- Helper Functions ---
+def _calculate_circular_variance(phases_array: np.ndarray) -> float:
+    """Calculates circular variance (0=sync, 1=uniform)."""
+    if phases_array is None or not isinstance(phases_array, np.ndarray) or phases_array.size < 2:
+        return 1.0  # Max variance if no/one phase or invalid input
+    if not np.all(np.isfinite(phases_array)):
+        logger.warning("Non-finite values found in phases array during variance calculation.")
+        return 1.0  # Max variance if data invalid
+    mean_cos = np.mean(np.cos(phases_array))
+    mean_sin = np.mean(np.sin(phases_array))
+    r_len_sq = mean_cos**2 + mean_sin**2
+    if r_len_sq < 0:  # Protect against precision errors
+        r_len_sq = 0.0
+    r_len = sqrt(r_len_sq)
+    return 1.0 - r_len
 
 def _check_prerequisites(soul_spark: SoulSpark, kether_field: KetherField) -> bool:
     """ Checks prerequisites using SU/CU thresholds. Raises ValueError on failure. """
@@ -81,96 +96,199 @@ def _check_prerequisites(soul_spark: SoulSpark, kether_field: KetherField) -> bo
         logger.error(msg)
         raise ValueError(msg)
 
-    # 3. Field Check (Conceptual Location)
+    # 3. Layers Check (Minimum required for resonance)
+    layers = getattr(soul_spark, 'layers', [])
+    if not layers or len(layers) < 2:
+        msg = f"Prerequisite failed: Soul must have at least 2 layers for resonance (current: {len(layers)})."
+        logger.error(msg)
+        raise ValueError(msg)
+
+    # 4. Field Check (Conceptual Location)
     current_field = getattr(soul_spark, 'current_field_key', 'unknown')
     if current_field != 'kether':
         msg = f"Prerequisite failed: Soul must be conceptually in Kether field (current: {current_field})."
         logger.error(msg)
         raise ValueError(msg)
-    # Assume Guff release handled by controller
 
     logger.debug("Creator Entanglement prerequisites met.")
     return True
 
-# --- Resonance Calculation (Using detailed version) ---
+# --- Enhanced Resonance Calculation with Wave Physics ---
 def calculate_resonance(freq1: float, freq2: float) -> float:
-    """ Calculate resonance strength (0-1) between two frequencies. """
-    if min(freq1, freq2) <= FLOAT_EPSILON: return 0.0
-    ratio = max(freq1, freq2) / min(freq1, freq2)
-    int_res = 0.0
-    for i in range(1, 6): # Check up to 5th harmonic
-        for j in range(1, 6):
-            target = float(max(i, j)) / float(min(i, j))
-            tolerance = RESONANCE_INTEGER_RATIO_TOLERANCE * target * 1.5 # Wider tolerance
-            deviation = abs(ratio - target)
-            if deviation < tolerance:
-                score = max(0.0, 1.0 - (deviation / tolerance))**2 # Sharper peak
-                complexity_penalty = 1.0 / (1.0 + (i - 1) * 0.1 + (j - 1) * 0.1)
-                int_res = max(int_res, score * complexity_penalty)
-    phi_res = 0.0
-    for i in [1, 2]: # Check Phi and Phi^2
-        phi_pow = GOLDEN_RATIO ** i
-        phi_tolerance = RESONANCE_PHI_RATIO_TOLERANCE * phi_pow * 1.5
-        dev_phi = abs(ratio - phi_pow)
-        if dev_phi < phi_tolerance:
-            score = max(0.0, 1.0 - (dev_phi / phi_tolerance))**2
-            phi_res = max(phi_res, score)
-        inv_phi_pow = 1.0 / phi_pow
-        inv_phi_tolerance = RESONANCE_PHI_RATIO_TOLERANCE * inv_phi_pow * 1.5
-        dev_inv_phi = abs(ratio - inv_phi_pow)
-        if dev_inv_phi < inv_phi_tolerance:
-            score = max(0.0, 1.0 - (dev_inv_phi / inv_phi_tolerance))**2
-            phi_res = max(phi_res, score)
+    """ 
+    Calculate resonance between frequencies using harmonic wave interference principles.
+    Returns a value between 0 (no resonance) and 1 (perfect resonance).
+    """
+    if freq1 is None or freq2 is None or freq1 <= FLOAT_EPSILON or freq2 <= FLOAT_EPSILON:
+        return 0.0
+    
+    # Ensure f1 is always the smaller frequency to simplify calculations
+    if freq1 > freq2:
+        freq1, freq2 = freq2, freq1
+    
+    # Ratio for harmonic analysis
+    ratio = freq2 / freq1
+    
+    # --- Part 1: Harmonic ratio analysis ---
+    # Musical intervals and natural harmonics
+    harmonic_ratios = [1.0, 2.0, 3.0/2.0, 4.0/3.0, 5.0/3.0, 5.0/4.0, 6.0/5.0, 8.0/5.0, 3.0]
+    harmonic_weights = [1.0, 0.9, 0.8, 0.7, 0.6, 0.6, 0.5, 0.5, 0.4]
+    
+    # Golden ratio family for natural systems
+    special_ratios = [PHI, SILVER_RATIO, PHI**2, 1.0/PHI]
+    special_weights = [0.85, 0.7, 0.75, 0.85]
+    
+    # Calculate harmonic resonance - how close to perfect harmonic ratios
+    harmonic_res = 0.0
+    for hr, hw in zip(harmonic_ratios, harmonic_weights):
+        rel_distance = abs(ratio - hr) / hr
+        tolerance = RESONANCE_INTEGER_RATIO_TOLERANCE * 1.2
+        
+        if rel_distance < tolerance:
+            # Resonance decays with square of normalized distance
+            score = (1.0 - (rel_distance / tolerance)**2) * hw
+            harmonic_res = max(harmonic_res, score)
+    
+    # Calculate special ratio resonance (phi-based)
+    special_res = 0.0
+    for sr, sw in zip(special_ratios, special_weights):
+        rel_distance = abs(ratio - sr) / sr
+        tolerance = RESONANCE_PHI_RATIO_TOLERANCE * 1.2
+        
+        if rel_distance < tolerance:
+            score = (1.0 - (rel_distance / tolerance)**2) * sw
+            special_res = max(special_res, score)
+    
+    # --- Part 2: Wave interference pattern analysis ---
+    # Calculate wavelengths
+    wavelength1 = SPEED_OF_SOUND / freq1
+    wavelength2 = SPEED_OF_SOUND / freq2
+    
+    # Wave interference factor - based on superposition of waves
+    # When waves align at regular intervals, strong resonance occurs
+    wave_factor = 0.0
+    
+    # Calculate lowest common multiple of wavelengths (approximation)
+    # This represents points where waves constructively interfere
+    lcm_approx = wavelength1 * wavelength2 / gcd_approx(wavelength1, wavelength2)
+    
+    # Normalized interference factor
+    wave_factor = 1.0 / (1.0 + 0.5 * (lcm_approx / max(wavelength1, wavelength2)))
+    
+    # --- Part 3: Combine all resonance factors ---
+    combined_resonance = max(
+        harmonic_res * 0.6,
+        special_res * 0.7,
+        wave_factor * 0.5
+    )
+    
+    return float(max(0.0, min(1.0, combined_resonance)))
 
-    final_resonance = max(int_res, phi_res) # Take the stronger match
-    # logger.debug(f"  Calculate Resonance: F1={freq1:.2f}, F2={freq2:.2f}, Ratio={ratio:.3f} -> IntRes={int_res:.4f}, PhiRes={phi_res:.4f} -> Final={final_resonance:.4f}")
-    return float(final_resonance)
+def gcd_approx(a: float, b: float, tolerance: float = 1e-6) -> float:
+    """Approximate GCD for float values using Euclidean algorithm with tolerance."""
+    if b < tolerance:
+        return a
+    return gcd_approx(b, a % b if a % b > tolerance else 0.0, tolerance)
 
-def find_best_resonance_match(soul_sig: Dict, kether_sig: Dict) -> Tuple[float, float, float]:
-    """ Finds the best resonant frequency pair between soul and Kether signatures. """
-    best_score = -1.0
-    # Get potential frequency lists/arrays
-    soul_freqs_data = soul_sig.get('frequencies', [])
-    kether_freqs_data = kether_sig.get('frequencies', [])
+def find_resonant_layers(soul_spark: SoulSpark, target_freq: float) -> List[Tuple[int, float]]:
+    """
+    Find layers in the soul that resonate with a target frequency.
+    Returns list of tuples (layer_index, resonance_strength).
+    """
+    resonant_layers = []
+    
+    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
+        return resonant_layers
+    
+    # Check each layer for resonance
+    for i, layer in enumerate(soul_spark.layers):
+        # Skip invalid layers
+        if not isinstance(layer, dict):
+            continue
+            
+        # Get layer frequencies
+        layer_freqs = []
+        
+        # Try to get frequency from resonant_frequencies
+        if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
+            layer_freqs.extend(layer['resonant_frequencies'])
+            
+        # Try to get frequency from sephirah data
+        if 'sephirah' in layer:
+            sephirah = layer['sephirah'].lower()
+            # Try to get frequency from SEPHIROTH_GLYPH_DATA
+            try:
+                from constants.constants import SEPHIROTH_GLYPH_DATA
+                if sephirah in SEPHIROTH_GLYPH_DATA and 'frequency' in SEPHIROTH_GLYPH_DATA[sephirah]:
+                    layer_freqs.append(SEPHIROTH_GLYPH_DATA[sephirah]['frequency'])
+            except (ImportError, KeyError):
+                pass
+        
+        # Calculate best resonance with any layer frequency
+        best_resonance = 0.0
+        for freq in layer_freqs:
+            if freq <= FLOAT_EPSILON:
+                continue
+            res = calculate_resonance(freq, target_freq)
+            best_resonance = max(best_resonance, res)
+        
+        # If resonance is significant, add this layer
+        if best_resonance > 0.2:  # Threshold for considering resonance
+            resonant_layers.append((i, best_resonance))
+    
+    # Sort by resonance strength (descending)
+    resonant_layers.sort(key=lambda x: x[1], reverse=True)
+    return resonant_layers
 
-    # Ensure they are numpy arrays for size check, handle potential None
-    soul_freqs = np.array(soul_freqs_data) if soul_freqs_data is not None else np.array([])
-    kether_freqs = np.array(kether_freqs_data) if kether_freqs_data is not None else np.array([])
-
-    best_soul_freq = soul_sig.get('base_frequency', 0.0)
-    best_kether_freq = kether_sig.get('base_frequency', 0.0)
-
-    # --- MODIFIED CHECK ---
-    # Explicitly check if either array is empty using .size
-    if soul_freqs.size == 0 or kether_freqs.size == 0:
-    # --- END MODIFICATION ---
-        logger.warning("Cannot find resonance match: empty frequency lists.")
-        return 0.0, best_soul_freq, best_kether_freq # Return 0 score if no frequencies
-
-    # Ensure frequencies are floats for calculation
-    soul_freqs = soul_freqs.astype(float)
-    kether_freqs = kether_freqs.astype(float)
-
-    for f_soul in soul_freqs:
-        for f_kether in kether_freqs:
-            score = calculate_resonance(f_soul, f_kether)
-            if score > best_score:
-                best_score = score
-                best_soul_freq = f_soul
-                best_kether_freq = f_kether
-
-    logger.debug(f"  Best Resonance Match: Score={best_score:.4f} (Soul={best_soul_freq:.1f}Hz, Kether={best_kether_freq:.1f}Hz)")
-    return max(0.0, best_score), best_soul_freq, best_kether_freq
+def add_layer_resonance(soul_spark: SoulSpark, layer_idx: int, freq: float, strength: float) -> bool:
+    """
+    Add or update resonance data to a specific layer.
+    Returns True if successful, False otherwise.
+    """
+    if not hasattr(soul_spark, 'layers') or len(soul_spark.layers) <= layer_idx:
+        return False
+        
+    layer = soul_spark.layers[layer_idx]
+    if not isinstance(layer, dict):
+        return False
+        
+    # Initialize resonance data if not exists
+    if 'resonance_data' not in layer:
+        layer['resonance_data'] = {}
+        
+    # Add frequency to resonant_frequencies if not exists
+    if 'resonant_frequencies' not in layer:
+        layer['resonant_frequencies'] = []
+    
+    # Add frequency if not already present
+    if freq not in layer['resonant_frequencies']:
+        layer['resonant_frequencies'].append(float(freq))
+        
+    # Update resonance data
+    timestamp = datetime.now().isoformat()
+    resonance_key = f"creator_resonance_{freq:.1f}"
+    layer['resonance_data'][resonance_key] = {
+        'frequency': float(freq),
+        'strength': float(strength),
+        'timestamp': timestamp,
+        'source': 'creator_entanglement'
+    }
+    
+    return True
 
 # --- Core Entanglement Functions ---
 
-def establish_creator_connection(soul_spark: SoulSpark,
-                                 kether_field: KetherField,
-                                 base_creator_potential: float, # Innate potential factor 0-1
-                                 edge_of_chaos_target: float
-                                ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """ Establishes connection based on resonance. Modifies SoulSpark factors. """
-    logger.info(f"Establishing creator connection for soul {soul_spark.spark_id}...")
+def _establish_resonant_field(soul_spark: SoulSpark, 
+                             kether_field: KetherField,
+                             base_creator_potential: float,
+                             edge_of_chaos_target: float) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Establishes a resonant field between soul layers and Kether field using wave interference.
+    Instead of direct connection, creates a field through which aspects and energies can transfer.
+    Modifies SoulSpark layers, not direct properties.
+    """
+    logger.info(f"Establishing resonant field for soul {soul_spark.spark_id}...")
+    
     # --- Input Validation ---
     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
@@ -178,1292 +296,1331 @@ def establish_creator_connection(soul_spark: SoulSpark,
     if not (0.0 <= edge_of_chaos_target <= 1.0): raise ValueError("edge_of_chaos_target out of range.")
 
     try:
-        # 1. Get Current State & Signatures
-        initial_stability_su = soul_spark.stability
-        initial_coherence_cu = soul_spark.coherence
-        coherence_norm = initial_coherence_cu / MAX_COHERENCE_CU
+        # Get soul state and layers
+        soul_stability_norm = soul_spark.stability / MAX_STABILITY_SU
+        soul_coherence_norm = soul_spark.coherence / MAX_COHERENCE_CU
+        soul_layers = soul_spark.layers
+        
+        # Get soul frequency signature
         soul_freq_sig = soul_spark.frequency_signature
         if not soul_freq_sig or 'frequencies' not in soul_freq_sig:
             logger.warning("Soul frequency signature missing or invalid, regenerating.")
             soul_spark._validate_or_init_frequency_structure()
             soul_freq_sig = soul_spark.frequency_signature
-
+            
+        # Create simplified wave representation of soul
+        soul_freq_array = np.array(soul_freq_sig.get('frequencies', [soul_spark.frequency]))
+        soul_phase_array = np.array(soul_freq_sig.get('phases', [0.0]))
+        soul_amp_array = np.array(soul_freq_sig.get('amplitudes', [1.0]))
+        
+        # Get Kether field frequency data
         kether_aspects = kether_field.get_aspects()
         kether_freq = kether_aspects.get('base_frequency', KETHER_FREQ)
-        # Create a simplified Kether signature for resonance matching
-        kether_sig = {'base_frequency': kether_freq, 'frequencies': [kether_freq] + [d.get('frequency', kether_freq) for d in kether_aspects.get('detailed_aspects', {}).values() if d.get('frequency', 0) > FLOAT_EPSILON]}
-        logger.debug(f"  Connection: Soul Sig Base={soul_freq_sig.get('base_frequency'):.1f}Hz, Kether Sig Base={kether_sig.get('base_frequency'):.1f}Hz")
+        
+        # Create simplified wave representation of Kether field
+        kether_freqs = [kether_freq]
+        kether_amps = [1.0]
+        kether_phases = [0.0]
+        
+        # Add frequencies from detailed aspects
+        for aspect_name, aspect_data in kether_aspects.get('detailed_aspects', {}).items():
+            aspect_freq = aspect_data.get('frequency', 0.0)
+            if aspect_freq > FLOAT_EPSILON:
+                kether_freqs.append(aspect_freq)
+                kether_amps.append(aspect_data.get('strength', 0.5))
+                kether_phases.append(0.0)  # Default phase
+                
+        kether_freq_array = np.array(kether_freqs)
+        kether_amp_array = np.array(kether_amps)
+        kether_phase_array = np.array(kether_phases)
+        
+        # --- Calculate potential resonance bands between soul and Kether ---
+        # For each soul frequency, find resonance with Kether frequencies
+        resonance_matrix = np.zeros((len(soul_freq_array), len(kether_freq_array)))
+        
+        for i, soul_freq in enumerate(soul_freq_array):
+            for j, kether_freq in enumerate(kether_freq_array):
+                resonance_matrix[i, j] = calculate_resonance(soul_freq, kether_freq)
+        
+        # Find strongest resonance pairs
+        resonance_pairs = []
+        for i in range(len(soul_freq_array)):
+            best_j = np.argmax(resonance_matrix[i, :])
+            res_strength = resonance_matrix[i, best_j]
+            if res_strength > 0.3:  # Threshold for meaningful resonance
+                resonance_pairs.append((i, best_j, res_strength))
+        
+        # Sort by resonance strength
+        resonance_pairs.sort(key=lambda x: x[2], reverse=True)
+        
+        # --- Calculate Field Characteristics Based on Resonance ---
+        # Total field strength based on resonance quality
+        total_resonance = np.sum([p[2] for p in resonance_pairs]) if resonance_pairs else 0.0
+        avg_resonance = total_resonance / len(resonance_pairs) if resonance_pairs else 0.0
+        
+        # Field strength influenced by soul state and resonance
+        field_strength_base = (
+            soul_stability_norm * 0.3 +
+            soul_coherence_norm * 0.4 +
+            avg_resonance * 0.3
+        )
+        
+        # Apply creator potential modifier
+        field_strength = field_strength_base * (0.7 + 0.6 * base_creator_potential)
+        field_strength = min(1.0, max(0.1, field_strength))
+        
+        # Calculate chaos factor - how close to edge of chaos
+        field_coherence = (soul_coherence_norm * 0.7 + avg_resonance * 0.3)
+        chaos_deviation = abs(field_coherence - edge_of_chaos_target)
+        chaos_factor = exp(-(chaos_deviation**2) / (2 * (0.15**2)))  # Gaussian falloff
+        
+        # --- Create Resonant Field Structure ---
+        field_id = str(uuid.uuid4())
+        creation_time = datetime.now().isoformat()
+        
+        # Determine primary resonant frequency pair
+        if resonance_pairs:
+            primary_pair = resonance_pairs[0]
+            primary_soul_freq = soul_freq_array[primary_pair[0]]
+            primary_kether_freq = kether_freq_array[primary_pair[1]]
+            primary_resonance = primary_pair[2]
+        else:
+            # Fallback if no strong resonance
+            primary_soul_freq = soul_freq_array[0] if len(soul_freq_array) > 0 else soul_spark.frequency
+            primary_kether_freq = kether_freq_array[0] if len(kether_freq_array) > 0 else kether_freq
+            primary_resonance = calculate_resonance(primary_soul_freq, primary_kether_freq)
+        
+        # Create resonant field data structure
+        resonant_field = {
+            "field_id": field_id,
+            "spark_id": soul_spark.spark_id,
+            "creation_time": creation_time,
+            "field_strength": float(field_strength),
+            "field_coherence": float(field_coherence),
+            "chaos_factor": float(chaos_factor),
+            "primary_soul_freq": float(primary_soul_freq),
+            "primary_kether_freq": float(primary_kether_freq),
+            "primary_resonance": float(primary_resonance),
+            "resonance_bands": [
+                {
+                    "soul_freq": float(soul_freq_array[p[0]]),
+                    "kether_freq": float(kether_freq_array[p[1]]),
+                    "resonance": float(p[2])
+                }
+                for p in resonance_pairs
+            ],
+            "active": True
+        }
+        
+        # --- Find Resonant Layers in Soul ---
+        # For each resonance band, find layers that resonate with it
+        resonant_layer_data = {}
+        
+        for band in resonant_field["resonance_bands"]:
+            soul_freq = band["soul_freq"]
+            kether_freq = band["kether_freq"]
+            band_strength = band["resonance"]
+            
+            # Find resonant layers for both frequencies
+            soul_layers = find_resonant_layers(soul_spark, soul_freq)
+            kether_layers = find_resonant_layers(soul_spark, kether_freq)
+            
+            # Combine and deduplicate
+            all_layers = set(l[0] for l in soul_layers + kether_layers)
+            
+            for layer_idx in all_layers:
+                # Get best resonance for this layer
+                soul_res = next((r for i, r in soul_layers if i == layer_idx), 0.0)
+                kether_res = next((r for i, r in kether_layers if i == layer_idx), 0.0)
+                best_res = max(soul_res, kether_res)
+                
+                # Add to resonant layer data
+                if layer_idx not in resonant_layer_data:
+                    resonant_layer_data[layer_idx] = {
+                        "resonance": best_res * band_strength,
+                        "bands": []
+                    }
+                else:
+                    # Update resonance if better
+                    current_res = resonant_layer_data[layer_idx]["resonance"]
+                    resonant_layer_data[layer_idx]["resonance"] = max(
+                        current_res, 
+                        best_res * band_strength
+                    )
+                
+                # Add band to layer
+                resonant_layer_data[layer_idx]["bands"].append({
+                    "soul_freq": soul_freq,
+                    "kether_freq": kether_freq,
+                    "resonance": best_res * band_strength
+                })
+        
+        # --- Update Soul Layers with Resonance Data ---
+        for layer_idx, layer_data in resonant_layer_data.items():
+            # For each band, add resonance to layer
+            for band in layer_data["bands"]:
+                add_layer_resonance(
+                    soul_spark, 
+                    int(layer_idx), 
+                    band["kether_freq"], 
+                    band["resonance"]
+                )
+        
+        # --- Create Summary Metrics ---
+        metrics_data = {
+            'action': 'establish_resonant_field',
+            'soul_id': soul_spark.spark_id,
+            'field_id': field_id,
+            'field_strength': field_strength,
+            'field_coherence': field_coherence,
+            'chaos_factor': chaos_factor,
+            'primary_resonance': primary_resonance,
+            'resonance_bands_count': len(resonant_field["resonance_bands"]),
+            'resonant_layers_count': len(resonant_layer_data),
+            'initial_stability_su': soul_spark.stability,
+            'initial_coherence_cu': soul_spark.coherence,
+            'success': True,
+            'timestamp': creation_time
+        }
+        
+        # --- Generate Creation Sound if Available ---
+        if SOUND_AVAILABLE:
+            try:
+                # Initialize universe sounds generator
+                universe_sound = UniverseSounds()
+                
+                # Generate dimensional transition sound (creator to soul)
+                transition_sound = universe_sound.generate_dimensional_transition(
+                    duration=5.0,
+                    sample_rate=SAMPLE_RATE,
+                    transition_type='creator_to_soul',
+                    amplitude=0.7
+                )
+                
+                # Save sound
+                sound_file = f"creator_resonance_{soul_spark.spark_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
+                universe_sound.save_sound(
+                    transition_sound, 
+                    sound_file, 
+                    f"Creator resonance field formation for soul {soul_spark.spark_id[:8]}"
+                )
+                
+                logger.info(f"Generated creator resonance sound: {sound_file}")
+                resonant_field["sound_file"] = sound_file
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate creator resonance sound: {sound_err}")
+        
+        logger.info(f"Resonant field established: Strength={field_strength:.4f}, Coherence={field_coherence:.4f}, ResonanceBands={len(resonant_field['resonance_bands'])}, ResonantLayers={len(resonant_layer_data)}")
+        
+        # Record metrics
+        if METRICS_AVAILABLE:
+            metrics.record_metrics('creator_entanglement', metrics_data)
+        
+        return resonant_field, metrics_data
+        
+    except Exception as e:
+        logger.error(f"Error establishing resonant field: {e}", exc_info=True)
+        raise RuntimeError("Resonant field establishment failed critically.") from e
 
-        # 2. Find Best Resonance Match
-        frequency_resonance_score, _, primary_connection_freq_kether = find_best_resonance_match(soul_freq_sig, kether_sig)
-        logger.debug(f"  Connection: Freq Resonance Score = {frequency_resonance_score:.4f}")
-
-        # 3. Calculate Connection Strength (Emergent Factor 0-1)
-        # Strength depends on resonance quality and soul's coherence
-        connection_strength = (frequency_resonance_score * CE_CONNECTION_FREQ_WEIGHT +
-                               coherence_norm * CE_CONNECTION_COHERENCE_WEIGHT)
-        # Modulate slightly by innate potential
-        connection_strength *= (0.8 + 0.4 * base_creator_potential) # Range 0.8 to 1.2 multiplier
-        connection_strength = min(1.0, max(0.0, connection_strength)) # Clamp 0-1
-        logger.debug(f"  Connection: Strength Calculated = {connection_strength:.4f} (FreqW={CE_CONNECTION_FREQ_WEIGHT}, CohW={CE_CONNECTION_COHERENCE_WEIGHT}, BasePot={base_creator_potential})")
-
-        # 4. Calculate Connection Quality (Includes Stability & Chaos Factor)
-        stability_norm = initial_stability_su / MAX_STABILITY_SU
-        connection_quality_base = (0.3 * stability_norm + 0.7 * coherence_norm) # Weighted average
-        chaos_deviation = abs(connection_quality_base - edge_of_chaos_target)
-        chaos_factor = exp(-(chaos_deviation**2) / (2 * (0.15**2))) # Gaussian falloff
-        connection_quality = connection_strength * chaos_factor # Overall quality depends on strength AND chaos alignment
-        connection_quality = min(1.0, max(0.0, connection_quality))
-        logger.debug(f"  Connection: Quality Base={connection_quality_base:.3f}, ChaosFactor={chaos_factor:.3f} -> Final Quality={connection_quality:.4f}")
-
-        # 5. Generate Channel Data
+def _form_quantum_channel(soul_spark: SoulSpark,
+                         resonant_field: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Forms quantum channel through the resonant field using quantum entanglement.
+    Creates a wave-based information exchange pathway between creator and soul.
+    """
+    logger.info(f"Forming quantum channel for soul {soul_spark.spark_id}...")
+    
+    # --- Input Validation ---
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
+    if not isinstance(resonant_field, dict): raise TypeError("resonant_field invalid.")
+    
+    field_id = resonant_field.get("field_id")
+    spark_id = resonant_field.get("spark_id")
+    field_strength = resonant_field.get("field_strength")
+    field_coherence = resonant_field.get("field_coherence")
+    
+    if not field_id or not spark_id or field_strength is None or field_coherence is None:
+        raise ValueError("Resonant field missing essential attributes.")
+    
+    try:
+        # --- Extract Wave Properties from Field ---
+        primary_soul_freq = resonant_field.get("primary_soul_freq")
+        primary_kether_freq = resonant_field.get("primary_kether_freq")
+        primary_resonance = resonant_field.get("primary_resonance")
+        resonance_bands = resonant_field.get("resonance_bands", [])
+        
+        # --- Apply Quantum Wave-Particle Duality ---
+        # Calculate quantum entanglement factor - affected by resonance and chaos
+        chaos_factor = resonant_field.get("chaos_factor", 0.5)
+        entanglement_quality = (
+            primary_resonance * 0.5 +
+            field_coherence * 0.3 +
+            chaos_factor * 0.2
+        )
+        
+        # --- Calculate Standing Wave Pattern ---
+        # Standing waves form at nodes where soul and creator frequencies interfere constructively
+        standing_wave_nodes = []
+        
+        # For each resonance band, calculate potential standing wave nodes
+        for band in resonance_bands:
+            soul_freq = band["soul_freq"]
+            kether_freq = band["kether_freq"]
+            band_resonance = band["resonance"]
+            
+            # Calculate wavelengths
+            soul_wavelength = SPEED_OF_SOUND / soul_freq if soul_freq > FLOAT_EPSILON else 0.0
+            kether_wavelength = SPEED_OF_SOUND / kether_freq if kether_freq > FLOAT_EPSILON else 0.0
+            
+            if soul_wavelength > FLOAT_EPSILON and kether_wavelength > FLOAT_EPSILON:
+                # Find common nodes (simplified)
+                node_spacing = gcd_approx(soul_wavelength, kether_wavelength)
+                
+                # Create nodes along the channel
+                # Number of nodes scales with resonance quality
+                num_nodes = max(3, int(10 * band_resonance))
+                
+                for i in range(num_nodes):
+                    # Position follows Fibonacci-based distribution for natural harmonic spacing
+                    # Nodes closer together near soul, wider near creator
+                    position = (PHI ** i) / (PHI ** num_nodes)
+                    position = min(0.99, max(0.01, position))  # Keep within 0-1 range
+                    
+                    node_strength = band_resonance * (1.0 - 0.5 * abs(0.5 - position))
+                    
+                    standing_wave_nodes.append({
+                        "position": float(position),
+                        "soul_freq": float(soul_freq),
+                        "kether_freq": float(kether_freq),
+                        "resonance": float(band_resonance),
+                        "strength": float(node_strength)
+                    })
+        
+        # --- Calculate Information Bandwidth ---
+        # Bandwidth determined by number of resonance bands and their quality
+        base_bandwidth = 0.0
+        for band in resonance_bands:
+            # Each resonance band contributes to bandwidth
+            # Higher resonance = higher bandwidth contribution
+            base_bandwidth += band["resonance"] * 50.0  # Scale factor
+        
+        # Apply entanglement modifier
+        bandwidth_hz = base_bandwidth * (0.5 + 0.5 * entanglement_quality)
+        
+        # --- Create Quantum Channel Structure ---
         channel_id = str(uuid.uuid4())
         creation_time = datetime.now().isoformat()
-        quantum_channel_data = {
-            'channel_id': channel_id, 'spark_id': soul_spark.spark_id, 'creation_time': creation_time,
-            'connection_strength': float(connection_strength),
-            'connection_quality': float(connection_quality), # Used for aspect transfer efficiency
-            'frequency_resonance_score': float(frequency_resonance_score),
-            'primary_connection_freq_kether_hz': float(primary_connection_freq_kether),
-            'initial_soul_stability_su': float(initial_stability_su),
-            'initial_soul_coherence_cu': float(initial_coherence_cu),
-            'chaos_factor': float(chaos_factor),
-            'active': True
-            # Frequency signature stored on soul spark now
+        
+        quantum_channel = {
+            "channel_id": channel_id,
+            "field_id": field_id,
+            "spark_id": spark_id,
+            "creation_time": creation_time,
+            "entanglement_quality": float(entanglement_quality),
+            "bandwidth_hz": float(bandwidth_hz),
+            "primary_frequency_hz": float(primary_soul_freq),
+            "standing_wave_nodes": standing_wave_nodes,
+            "node_count": len(standing_wave_nodes),
+            "active": True
         }
-        logger.debug(f"  Quantum Channel Data Created: {channel_id}")
-
-        # 6. Update SoulSpark Factors
-        initial_alignment = soul_spark.creator_alignment # 0-1 factor
-        soul_spark.creator_channel_id = channel_id
-        soul_spark.creator_connection_strength = float(connection_strength)
-        # Alignment boost now depends on connection quality (more aligned connection = bigger boost)
-        alignment_gain = ENTANGLEMENT_ALIGNMENT_BOOST_FACTOR * connection_quality
-        soul_spark.creator_alignment = float(min(1.0, initial_alignment + alignment_gain))
-        # Store the frequency signature that *resulted* in this connection
-        # soul_spark.frequency_signature = soul_freq_sig # Already validated/generated if needed
-        soul_spark.last_modified = creation_time
-        logger.info(f"Creator connection established: Strength={connection_strength:.4f}, Quality={connection_quality:.4f}, Alignment={soul_spark.creator_alignment:.4f} (+{alignment_gain:.4f})")
-
-        # 7. Record Metrics
+        
+        # --- Calculate Additional Wave Properties ---
+        # Phase coherence - how well aligned the phases are
+        soul_phases = soul_spark.frequency_signature.get('phases', [0.0])
+        phase_array = np.array(soul_phases)
+        if len(phase_array) > 1:
+            phase_variance = _calculate_circular_variance(phase_array)
+            phase_coherence = 1.0 - phase_variance
+        else:
+            phase_coherence = 0.5  # Default for single phase
+            
+        # Wave interference quality - how well the waves interfere
+        interference_quality = 0.0
+        if len(resonance_bands) > 1:
+            # Calculate interference between bands
+            band_freqs = [band["soul_freq"] for band in resonance_bands]
+            band_strengths = [band["resonance"] for band in resonance_bands]
+            
+            # Sum of pairwise interference qualities
+            interference_sum = 0.0
+            pair_count = 0
+            
+            for i in range(len(band_freqs)):
+                for j in range(i+1, len(band_freqs)):
+                    # Calculate interference quality between bands i and j
+                    freq_ratio = max(band_freqs[i], band_freqs[j]) / max(FLOAT_EPSILON, min(band_freqs[i], band_freqs[j]))
+                    
+                    # Ideal interference for integer/phi ratios
+                    ratio_quality = 0.0
+                    
+                    # Check integer ratios
+                    for n in range(1, 6):
+                        for d in range(1, 6):
+                            if d == 0: continue
+                            ideal_ratio = n / d
+                            if abs(freq_ratio - ideal_ratio) < 0.05:
+                                ratio_quality = max(ratio_quality, 1.0 - abs(freq_ratio - ideal_ratio) * 10.0)
+                    
+                    # Check phi ratios
+                    phi_ratios = [PHI, 1/PHI, PHI**2, 1/(PHI**2)]
+                    for pr in phi_ratios:
+                        if abs(freq_ratio - pr) < 0.05:
+                            ratio_quality = max(ratio_quality, 1.0 - abs(freq_ratio - pr) * 10.0)
+                    
+                    # Weight by band strengths
+                    pair_quality = ratio_quality * band_strengths[i] * band_strengths[j]
+                    interference_sum += pair_quality
+                    pair_count += 1
+            
+            # Average interference quality
+            if pair_count > 0:
+                interference_quality = interference_sum / pair_count
+        
+        # Add to quantum channel data
+        quantum_channel["phase_coherence"] = float(phase_coherence)
+        quantum_channel["interference_quality"] = float(interference_quality)
+        
+        # --- Light Wave Properties ---
+        # Light can be modeled as electromagnetic waves with much higher frequencies
+        # We can create a mapping from audio to light frequencies
+        # For simplicity, we'll use a scaling factor
+        
+        light_scaling_factor = 1e12  # Rough audio-to-light scaling
+        
+        light_frequencies = []
+        for band in resonance_bands:
+            # Map audio frequency to light domain
+            light_freq = band["soul_freq"] * light_scaling_factor
+            light_freq_kether = band["kether_freq"] * light_scaling_factor
+            
+            # Store light frequencies with their resonance data
+            light_frequencies.append({
+                "frequency": float(light_freq),
+                "kether_frequency": float(light_freq_kether),
+                "resonance": float(band["resonance"])
+            })
+        
+        # Add light properties to quantum channel
+        quantum_channel["light_frequencies"] = light_frequencies
+        
+        # --- Calculate Creator Connection Strength ---
+        # This is now based on the quantum channel properties rather than
+        # direct assignment - more physically accurate
+        
+        connection_strength = (
+            entanglement_quality * 0.5 +
+            phase_coherence * 0.2 +
+            interference_quality * 0.3
+        ) * field_strength  # Scale by field strength
+        
+        # Store but do not modify soul directly
+        quantum_channel["connection_strength"] = float(connection_strength)
+        
+        # --- Log Channel Properties ---
+        logger.info(f"Quantum channel formed: EntQuality={entanglement_quality:.4f}, "
+                   f"Bandwidth={bandwidth_hz:.1f}Hz, Nodes={len(standing_wave_nodes)}")
+        
+        # --- Generate Sound Representation ---
+        if SOUND_AVAILABLE:
+            try:
+                # Initialize universe sounds generator
+                universe_sounds = UniverseSounds()
+                
+                # Generate quantum entanglement sound
+                # This creates a sound representing the quantum connection
+                quantum_sound = universe_sounds.generate_dimensional_transition(
+                    duration=5.0,
+                    sample_rate=SAMPLE_RATE,
+                    transition_type='quantum_entanglement',
+                    amplitude=0.7
+                )
+                
+                # Save sound
+                sound_file = f"quantum_channel_{soul_spark.spark_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
+                universe_sounds.save_sound(
+                    quantum_sound, 
+                    sound_file, 
+                    f"Quantum channel formation for soul {soul_spark.spark_id[:8]}"
+                )
+                
+                logger.info(f"Generated quantum channel sound: {sound_file}")
+                quantum_channel["sound_file"] = sound_file
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate quantum channel sound: {sound_err}")
+        
+        # --- Create Channel Metrics ---
         metrics_data = {
-            'action': 'establish_connection', 'soul_id': soul_spark.spark_id, 'channel_id': channel_id,
-            'strength': connection_strength, 'quality': connection_quality, 'chaos_factor': chaos_factor,
-            'frequency_resonance_score': frequency_resonance_score,
-            'initial_stability_su': initial_stability_su,
-            'initial_coherence_cu': initial_coherence_cu,
-            'initial_alignment': initial_alignment,
-            'final_alignment': soul_spark.creator_alignment,
-            'alignment_change': alignment_gain,
-            'success': True, 'timestamp': creation_time
+            'action': 'form_quantum_channel',
+            'soul_id': soul_spark.spark_id,
+            'channel_id': channel_id,
+            'field_id': field_id,
+            'entanglement_quality': entanglement_quality,
+            'bandwidth_hz': bandwidth_hz,
+            'node_count': len(standing_wave_nodes),
+            'phase_coherence': phase_coherence,
+            'interference_quality': interference_quality,
+            'connection_strength': connection_strength,
+            'success': True,
+            'timestamp': creation_time
         }
-        if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-        return quantum_channel_data, metrics_data
-
+        
+        # Record metrics
+        if METRICS_AVAILABLE:
+            metrics.record_metrics('quantum_channel', metrics_data)
+            
+        return quantum_channel, metrics_data
+            
     except Exception as e:
-        logger.error(f"Error establishing creator connection: {e}", exc_info=True)
-        # Hard fail
-        raise RuntimeError("Creator connection establishment failed critically.") from e
+        logger.error(f"Error forming quantum channel: {e}", exc_info=True)
+        raise RuntimeError("Quantum channel formation failed critically.") from e
 
-def form_resonance_patterns(soul_spark: SoulSpark,
-                            quantum_channel_data: Dict[str, Any],
-                            kether_field: KetherField) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """ Forms resonance patterns based on Kether aspects and connection quality. """
-    logger.info(f"Forming resonance patterns for soul {soul_spark.spark_id}...")
-    # --- Validation ---
+def _transfer_creator_aspects(soul_spark: SoulSpark,
+                             quantum_channel: Dict[str, Any],
+                             kether_field: KetherField) -> Dict[str, Any]:
+    """
+    Transfers creator aspects via quantum channel using light-wave resonance.
+    Preserves coherence by connecting aspects to appropriate soul layers.
+    """
+    logger.info(f"Transferring creator aspects via quantum channel for soul {soul_spark.spark_id}...")
+    
+    # --- Input Validation ---
     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-    if not isinstance(quantum_channel_data, dict): raise TypeError("quantum_channel_data invalid.")
+    if not isinstance(quantum_channel, dict): raise TypeError("quantum_channel invalid.")
     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-    channel_id = quantum_channel_data.get('channel_id'); spark_id = quantum_channel_data.get('spark_id')
-    connection_strength = quantum_channel_data.get('connection_strength') # For strength scaling
-    connection_quality = quantum_channel_data.get('connection_quality') # For coherence calc? maybe just strength
-    freq_res_score = quantum_channel_data.get('frequency_resonance_score') # Use actual resonance score
-    if not channel_id or not spark_id or connection_strength is None or freq_res_score is None:
-        raise ValueError("Quantum channel data missing essential keys (strength, freq_res_score).")
-
+    
+    entanglement_quality = quantum_channel.get("entanglement_quality", 0.0)
+    connection_strength = quantum_channel.get("connection_strength", 0.0)
+    channel_id = quantum_channel.get("channel_id")
+    
+    if not channel_id or not (0.0 <= entanglement_quality <= 1.0) or not (0.0 <= connection_strength <= 1.0):
+        raise ValueError("Quantum channel missing essential attributes.")
+    
     try:
+        # --- Get Kether Aspects to Transfer ---
         kether_aspects = kether_field.get_aspects()
-        if not kether_aspects: raise ValueError("Kether field aspect data is empty.")
-        detailed_kether_aspects = kether_aspects.get('detailed_aspects', {})
-        if not detailed_kether_aspects: raise ValueError("Kether detailed aspects missing.")
-
-        patterns = {}
-        logger.debug("  Forming patterns from Kether primary/secondary aspects:")
-        # Pattern strength now depends more on overall connection quality/resonance
-        base_pattern_strength = connection_strength * freq_res_score # Use product?
-
-        for name in kether_aspects.get('primary_aspects', []):
-             if name in detailed_kether_aspects:
-                  details = detailed_kether_aspects[name]
-                  # Scale Kether's base strength by the calculated base pattern strength
-                  pat_strength = float(details.get('strength', 0.0) * base_pattern_strength)
-                  patterns[name] = {
-                      'frequency': details.get('frequency', KETHER_FREQ),
-                      'strength': pat_strength, 'pattern_type': 'primary', **details
-                  }
-                  logger.debug(f"    Added Primary Pattern: {name} (Strength: {pat_strength:.4f})")
-        for name in kether_aspects.get('secondary_aspects', []):
-             if name in detailed_kether_aspects:
-                  details = detailed_kether_aspects[name]
-                  # Secondary patterns are weaker
-                  pat_strength = float(details.get('strength', 0.0) * base_pattern_strength * 0.7)
-                  patterns[f"secondary_{name}"] = {
-                      'frequency': details.get('frequency', KETHER_FREQ),
-                      'strength': pat_strength, 'pattern_type': 'secondary', **details
-                  }
-                  logger.debug(f"    Added Secondary Pattern: {name} (Strength: {pat_strength:.4f})")
-
-        # Add harmonic patterns based on Kether's primary connection frequency
-        logger.debug("  Forming patterns from Kether's primary connection frequency harmonics:")
-        primary_kether_freq = quantum_channel_data.get('primary_connection_freq_kether_hz', KETHER_FREQ)
-        # Generate a few harmonics based on Kether's freq
-        kether_harmonics = [primary_kether_freq * r for r in [PHI, 2, 1/PHI, 3] if primary_kether_freq * r > FLOAT_EPSILON]
-        for i, h_freq in enumerate(kether_harmonics):
-            # Strength also depends on connection strength/resonance
-            strength = float(base_pattern_strength * (0.6 / (i + 1.5))) # Diminishing strength
-            patterns[f'kether_harmonic_{i}'] = {
-                'frequency': float(h_freq), 'strength': strength,
-                'pattern_type': 'kether_harmonic', 'description': f'Kether Harmonic ({h_freq:.1f} Hz)'
-            }
-            logger.debug(f"    Added Kether Harmonic Pattern: kether_harmonic_{i} (Freq: {h_freq:.1f}, Strength: {strength:.4f})")
-
-        # Calculate pattern coherence (average strength of formed patterns)
-        pattern_coherence = 0.0
-        if patterns:
-            valid_strengths = [p.get('strength', 0.0) for p in patterns.values() if isinstance(p.get('strength'), (int, float))]
-            if valid_strengths: pattern_coherence = sum(valid_strengths) / len(valid_strengths)
-        logger.debug(f"  Calculated Pattern Coherence factor: {pattern_coherence:.4f}")
-
-        formation_time = datetime.now().isoformat()
-        resonance_pattern_data = {
-            'channel_id': channel_id, 'spark_id': spark_id, 'patterns': patterns,
-            'pattern_count': len(patterns), 'pattern_coherence': float(pattern_coherence),
-            'formation_time': formation_time
-        }
-
-        # Update SoulSpark Factors
-        initial_resonance_factor = soul_spark.resonance # 0-1 factor
-        soul_spark.resonance_patterns = patterns.copy()
-        # Update pattern_coherence based on the calculated average strength
-        soul_spark.pattern_coherence = float(pattern_coherence)
-        # Boost general resonance factor based on pattern coherence improvement
-        resonance_boost = ENTANGLEMENT_RESONANCE_BOOST_FACTOR * pattern_coherence
-        soul_spark.resonance = float(min(1.0, initial_resonance_factor + resonance_boost))
-        soul_spark.last_modified = formation_time
-        logger.info(f"Patterns formed: {len(patterns)}. New Resonance Factor: {soul_spark.resonance:.4f} (+{resonance_boost:.4f}), P.Coh factor: {pattern_coherence:.4f}")
-
-        # Record Metrics
-        metrics_data = {
-            'action': 'form_patterns', 'soul_id': spark_id, 'channel_id': channel_id,
-            'pattern_count': len(patterns), 'pattern_coherence_factor': pattern_coherence, # Renamed metric key
-            'initial_soul_resonance_factor': initial_resonance_factor, # Added initial
-            'final_soul_resonance_factor': soul_spark.resonance,
-            'resonance_factor_change': soul_spark.resonance - initial_resonance_factor,
-            'success': True, 'timestamp': formation_time
-        }
-        if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-        return resonance_pattern_data, metrics_data
-
-    except Exception as e:
-        logger.error(f"Error forming resonance patterns: {e}", exc_info=True)
-        # Hard fail
-        raise RuntimeError("Pattern formation failed critically.") from e
-
-
-def transfer_creator_aspects(soul_spark: SoulSpark,
-                             quantum_channel_data: Dict[str, Any],
-                             resonance_pattern_data: Dict[str, Any],
-                             kether_field: KetherField) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """ Transfers Kether aspects scaled by connection quality and pattern resonance. No threshold. """
-    logger.info(f"Transferring creator aspects to soul {soul_spark.spark_id}...")
-    # --- Validation ---
-    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-    if not isinstance(quantum_channel_data, dict): raise TypeError("quantum_channel_data invalid.")
-    if not isinstance(resonance_pattern_data, dict): raise TypeError("resonance_pattern_data invalid.")
-    if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-    channel_id = quantum_channel_data.get('channel_id'); spark_id = quantum_channel_data.get('spark_id')
-    connection_quality = quantum_channel_data.get('connection_quality') # Use quality (0-1) for efficiency
-    patterns = resonance_pattern_data.get('patterns')
-    if not channel_id or not spark_id or connection_quality is None or patterns is None:
-        raise ValueError("Channel/pattern data missing essential keys.")
-    if not hasattr(soul_spark, 'aspects') or not isinstance(soul_spark.aspects, dict):
-        setattr(soul_spark, 'aspects', {}) # Initialize if missing
-
-    try:
-        kether_aspects = kether_field.get_aspects()
-        if not kether_aspects: raise ValueError("Kether field aspect data is empty.")
-        detailed_kether_aspects = kether_aspects.get('detailed_aspects', {})
-        if not detailed_kether_aspects: raise ValueError("Kether detailed aspects missing.")
-
+        detailed_aspects = kether_aspects.get('detailed_aspects', {})
+        
+        if not detailed_aspects:
+            logger.warning("No detailed aspects available from Kether field.")
+            return {"aspects_transferred": 0, "aspects_strengthened": 0, "success": False}
+        
+        # --- Get Soul's Current Aspects and Layers ---
+        soul_aspects = getattr(soul_spark, 'aspects', {})
+        soul_layers = getattr(soul_spark, 'layers', [])
+        
+        initial_coherence = soul_spark.coherence  # Store for tracking
+        
+        # --- Determine Which Aspects Can Transfer Based on Resonance ---
         transferable_aspects = {}
-        gained_count = 0; strengthened_count = 0
-        transfer_time = datetime.now().isoformat()
-        total_original_strength = 0.0; total_imparted_strength = 0.0
-        total_alignment_gain = 0.0 # Accumulate alignment gain from aspects
-
-        logger.debug("  Calculating aspect transfer efficiencies:")
-        for name, kether_details in detailed_kether_aspects.items():
-            kether_strength = float(kether_details.get('strength', 0.0))
-            if kether_strength <= FLOAT_EPSILON: continue
-            total_original_strength += kether_strength
-
-            # Efficiency depends on connection quality AND pattern resonance strength
-            pattern_strength = patterns.get(name, {}).get('strength', 0.0)
-            if pattern_strength <= FLOAT_EPSILON: pattern_strength = patterns.get(f"secondary_{name}", {}).get('strength', 0.0)
-            logger.debug(f"    Aspect '{name}': KetherStr={kether_strength:.3f}, ConnQual={connection_quality:.3f}, PatternStr={pattern_strength:.3f}")
-
-            # Recalculate efficiency using updated factors
-            efficiency = (connection_quality * ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_BASE +
-                          pattern_strength * ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_RESONANCE_SCALE)
-            efficiency = min(1.0, max(0.0, efficiency))
-            imparted_strength = kether_strength * efficiency
-            total_imparted_strength += imparted_strength
-            logger.debug(f"      -> Efficiency={efficiency:.4f}, ImpartedStr={imparted_strength:.4f}")
-
-            # Record Potential Transfer
-            transfer_data = {
-                'original_strength': kether_strength, 'transfer_efficiency': efficiency,
-                'imparted_strength': imparted_strength, 'aspect_type': 'Kether',
-                'details': kether_details
-            }
-            transferable_aspects[name] = transfer_data
-
-            # Update SoulSpark Aspects
-            current_soul_strength = float(soul_spark.aspects.get(name, {}).get('strength', 0.0))
-            # Use MAX_ASPECT_STRENGTH constant
-            new_strength = min(MAX_ASPECT_STRENGTH, current_soul_strength + imparted_strength)
-            actual_gain = new_strength - current_soul_strength
-            logger.debug(f"      -> Soul Aspect '{name}': CurrentStr={current_soul_strength:.4f}, NewStr={new_strength:.4f}, Gain={actual_gain:.4f}")
-
-            if actual_gain > FLOAT_EPSILON:
-                details_copy = kether_details.copy()
-                details_copy['last_transfer_efficiency'] = efficiency
-                details_copy['last_imparted_strength'] = imparted_strength
-
-                if name not in soul_spark.aspects or current_soul_strength <= FLOAT_EPSILON:
-                    soul_spark.aspects[name] = {'strength': new_strength, 'source': 'Kether', 'time_acquired': transfer_time, 'details': details_copy }
-                    gained_count += 1
-                else:
-                    soul_spark.aspects[name]['strength'] = new_strength
-                    soul_spark.aspects[name]['last_updated'] = transfer_time
-                    soul_spark.aspects[name]['details'].update(details_copy)
+        resonant_freqs = []
+        
+        # Get resonant frequencies from the quantum channel
+        for node in quantum_channel.get("standing_wave_nodes", []):
+            freq = node.get("kether_freq", 0.0)
+            if freq > FLOAT_EPSILON:
+                resonant_freqs.append((freq, node.get("resonance", 0.0)))
+        
+        # Find aspects that resonate with the quantum channel
+        for aspect_name, aspect_data in detailed_aspects.items():
+            # Check if aspect frequency resonates with quantum channel
+            aspect_freq = aspect_data.get('frequency', 0.0)
+            
+            # Skip aspects with no frequency information
+            if aspect_freq <= FLOAT_EPSILON:
+                continue
+                
+            # Find best resonance with quantum channel
+            best_resonance = 0.0
+            for channel_freq, channel_res in resonant_freqs:
+                res = calculate_resonance(aspect_freq, channel_freq)
+                weighted_res = res * channel_res  # Weight by channel resonance
+                best_resonance = max(best_resonance, weighted_res)
+            
+            # Check if resonance is strong enough for transfer
+            if best_resonance > 0.3:  # Threshold for transfer
+                transferable_aspects[aspect_name] = {
+                    "data": aspect_data,
+                    "resonance": best_resonance
+                }
+        
+        logger.debug(f"  Found {len(transferable_aspects)} transferable aspects via quantum resonance")
+        
+        # --- Apply Transfer/Enhancement Logic ---
+        gained_count = 0
+        strengthened_count = 0
+        
+        # Find matching layers for each aspect
+        for aspect_name, transfer_data in transferable_aspects.items():
+            aspect_data = transfer_data["data"]
+            aspect_resonance = transfer_data["resonance"]
+            aspect_freq = aspect_data.get('frequency', 0.0)
+            
+            # Find the most resonant layer for this aspect
+            best_layer_idx = -1
+            best_layer_res = 0.0
+            
+            for i, layer in enumerate(soul_layers):
+                # Skip invalid layers
+                if not isinstance(layer, dict):
+                    continue
+                    
+                # Get layer frequencies
+                layer_freqs = []
+                
+                # Check resonant_frequencies array
+                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
+                    layer_freqs.extend([f for f in layer['resonant_frequencies'] if f > FLOAT_EPSILON])
+                
+                # Check sephirah frequency if available
+                if 'sephirah' in layer:
+                    seph_name = layer['sephirah'].lower()
+                    try:
+                        from constants.constants import SEPHIROTH_GLYPH_DATA
+                        if seph_name in SEPHIROTH_GLYPH_DATA:
+                            seph_freq = SEPHIROTH_GLYPH_DATA[seph_name].get('frequency', 0.0)
+                            if seph_freq > FLOAT_EPSILON:
+                                layer_freqs.append(seph_freq)
+                    except ImportError:
+                        pass  # Continue without glyph data
+                
+                # Calculate best resonance with layer
+                layer_res = 0.0
+                for layer_freq in layer_freqs:
+                    res = calculate_resonance(aspect_freq, layer_freq)
+                    layer_res = max(layer_res, res)
+                
+                # Check if this is the best layer so far
+                if layer_res > best_layer_res:
+                    best_layer_res = layer_res
+                    best_layer_idx = i
+            
+            # Now we have the best layer (if any) for this aspect
+            
+            # --- Apply Aspect Transfer Logic ---
+            # Check if soul already has this aspect
+            if aspect_name in soul_aspects:
+                # Aspect exists - potentially strengthen it
+                current_strength = soul_aspects[aspect_name].get('strength', 0.0)
+                
+                # Calculate potential strength increase
+                # Factors: resonance quality, quantum channel quality, connection strength
+                strength_increase = (
+                    aspect_resonance * 0.4 +
+                    entanglement_quality * 0.3 +
+                    connection_strength * 0.3
+                ) * ASPECT_TRANSFER_STRENGTH_FACTOR
+                
+                # Apply increase, cap at MAX_ASPECT_STRENGTH
+                new_strength = min(MAX_ASPECT_STRENGTH, current_strength + strength_increase)
+                
+                # Only update if there's a meaningful increase
+                if new_strength - current_strength > FLOAT_EPSILON:
+                    soul_aspects[aspect_name]['strength'] = float(new_strength)
+                    
+                    # Track aspect-layer connection if we found a good layer
+                    if best_layer_idx >= 0 and best_layer_res > 0.2:
+                        # Add or update layer connection in aspect data
+                        if 'layer_connections' not in soul_aspects[aspect_name]:
+                            soul_aspects[aspect_name]['layer_connections'] = {}
+                        
+                        layer_key = f"layer_{best_layer_idx}"
+                        soul_aspects[aspect_name]['layer_connections'][layer_key] = {
+                            "resonance": float(best_layer_res),
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        
+                        # Also update the layer's aspect connections
+                        if best_layer_idx < len(soul_layers):
+                            layer = soul_layers[best_layer_idx]
+                            if 'aspect_connections' not in layer:
+                                layer['aspect_connections'] = {}
+                            
+                            layer['aspect_connections'][aspect_name] = {
+                                "resonance": float(best_layer_res),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                    
+                    # Log the strengthening
+                    logger.debug(f"  Strengthened aspect '{aspect_name}': {current_strength:.3f} -> {new_strength:.3f}")
                     strengthened_count += 1
-
-                # Accumulate alignment gain based on transferred aspect strength
-                # Assume aspects contributing to alignment have a flag or higher base strength?
-                # Simple model: alignment gain proportional to imparted strength
-                total_alignment_gain += imparted_strength * 0.1 # Small alignment gain per aspect transfer
-
-        average_efficiency = (total_imparted_strength / total_original_strength) if total_original_strength > FLOAT_EPSILON else 0.0
-        logger.debug(f"  Average Transfer Efficiency: {average_efficiency:.4f}")
-
-        # --- No Direct Stability Boost ---
-        initial_stability_su = soul_spark.stability # Store for metrics reporting only
-        stability_change_su = 0.0 # No direct change applied here
-
-        # Update alignment factor based on accumulated gain from aspects
-        initial_alignment = soul_spark.creator_alignment
-        # Total alignment gain is now driven by aspect transfer + base boost from connection
-        # Use the gain calculated during connection establishment + gain from aspects
-        connection_alignment_gain = soul_spark.creator_alignment - initial_alignment # Gain from establish_connection step
-        final_alignment_gain = connection_alignment_gain + total_alignment_gain
-        soul_spark.creator_alignment = min(1.0, initial_alignment + final_alignment_gain)
-        logger.debug(f"  Creator Alignment Updated: {initial_alignment:.4f} -> {soul_spark.creator_alignment:.4f} (+{final_alignment_gain:.4f})")
-
-        soul_spark.last_modified = transfer_time
-        logger.info(f"Aspect transfer: Gained={gained_count}, Strengthened={strengthened_count}, AvgEff={average_efficiency:.3f}")
-
-        # Store Transfer Metrics
-        aspect_transfer_metrics = {
-            'aspects_gained_count': gained_count, 'aspects_strengthened_count': strengthened_count,
-            'average_efficiency': average_efficiency, 'transfers': transferable_aspects
+                
+            else:
+                # New aspect - transfer it if resonance is sufficient
+                if aspect_resonance * connection_strength > ASPECT_TRANSFER_THRESHOLD:
+                    # Calculate initial strength based on resonance and connection
+                    initial_strength = (
+                        aspect_resonance * 0.6 +
+                        connection_strength * 0.4
+                    ) * ASPECT_TRANSFER_INITIAL_STRENGTH
+                    
+                    # Cap at MAX_ASPECT_STRENGTH
+                    initial_strength = min(MAX_ASPECT_STRENGTH, initial_strength)
+                    
+                    # Create aspect record
+                    new_aspect = {
+                        'strength': float(initial_strength),
+                        'source': 'kether',
+                        'transfer_time': datetime.now().isoformat(),
+                        'details': aspect_data.copy()  # Copy aspect data
+                    }
+                    
+                    # Add layer connection if available
+                    if best_layer_idx >= 0 and best_layer_res > 0.2:
+                        new_aspect['layer_connections'] = {
+                            f"layer_{best_layer_idx}": {
+                                "resonance": float(best_layer_res),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        }
+                        
+                        # Update the layer's aspect connections
+                        if best_layer_idx < len(soul_layers):
+                            layer = soul_layers[best_layer_idx]
+                            if 'aspect_connections' not in layer:
+                                layer['aspect_connections'] = {}
+                            
+                            layer['aspect_connections'][aspect_name] = {
+                                "resonance": float(best_layer_res),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                    
+                    # Add to soul aspects
+                    soul_aspects[aspect_name] = new_aspect
+                    
+                    # Log the transfer
+                    logger.debug(f"  Transferred new aspect '{aspect_name}' with strength {initial_strength:.3f}")
+                    gained_count += 1
+        
+        # Save updated aspects to soul
+        setattr(soul_spark, 'aspects', soul_aspects)
+        
+        # --- Add Creator Connection Attribute ---
+        # Instead of directly modifying, store the quantum channel ID and quality
+        setattr(soul_spark, 'creator_channel_id', channel_id)
+        setattr(soul_spark, 'creator_connection_strength', float(connection_strength))
+        
+        # --- Post-Transfer Coherence Enhancement ---
+        # After transferring aspects, enhance coherence through layer integration
+        if hasattr(soul_spark, 'layers') and soul_spark.layers and gained_count + strengthened_count > 0:
+            # For each transferred aspect, create layer resonance
+            coherence_boost = 0.0
+            aspect_layer_integrations = 0
+            
+            for aspect_name, aspect_data in soul_aspects.items():
+                if aspect_name not in transferable_aspects:
+                    continue
+                    
+                # Create layer resonance with all layers
+                aspect_freq = aspect_data.get('details', {}).get('frequency', 0.0)
+                if aspect_freq <= FLOAT_EPSILON:
+                    continue
+                
+                # Find all resonant layers (not just the best one)
+                for i, layer in enumerate(soul_layers):
+                    # Skip invalid layers
+                    if not isinstance(layer, dict):
+                        continue
+                    
+                    # Calculate resonance
+                    layer_res = 0.0
+                    layer_freqs = []
+                    
+                    # Get layer frequencies
+                    if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
+                        layer_freqs.extend([f for f in layer['resonant_frequencies'] if f > FLOAT_EPSILON])
+                    
+                    # Calculate best resonance
+                    for layer_freq in layer_freqs:
+                        res = calculate_resonance(aspect_freq, layer_freq)
+                        layer_res = max(layer_res, res)
+                    
+                    # If resonance is significant, create connection
+                    if layer_res > 0.2:
+                        # Add to aspect's layer connections
+                        if 'layer_connections' not in aspect_data:
+                            aspect_data['layer_connections'] = {}
+                        
+                        layer_key = f"layer_{i}"
+                        if layer_key not in aspect_data['layer_connections']:
+                            aspect_data['layer_connections'][layer_key] = {
+                                "resonance": float(layer_res),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            
+                            # Also update the layer
+                            if 'aspect_connections' not in layer:
+                                layer['aspect_connections'] = {}
+                            
+                            layer['aspect_connections'][aspect_name] = {
+                                "resonance": float(layer_res),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            
+                            # Track integration count
+                            aspect_layer_integrations += 1
+                            
+                            # Add to coherence boost
+                            boost = layer_res * 0.05  # Small boost per integration
+                            coherence_boost += boost
+            
+            # Log integration results
+            if aspect_layer_integrations > 0:
+                logger.info(f"Created {aspect_layer_integrations} aspect-layer integrations, coherence boost: +{coherence_boost:.2f}")
+        
+        # --- Update Soul State ---
+        # Update soul to reflect changes
+        if hasattr(soul_spark, 'update_state'):
+            logger.debug("Calling update_state to recalculate S/C after aspect transfers...")
+            soul_spark.update_state()
+            # Log coherence change
+            coherence_change = soul_spark.coherence - initial_coherence
+            logger.debug(f"Coherence after transfers: {soul_spark.coherence:.1f} CU ({coherence_change:+.1f})")
+        
+        # --- Create Summary Metrics ---
+        transfer_metrics = {
+            'action': 'transfer_creator_aspects',
+            'soul_id': soul_spark.spark_id,
+            'channel_id': channel_id,
+            'aspects_transferred': gained_count,
+            'aspects_strengthened': strengthened_count,
+            'total_aspects_affected': gained_count + strengthened_count,
+            'transferable_aspects_count': len(transferable_aspects),
+            'creator_connection_strength': connection_strength,
+            'initial_coherence': initial_coherence,
+            'final_coherence': soul_spark.coherence,
+            'coherence_change': soul_spark.coherence - initial_coherence,
+            'success': True,
+            'timestamp': datetime.now().isoformat()
         }
-        # Record Core Metrics
-        metrics_data = {
-            'action': 'transfer_aspects', 'soul_id': spark_id, 'channel_id': channel_id,
-            'aspects_gained_count': gained_count, 'aspects_strengthened_count': strengthened_count,
-            'avg_efficiency': average_efficiency,
-            'initial_soul_alignment': initial_alignment,
-            'final_soul_alignment': soul_spark.creator_alignment,
-            'alignment_gain_total': final_alignment_gain, # Record total gain
-            'initial_soul_stability_su': initial_stability_su, # Report initial SU for context
-            'stability_change_su': stability_change_su, # Report 0 direct change
-            'success': True, 'timestamp': transfer_time
-        }
-        if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-        return aspect_transfer_metrics, metrics_data
-
+        
+        # Record metrics
+        if METRICS_AVAILABLE:
+            metrics.record_metrics('aspect_transfer', transfer_metrics)
+        
+        # Generate sound for aspect transfer
+        if SOUND_AVAILABLE and (gained_count > 0 or strengthened_count > 0):
+            try:
+                # Initialize universe sounds generator
+                universe_sounds = UniverseSounds()
+                
+                # Generate aspect transfer sound
+                transfer_sound = universe_sounds.generate_dimensional_transition(
+                    duration=3.0,
+                    sample_rate=SAMPLE_RATE,
+                    transition_type='aspect_transfer',
+                    amplitude=0.6
+                )
+                
+                # Save sound
+                sound_file = f"aspect_transfer_{soul_spark.spark_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
+                universe_sounds.save_sound(
+                    transfer_sound, 
+                    sound_file, 
+                    f"Aspect transfer sound for soul {soul_spark.spark_id[:8]}"
+                )
+                
+                logger.info(f"Generated aspect transfer sound: {sound_file}")
+                transfer_metrics["sound_file"] = sound_file
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate aspect transfer sound: {sound_err}")
+        
+        logger.info(f"Creator aspects transfer summary: {gained_count} gained, {strengthened_count} strengthened")
+        return transfer_metrics
+        
     except Exception as e:
         logger.error(f"Error transferring creator aspects: {e}", exc_info=True)
-        # Hard fail
-        raise RuntimeError("Aspect transfer failed critically.") from e
+        raise RuntimeError("Creator aspect transfer failed critically.") from e
 
-# --- Orchestration Function ---
-def run_full_entanglement_process(soul_spark: SoulSpark,
-                                  kether_field: KetherField,
-                                  creator_resonance: float = 0.8, # Base potential factor 0-1
-                                  edge_of_chaos_ratio: float = EDGE_OF_CHAOS_RATIO, # Target 0-1 factor
-                                  # stabilization_iterations removed
-                                  ) -> Tuple[SoulSpark, Dict[str, Any]]:
-    """ Runs complete entanglement process based on resonance. Modifies SoulSpark factors. S/C emerge via update_state. """
-    start_time_iso = datetime.now().isoformat(); start_time_dt = datetime.fromisoformat(start_time_iso)
+def _form_resonance_patterns(soul_spark: SoulSpark,
+                           quantum_channel: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Forms resonance patterns with quantum channel to enhance cohesion.
+    Uses standing wave interference patterns to optimize soul coherence.
+    """
+    logger.info(f"Forming resonance patterns for soul {soul_spark.spark_id}...")
+    
+    # --- Input Validation ---
+    if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
+    if not isinstance(quantum_channel, dict): raise TypeError("quantum_channel invalid.")
+    
+    standing_wave_nodes = quantum_channel.get("standing_wave_nodes", [])
+    channel_id = quantum_channel.get("channel_id")
+    
+    if not channel_id or not standing_wave_nodes:
+        raise ValueError("Quantum channel missing essential attributes for resonance pattern formation.")
+    
+    try:
+        # --- Store initial state ---
+        initial_coherence = soul_spark.coherence
+        initial_phi_resonance = getattr(soul_spark, 'phi_resonance', 0.0)
+        initial_pattern_coherence = getattr(soul_spark, 'pattern_coherence', 0.0)
+        
+        # --- Create wave interference patterns ---
+        # Get soul frequency data
+        soul_freq = soul_spark.frequency
+        soul_freqs = getattr(soul_spark, 'harmonics', [])
+        if not soul_freqs or len(soul_freqs) == 0:
+            soul_freqs = [soul_freq]
+        
+        # Get quantum channel frequency data
+        channel_freqs = []
+        for node in standing_wave_nodes:
+            soul_freq = node.get("soul_freq", 0.0)
+            kether_freq = node.get("kether_freq", 0.0)
+            node_strength = node.get("strength", 0.0)
+            
+            if soul_freq > FLOAT_EPSILON:
+                channel_freqs.append((soul_freq, node_strength))
+            if kether_freq > FLOAT_EPSILON:
+                channel_freqs.append((kether_freq, node_strength))
+        
+        # --- Create resonance patterns structure ---
+        pattern_id = str(uuid.uuid4())
+        creation_time = datetime.now().isoformat()
+        
+        resonance_patterns = {
+            "pattern_id": pattern_id,
+            "channel_id": channel_id,
+            "spark_id": soul_spark.spark_id,
+            "creation_time": creation_time,
+            "resonance_harmonics": [],
+            "phase_optimizations": [],
+            "phi_resonance_boost": 0.0,
+            "pattern_coherence_boost": 0.0
+        }
+        
+        # --- Calculate resonance harmonics ---
+        resonance_harmonics = []
+        
+        # Find harmonics between soul frequencies and channel frequencies
+        for soul_f in soul_freqs:
+            for channel_f, strength in channel_freqs:
+                # Calculate the ratio and check for harmonic relationship
+                if soul_f <= FLOAT_EPSILON or channel_f <= FLOAT_EPSILON:
+                    continue
+                
+                ratio = max(soul_f, channel_f) / min(soul_f, channel_f)
+                
+                # Check for integer or phi-based ratios
+                harmonic_type = "none"
+                harmonic_quality = 0.0
+                
+                # Check integer ratios
+                for n in range(1, 6):
+                    for d in range(1, 6):
+                        if d == 0: 
+                            continue
+                        ideal_ratio = n / d
+                        if abs(ratio - ideal_ratio) < 0.05:
+                            harmonic_type = f"{n}:{d}"
+                            harmonic_quality = 1.0 - abs(ratio - ideal_ratio) * 10.0
+                            break
+                    if harmonic_type != "none":
+                        break
+                
+                # Check phi ratios if no integer ratio found
+                if harmonic_type == "none":
+                    phi_ratios = [
+                        (PHI, "φ"),
+                        (1/PHI, "1/φ"),
+                        (PHI**2, "φ²"),
+                        (1/(PHI**2), "1/φ²")
+                    ]
+                    
+                    for phi_val, name in phi_ratios:
+                        if abs(ratio - phi_val) < 0.05:
+                            harmonic_type = name
+                            harmonic_quality = 1.0 - abs(ratio - phi_val) * 10.0
+                            break
+                
+                # Only include significant harmonics
+                if harmonic_quality > 0.5:
+                    resonance_harmonics.append({
+                        "soul_freq": float(soul_f),
+                        "channel_freq": float(channel_f),
+                        "ratio": float(ratio),
+                        "harmonic_type": harmonic_type,
+                        "quality": float(harmonic_quality),
+                        "strength": float(strength)
+                    })
+        
+        # Sort by quality (descending)
+        resonance_harmonics.sort(key=lambda x: x["quality"], reverse=True)
+        
+        # Store in resonance patterns
+        resonance_patterns["resonance_harmonics"] = resonance_harmonics
+        
+        # --- Optimize phase relationships ---
+        # This enhances coherence by optimizing the phase relationships
+        phase_optimizations = []
+        coherence_boost = 0.0
+        
+        if hasattr(soul_spark, 'frequency_signature') and 'phases' in soul_spark.frequency_signature:
+            # Get current phases
+            phases = soul_spark.frequency_signature['phases']
+            freqs = soul_spark.frequency_signature.get('frequencies', [])
+            
+            if len(phases) > 1 and len(phases) == len(freqs):
+                phases_array = np.array(phases)
+                initial_variance = _calculate_circular_variance(phases_array)
+                
+                # Find optimal phase relationships
+                if hasattr(soul_spark, '_optimize_phase_coherence'):
+                    # Try to optimize phases using soul's built-in function
+                    improvement = soul_spark._optimize_phase_coherence(0.3)  # Stronger optimization
+                    coherence_boost += improvement * 3.0  # Scale improvement to meaningful boost
+                    
+                    phase_optimizations.append({
+                        "method": "built_in",
+                        "improvement": float(improvement),
+                        "initial_variance": float(initial_variance),
+                        "final_variance": float(initial_variance - improvement)
+                    })
+                else:
+                    # Manual phase optimization (simplified)
+                    # Analyze phase distribution and look for clusters
+                    # that can be brought into alignment
+                    
+                    # Calculate mean phase
+                    mean_cos = np.mean(np.cos(phases_array))
+                    mean_sin = np.mean(np.sin(phases_array))
+                    mean_phase = np.arctan2(mean_sin, mean_cos)
+                    
+                    # Find phases that are far from the mean
+                    far_phases = []
+                    for i, phase in enumerate(phases_array):
+                        phase_diff = abs((phase - mean_phase + PI) % (2*PI) - PI)
+                        if phase_diff > PI/2:  # More than 90 degrees off
+                            far_phases.append(i)
+                    
+                    # Adjust far phases slightly toward the mean
+                    if far_phases:
+                        new_phases = phases_array.copy()
+                        for i in far_phases:
+                            # Move 20% toward mean
+                            shift = 0.2 * ((mean_phase - phases_array[i] + PI) % (2*PI) - PI)
+                            new_phases[i] = (phases_array[i] + shift) % (2*PI)
+                        
+                        # Calculate improvement
+                        new_variance = _calculate_circular_variance(new_phases)
+                        improvement = initial_variance - new_variance
+                        
+                        if improvement > 0:
+                            # Apply the changes
+                            soul_spark.frequency_signature['phases'] = new_phases.tolist()
+                            coherence_boost += improvement * 3.0
+                            
+                            phase_optimizations.append({
+                                "method": "manual",
+                                "improvement": float(improvement),
+                                "initial_variance": float(initial_variance),
+                                "final_variance": float(new_variance),
+                                "phases_adjusted": len(far_phases)
+                            })
+        
+        # Add optimization results to resonance patterns
+        resonance_patterns["phase_optimizations"] = phase_optimizations
+        
+        # --- Enhance phi resonance and pattern coherence ---
+        # Calculate boosts based on harmonics and phase optimizations
+        
+        # Phi resonance boost based on phi-ratio harmonics
+        phi_harmonics = [h for h in resonance_harmonics if "φ" in h["harmonic_type"]]
+        phi_boost = 0.0
+        
+        if phi_harmonics:
+            # Calculate weighted average of phi harmonic qualities
+            total_quality = sum(h["quality"] * h["strength"] for h in phi_harmonics)
+            total_weight = sum(h["strength"] for h in phi_harmonics)
+            
+            if total_weight > FLOAT_EPSILON:
+                avg_phi_quality = total_quality / total_weight
+                phi_boost = avg_phi_quality * 0.07  # Up to 7% boost
+        
+        # Pattern coherence boost based on all harmonics and phase optimizations
+        pattern_boost = 0.0
+        
+        if resonance_harmonics:
+            # Calculate weighted average of all harmonic qualities
+            total_quality = sum(h["quality"] * h["strength"] for h in resonance_harmonics)
+            total_weight = sum(h["strength"] for h in resonance_harmonics)
+            
+            if total_weight > FLOAT_EPSILON:
+                avg_harmonic_quality = total_quality / total_weight
+                pattern_boost = avg_harmonic_quality * 0.05  # Up to 5% boost
+        
+        # Add boost from phase optimizations
+        pattern_boost += coherence_boost * 0.5  # Scale from phase coherence improvement
+        
+        # Apply and record boosts
+        phi_resonance = min(1.0, initial_phi_resonance + phi_boost)
+        pattern_coherence = min(1.0, initial_pattern_coherence + pattern_boost)
+        
+        setattr(soul_spark, 'phi_resonance', float(phi_resonance))
+        setattr(soul_spark, 'pattern_coherence', float(pattern_coherence))
+        
+        resonance_patterns["phi_resonance_boost"] = float(phi_boost)
+        resonance_patterns["pattern_coherence_boost"] = float(pattern_boost)
+        
+        # --- Store resonance patterns in soul ---
+        setattr(soul_spark, 'resonance_patterns', resonance_patterns)
+        
+        # --- Update soul state ---
+        if hasattr(soul_spark, 'update_state'):
+            logger.debug("Calling update_state after resonance pattern formation...")
+            soul_spark.update_state()
+            
+            # Log coherence change
+            coherence_change = soul_spark.coherence - initial_coherence
+            logger.debug(f"Coherence after resonance patterns: {soul_spark.coherence:.1f} CU ({coherence_change:+.1f})")
+        
+        # --- Create Summary Metrics ---
+        pattern_metrics = {
+            'action': 'form_resonance_patterns',
+            'soul_id': soul_spark.spark_id,
+            'pattern_id': pattern_id,
+            'channel_id': channel_id,
+            'harmonic_count': len(resonance_harmonics),
+            'phi_harmonic_count': len(phi_harmonics),
+            'phase_optimization_count': len(phase_optimizations),
+            'phi_resonance_initial': initial_phi_resonance,
+            'phi_resonance_final': phi_resonance,
+            'phi_resonance_boost': phi_boost,
+            'pattern_coherence_initial': initial_pattern_coherence,
+            'pattern_coherence_final': pattern_coherence,
+            'pattern_coherence_boost': pattern_boost,
+            'coherence_initial': initial_coherence,
+            'coherence_final': soul_spark.coherence,
+            'coherence_change': soul_spark.coherence - initial_coherence,
+            'success': True,
+            'timestamp': creation_time
+        }
+        
+        # Record metrics
+        if METRICS_AVAILABLE:
+            metrics.record_metrics('resonance_patterns', pattern_metrics)
+        
+        # Generate sound for resonance patterns
+        if SOUND_AVAILABLE and (len(resonance_harmonics) > 0 or len(phase_optimizations) > 0):
+            try:
+                # Initialize universe sounds generator
+                universe_sounds = UniverseSounds()
+                
+                # Generate harmonic tones based on the resonance harmonics
+                if len(resonance_harmonics) > 0:
+                    # Get base frequency from strongest harmonic
+                    base_freq = resonance_harmonics[0]["soul_freq"]
+                    
+                    # Create harmonic ratios and amplitudes
+                    harmonics = []
+                    amplitudes = []
+                    
+                    for h in resonance_harmonics[:5]:  # Use top 5 harmonics
+                        ratio = h["channel_freq"] / base_freq
+                        harmonics.append(ratio)
+                        amplitudes.append(h["quality"] * 0.7)  # Scale by quality
+                    
+                    # Ensure we have at least the fundamental
+                    if 1.0 not in harmonics:
+                        harmonics.insert(0, 1.0)
+                        amplitudes.insert(0, 0.8)
+                    
+                    # Create sound
+                    sound_gen = SoundGenerator()
+                    pattern_sound = sound_gen.generate_harmonic_tone(
+                        base_freq,
+                        harmonics,
+                        amplitudes,
+                        duration=4.0
+                    )
+                    
+                    # Save sound
+                    sound_file = f"resonance_pattern_{soul_spark.spark_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
+                    universe_sounds.save_sound(
+                        pattern_sound, 
+                        sound_file, 
+                        f"Resonance pattern sound for soul {soul_spark.spark_id[:8]}"
+                    )
+                    
+                    logger.info(f"Generated resonance pattern sound: {sound_file}")
+                    pattern_metrics["sound_file"] = sound_file
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate resonance pattern sound: {sound_err}")
+        
+        logger.info(f"Resonance patterns formed: {len(resonance_harmonics)} harmonics, PhiBoost: {phi_boost:.4f}, PatternBoost: {pattern_boost:.4f}")
+        return pattern_metrics
+        
+    except Exception as e:
+        logger.error(f"Error forming resonance patterns: {e}", exc_info=True)
+        raise RuntimeError("Resonance pattern formation failed critically.") from e
+
+def perform_creator_entanglement(soul_spark: SoulSpark,
+                               kether_field: KetherField,
+                               base_creator_potential: float = CREATOR_POTENTIAL_DEFAULT,
+                               edge_of_chaos_target: float = EDGE_OF_CHAOS_DEFAULT) -> Tuple[SoulSpark, Dict[str, Any]]:
+    """
+    Main orchestration function for Creator Entanglement.
+    Uses wave-based resonance and quantum entanglement to form connection.
+    Preserves and enhances coherence through resonant fields and layers.
+    """
     # --- Input Validation ---
     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-    if not (0.0 <= creator_resonance <= 1.0): raise ValueError("creator_resonance invalid.")
-    if not (0.0 <= edge_of_chaos_ratio <= 1.0): raise ValueError("edge_of_chaos_ratio invalid.")
+    if not (0.0 <= base_creator_potential <= 1.0): raise ValueError("base_creator_potential out of range.")
+    if not (0.0 <= edge_of_chaos_target <= 1.0): raise ValueError("edge_of_chaos_target out of range.")
 
     spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
+    logger.info(f"--- Starting Creator Entanglement for Soul {spark_id} ---")
+    start_time_iso = datetime.now().isoformat()
+    start_time_dt = datetime.fromisoformat(start_time_iso)
     process_metrics_summary = {'steps': {}}
 
-    logger.info(f"--- Starting Full Entanglement Process [Resonance Driven] for Soul {spark_id} ---")
-
     try:
-        # --- Prerequisites Check (Raises ValueError if failed) ---
+        # Check prerequisites
         _check_prerequisites(soul_spark, kether_field)
-
-        # Store Initial State
+        
+        # Store initial state
         initial_state = {
-             'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
-             'resonance_factor': soul_spark.resonance, 'creator_alignment': soul_spark.creator_alignment,
-             'pattern_coherence': soul_spark.pattern_coherence, # Added
-             'aspect_count': len(soul_spark.aspects) }
-        logger.debug(f"  Entanglement Initial State: {initial_state}")
-
-        # --- Run Stages ---
-        logger.info("Step 1: Establishing Connection...")
-        channel_data, metrics1 = establish_creator_connection(soul_spark, kether_field, creator_resonance, edge_of_chaos_ratio)
-        process_metrics_summary['steps']['connection'] = metrics1
-
-        logger.info("Step 2: Forming Resonance Patterns...")
-        pattern_data, metrics2 = form_resonance_patterns(soul_spark, channel_data, kether_field)
-        process_metrics_summary['steps']['patterns'] = metrics2
-
-        logger.info("Step 3: Transferring Creator Aspects...")
-        transfer_metrics, metrics3 = transfer_creator_aspects(soul_spark, channel_data, pattern_data, kether_field)
-        process_metrics_summary['steps']['transfer'] = metrics3
-
-        # --- REMOVED Stabilization Step ---
-        # logger.info("Step 4: Stabilizing Connection...")
-        # stabilization_result, metrics4 = stabilize_creator_connection(soul_spark, channel_data, pattern_data, stabilization_iterations)
-        # process_metrics_summary['steps']['stabilization'] = metrics4
-
-        # --- Final State Update ---
-        logger.info("Step 4: Updating internal state scores...") # Renumbered step
-        # Capture S/C *before* final update_state for peak reporting relative to start
-        pre_update_stability_su = soul_spark.stability
-        pre_update_coherence_cu = soul_spark.coherence
-        logger.debug(f"  Before final update_state in entanglement: S={pre_update_stability_su:.1f}, C={pre_update_coherence_cu:.1f}")
-
-        setattr(soul_spark, FLAG_READY_FOR_COMPLETION, True)
-        setattr(soul_spark, FLAG_READY_FOR_STRENGTHENING, True)
-        last_mod_time = datetime.now().isoformat()
-        setattr(soul_spark, 'last_modified', last_mod_time)
-
+            'stability_su': soul_spark.stability,
+            'coherence_cu': soul_spark.coherence,
+            'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
+            'pattern_coherence': getattr(soul_spark, 'pattern_coherence', 0.0),
+            'creator_connection_strength': getattr(soul_spark, 'creator_connection_strength', 0.0)
+        }
+        
+        logger.info(f"CE Initial State: S={initial_state['stability_su']:.1f}, "
+                   f"C={initial_state['coherence_cu']:.1f}, "
+                   f"Phi={initial_state['phi_resonance']:.3f}, "
+                   f"PatCoh={initial_state['pattern_coherence']:.3f}")
+        
+        # --- Form Resonant Field ---
+        logger.info("CE Step 1: Establishing Resonant Field...")
+        resonant_field, field_metrics = _establish_resonant_field(
+            soul_spark, kether_field, base_creator_potential, edge_of_chaos_target
+        )
+        process_metrics_summary['steps']['resonant_field'] = field_metrics
+        
+        # --- Form Quantum Channel ---
+        logger.info("CE Step 2: Forming Quantum Channel...")
+        quantum_channel, channel_metrics = _form_quantum_channel(
+            soul_spark, resonant_field
+        )
+        process_metrics_summary['steps']['quantum_channel'] = channel_metrics
+        
+        # --- Transfer Creator Aspects ---
+        logger.info("CE Step 3: Transferring Creator Aspects...")
+        transfer_metrics = _transfer_creator_aspects(
+            soul_spark, quantum_channel, kether_field
+        )
+        process_metrics_summary['steps']['aspect_transfer'] = transfer_metrics
+        
+        # --- Form Resonance Patterns ---
+        logger.info("CE Step 4: Forming Resonance Patterns...")
+        pattern_metrics = _form_resonance_patterns(
+            soul_spark, quantum_channel
+        )
+        process_metrics_summary['steps']['resonance_patterns'] = pattern_metrics
+        
+        # --- Set Final Flags ---
+        setattr(soul_spark, FLAG_CREATOR_ENTANGLED, True)
+        setattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, True)
+        
+        # Final update to ensure state is consistent
         if hasattr(soul_spark, 'update_state'):
+            logger.info("Performing final state update after Creator Entanglement...")
             soul_spark.update_state()
-            logger.debug(f"  After final update_state in entanglement: S={soul_spark.stability:.1f}, C={soul_spark.coherence:.1f}")
-        else:
-             logger.error("SoulSpark object missing 'update_state' method!")
-             raise AttributeError("SoulSpark needs 'update_state' method for entanglement.")
-
-        # Compile Overall Metrics
-        end_time_iso = last_mod_time; end_time_dt = datetime.fromisoformat(end_time_iso)
-        final_state = { # Report state in correct units after update_state
-             'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
-             'resonance_factor': soul_spark.resonance, 'creator_alignment': soul_spark.creator_alignment,
-             'pattern_coherence': soul_spark.pattern_coherence, # Added final factor
-             'aspect_count': len(soul_spark.aspects) }
+        
+        # Add memory echo if available
+        if hasattr(soul_spark, 'add_memory_echo'):
+            connection_str = f"{transfer_metrics['aspects_transferred']} aspects gained, "
+            connection_str += f"{transfer_metrics['aspects_strengthened']} strengthened"
+            soul_spark.add_memory_echo(f"Creator entanglement complete. {connection_str}. "
+                                      f"S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
+        
+        # --- Compile Overall Metrics ---
+        end_time_iso = datetime.now().isoformat()
+        end_time_dt = datetime.fromisoformat(end_time_iso)
+        
+        final_state = {
+            'stability_su': soul_spark.stability,
+            'coherence_cu': soul_spark.coherence,
+            'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
+            'pattern_coherence': getattr(soul_spark, 'pattern_coherence', 0.0),
+            'creator_connection_strength': getattr(soul_spark, 'creator_connection_strength', 0.0),
+            FLAG_CREATOR_ENTANGLED: getattr(soul_spark, FLAG_CREATOR_ENTANGLED, False),
+            FLAG_READY_FOR_HARMONIZATION: getattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, False)
+        }
+        
         overall_metrics = {
-            'action': 'full_entanglement', 'soul_id': spark_id,
-            'start_time': start_time_iso, 'end_time': end_time_iso,
+            'action': 'creator_entanglement',
+            'soul_id': spark_id,
+            'start_time': start_time_iso,
+            'end_time': end_time_iso,
             'duration_seconds': (end_time_dt - start_time_dt).total_seconds(),
+            'creator_potential': base_creator_potential,
+            'edge_of_chaos_target': edge_of_chaos_target,
             'initial_state': initial_state,
-            # Report the state *before* the final update_state was called
-            'pre_update_stability_su': float(pre_update_stability_su),
-            'pre_update_coherence_cu': float(pre_update_coherence_cu),
-            'final_state': final_state, # State AFTER update_state
-            'final_connection_strength': channel_data['connection_strength'], # From connection step
-            'connection_quality': channel_data['connection_quality'], # Added quality metric
-            'frequency_resonance_score': channel_data['frequency_resonance_score'], # Added resonance score
-            'aspects_transferred_count': transfer_metrics.get('aspects_gained_count', 0) + transfer_metrics.get('aspects_strengthened_count', 0),
+            'final_state': final_state,
             'stability_change_su': final_state['stability_su'] - initial_state['stability_su'],
             'coherence_change_cu': final_state['coherence_cu'] - initial_state['coherence_cu'],
-            'success': True,
+            'phi_resonance_change': final_state['phi_resonance'] - initial_state['phi_resonance'],
+            'pattern_coherence_change': final_state['pattern_coherence'] - initial_state['pattern_coherence'],
+            'aspects_transferred': transfer_metrics.get('aspects_transferred', 0),
+            'aspects_strengthened': transfer_metrics.get('aspects_strengthened', 0),
+            'success': True
         }
-        if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement_summary', overall_metrics)
-
-        logger.info(f"--- Full Entanglement Completed Successfully for Soul {spark_id} ---")
+        soul_spark.ready_for_strengthening = True
+        # Record metrics
+        if METRICS_AVAILABLE:
+            metrics.record_metrics('creator_entanglement_summary', overall_metrics)
+        
+        logger.info(f"--- Creator Entanglement Completed Successfully for Soul {spark_id} ---")
+        logger.info(f"  Final State: S={soul_spark.stability:.1f} ({overall_metrics['stability_change_su']:+.1f}), "
+                   f"C={soul_spark.coherence:.1f} ({overall_metrics['coherence_change_cu']:+.1f})")
+        
         return soul_spark, overall_metrics
-
-    # --- Error Handling (Ensure Hard Fail) ---
+        
     except (ValueError, TypeError, AttributeError) as e_val:
-        logger.error(f"Entanglement failed for soul {spark_id} due to validation/attribute error: {e_val}", exc_info=True)
-        failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'prerequisites'
-        record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_val))
-        # Hard fail
-        raise ValueError(f"Entanglement validation/attribute error: {e_val}") from e_val
+        logger.error(f"Creator Entanglement failed for {spark_id}: {e_val}", exc_info=True)
+        failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'prerequisites/validation'
+        _record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_val))
+        raise e_val  # Hard fail
+        
     except RuntimeError as e_rt:
-        logger.critical(f"Entanglement failed critically for soul {spark_id}: {e_rt}", exc_info=True)
+        logger.critical(f"Creator Entanglement failed critically for {spark_id}: {e_rt}", exc_info=True)
         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'runtime'
-        record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_rt))
-        # Hard fail
-        raise e_rt
+        _record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_rt))
+        # Ensure flags are not set on failure
+        setattr(soul_spark, FLAG_CREATOR_ENTANGLED, False)
+        setattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, False)
+        raise e_rt  # Hard fail
+        
     except Exception as e:
-        logger.critical(f"Unexpected error during entanglement for {spark_id}: {e}", exc_info=True)
+        logger.critical(f"Unexpected error during Creator Entanglement for {spark_id}: {e}", exc_info=True)
         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'unexpected'
-        record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e))
-        # Hard fail
-        raise RuntimeError(f"Unexpected entanglement failure: {e}") from e
+        _record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e))
+        # Ensure flags are not set on failure
+        setattr(soul_spark, FLAG_CREATOR_ENTANGLED, False)
+        setattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, False)
+        setattr(soul_spark, FLAG_READY_FOR_STRENGTHENING, True)
+        
+        raise RuntimeError(f"Unexpected Creator Entanglement failure: {e}") from e  # Hard fail
 
-# --- Failure Metric Helper ---
-def record_entanglement_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
-    """ Helper to record failure metrics consistently. """
+def _record_entanglement_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
+    """Helper to record failure metrics consistently."""
     if METRICS_AVAILABLE:
         try:
             end_time = datetime.now().isoformat()
             duration = (datetime.fromisoformat(end_time) - datetime.fromisoformat(start_time_iso)).total_seconds()
             metrics.record_metrics('creator_entanglement_summary', {
-                'action': 'full_entanglement', 'soul_id': spark_id,
-                'start_time': start_time_iso, 'end_time': end_time,
+                'action': 'creator_entanglement',
+                'soul_id': spark_id,
+                'start_time': start_time_iso,
+                'end_time': end_time,
                 'duration_seconds': duration,
-                'success': False, 'error': error_msg, 'failed_step': failed_step
+                'success': False,
+                'error': error_msg,
+                'failed_step': failed_step
             })
         except Exception as metric_e:
-            logger.error(f"Failed to record entanglement failure metrics for {spark_id}: {metric_e}")
-
-# --- END OF FILE src/stage_1/soul_formation/creator_entanglement.py ---
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # --- START OF FILE src/stage_1/soul_formation/creator_entanglement.py ---
-
-# """
-# Creator Entanglement Functions (Refactored V4.1 - SEU/SU/CU Units)
-
-# Establishes connection post-Sephiroth journey using updated prerequisites (SU/CU),
-# aspect transfer logic. Stability/Coherence emerge via update_state after factor changes.
-# Operates on SoulSpark object, using KetherField properties conceptually.
-# """
-
-# import logging
-# import numpy as np
-# import os
-# import sys
-# from datetime import datetime
-# import uuid
-# import json
-# from math import pi as PI, sqrt, atan2, exp # Added missing imports
-# from typing import Dict, List, Any, Tuple, Optional
-
-# # Set up logger
-# logger = logging.getLogger(__name__) # Ensure logger is named correctly
-
-# # --- Constants ---
-# try:
-#     from constants.constants import *
-# except ImportError as e:
-#     # Fallback logging setup if constants fail
-#     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#     logger.critical(f"CRITICAL ERROR: Could not import constants: {e}. Creator Entanglement cannot function.")
-#     # # Define minimal necessary constants as fallbacks ONLY to allow script parsing,
-#     # # but raise the error to prevent execution without proper constants.
-#     # MAX_STABILITY_SU = 100.0; MAX_COHERENCE_CU = 100.0; FLOAT_EPSILON = 1e-9;
-#     # ENTANGLEMENT_PREREQ_STABILITY_MIN_SU = 75.0; ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU = 75.0
-#     # FLAG_SEPHIROTH_JOURNEY_COMPLETE = "sephiroth_journey_complete"; KETHER_FREQ = 963.0
-#     # ENTANGLEMENT_ALIGNMENT_BOOST_FACTOR = 0.15; GOLDEN_RATIO = 1.618
-#     # RESONANCE_INTEGER_RATIO_TOLERANCE = 0.02; RESONANCE_PHI_RATIO_TOLERANCE = 0.03
-#     # ENTANGLEMENT_RESONANCE_BOOST_FACTOR = 0.05
-#     # ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_BASE = 0.6; ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_RESONANCE_SCALE = 0.4
-#     # MAX_ASPECT_STRENGTH = 1.0; ENTANGLEMENT_STABILIZATION_ITERATIONS = 5
-#     # ENTANGLEMENT_STABILIZATION_FACTOR_STRENGTH = 1.005 # Small multiplier > 1
-#     # EDGE_OF_CHAOS_RATIO = 1.0 / GOLDEN_RATIO
-#     # FLAG_READY_FOR_COMPLETION="ready_for_completion"
-#     # FLAG_READY_FOR_STRENGTHENING="ready_for_strengthening"
-#     raise ImportError(f"Essential constants missing: {e}") from e
-
-# # --- Dependency Imports ---
-# try:
-#     from stage_1.soul_spark.soul_spark import SoulSpark
-#     # KetherField is needed conceptually for properties, passed as argument
-#     from stage_1.fields.kether_field import KetherField
-# except ImportError as e:
-#     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}")
-#     # Re-raise to ensure hard fail
-#     raise ImportError(f"Core dependencies missing: {e}") from e
-
-# # --- Metrics Tracking ---
-# try:
-#     import metrics_tracking as metrics
-#     METRICS_AVAILABLE = True
-# except ImportError:
-#     logger.error("Metrics tracking module not found. Metrics will not be recorded.")
-#     METRICS_AVAILABLE = False
-#     class MetricsPlaceholder:
-#         def record_metrics(self, *args, **kwargs): pass
-#     metrics = MetricsPlaceholder()
-
-# # --- Helper Functions ---
-
-# def _check_prerequisites(soul_spark: SoulSpark, kether_field: KetherField) -> bool:
-#     """ Checks prerequisites using SU/CU thresholds. """
-#     logger.debug(f"Checking Creator Entanglement prerequisites for soul {soul_spark.spark_id}...")
-#     if not isinstance(soul_spark, SoulSpark):
-#         logger.error("Prerequisite failed: Invalid SoulSpark object.")
-#         return False
-#     if not isinstance(kether_field, KetherField):
-#         logger.error("Prerequisite failed: Invalid KetherField object.")
-#         return False
-
-#     # 1. Stage Completion Check
-#     if not getattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, False):
-#         logger.error(f"Prerequisite failed: {FLAG_SEPHIROTH_JOURNEY_COMPLETE} is False.")
-#         return False
-#     if getattr(soul_spark, 'creator_channel_id', None) is not None:
-#         logger.warning(f"Soul {soul_spark.spark_id} already has creator channel. Re-running.")
-
-#     # 2. Soul State Check (Absolute SU/CU Thresholds)
-#     stability_su = getattr(soul_spark, 'stability', 0.0)
-#     coherence_cu = getattr(soul_spark, 'coherence', 0.0)
-#     if stability_su < ENTANGLEMENT_PREREQ_STABILITY_MIN_SU:
-#         logger.error(f"Prerequisite failed: Stability ({stability_su:.1f} SU) < {ENTANGLEMENT_PREREQ_STABILITY_MIN_SU} SU.")
-#         return False
-#     if coherence_cu < ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU:
-#         logger.error(f"Prerequisite failed: Coherence ({coherence_cu:.1f} CU) < {ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU} CU.")
-#         return False
-
-#     # 3. Field Check (Conceptual Location)
-#     current_field = getattr(soul_spark, 'current_field_key', 'unknown')
-#     if current_field != 'kether':
-#         logger.error(f"Prerequisite failed: Soul must be conceptually in Kether field (current: {current_field}).")
-#         return False
-#     # Ensure not in Guff (using placeholder check - assumes controller handles placement)
-#     # Add actual check if needed:
-#     # if kether_field.is_in_guff(field_controller._coords_to_int_tuple(soul_spark.position)):
-#     #    logger.error("Prerequisite failed: Soul should be released from Guff before entanglement.")
-#     #    return False
-
-#     logger.debug("Creator Entanglement prerequisites met.")
-#     return True
-
-# # --- Resonance Calculation (Using Journey version for consistency) ---
-# def calculate_resonance(freq1: float, freq2: float) -> float:
-#     """ Calculate resonance strength (0-1) between two frequencies. """
-#     if min(freq1, freq2) <= FLOAT_EPSILON: return 0.0
-#     ratio = max(freq1, freq2) / min(freq1, freq2)
-#     int_res = 0.0
-#     # Check integer ratios up to 5:1
-#     for i in range(1, 6):
-#         for j in range(1, 6):
-#             target = float(max(i, j)) / float(min(i, j))
-#             # Use a slightly wider tolerance for better matching chances
-#             tolerance = RESONANCE_INTEGER_RATIO_TOLERANCE * target * 1.5
-#             deviation = abs(ratio - target)
-#             if deviation < tolerance:
-#                 # Score decays linearly within tolerance window
-#                 score = max(0.0, 1.0 - (deviation / tolerance))
-#                 # Optional: Weight simpler ratios higher (e.g., penalize complexity)
-#                 complexity_penalty = 1.0 / (1.0 + (i - 1) * 0.1 + (j - 1) * 0.1)
-#                 int_res = max(int_res, score * complexity_penalty)
-
-#     phi_res = 0.0
-#     # Check Phi ratios up to Phi^2
-#     for i in [1, 2]:
-#         phi_pow = GOLDEN_RATIO ** i
-#         # Check direct Phi power
-#         phi_tolerance = RESONANCE_PHI_RATIO_TOLERANCE * phi_pow * 1.5
-#         dev_phi = abs(ratio - phi_pow)
-#         if dev_phi < phi_tolerance:
-#             score = max(0.0, 1.0 - (dev_phi / phi_tolerance))
-#             phi_res = max(phi_res, score)
-#         # Check inverse Phi power
-#         inv_phi_pow = 1.0 / phi_pow
-#         inv_phi_tolerance = RESONANCE_PHI_RATIO_TOLERANCE * inv_phi_pow * 1.5
-#         dev_inv_phi = abs(ratio - inv_phi_pow)
-#         if dev_inv_phi < inv_phi_tolerance:
-#             score = max(0.0, 1.0 - (dev_inv_phi / inv_phi_tolerance))
-#             phi_res = max(phi_res, score)
-
-#     # Combine integer and Phi resonance, giving Phi slightly more weight?
-#     final_resonance = max(int_res * 0.9, phi_res) # Prioritize Phi slightly if both match
-#     logger.debug(f"  Calculate Resonance: F1={freq1:.2f}, F2={freq2:.2f}, Ratio={ratio:.3f} -> IntRes={int_res:.4f}, PhiRes={phi_res:.4f} -> Final={final_resonance:.4f}")
-#     return float(final_resonance)
-
-
-# # --- Frequency Signature Calculation ---
-# def _calculate_frequency_signature(soul_spark: SoulSpark, kether_field: KetherField) -> Dict[str, Any]:
-#     """ Calculates frequency signature based on Soul and Kether aspect frequencies. """
-#     logger.debug(f"Calculating frequency signature for soul {soul_spark.spark_id} with Kether...")
-#     try:
-#         # Get Kether Frequencies (from aspect data)
-#         kether_aspects = kether_field.get_aspects()
-#         if not kether_aspects: raise ValueError("Kether field aspect data is empty.")
-#         detailed_kether = kether_aspects.get('detailed_aspects', {})
-#         kether_base_freq = kether_aspects.get('base_frequency', KETHER_FREQ)
-#         creator_freqs_dict = {
-#             name: details.get('frequency', kether_base_freq)
-#             for name, details in detailed_kether.items()
-#             if details.get('frequency', 0.0) > FLOAT_EPSILON
-#         }
-#         if not creator_freqs_dict and kether_base_freq > FLOAT_EPSILON:
-#             creator_freqs_dict = {'kether_base': kether_base_freq}
-#         elif not creator_freqs_dict:
-#             logger.error("Kether field lacks valid frequencies in aspect data.")
-#             raise ValueError("Kether field lacks valid frequencies.")
-#         creator_freqs_list = list(creator_freqs_dict.values())
-#         logger.debug(f"  Kether Frequencies: {creator_freqs_dict}")
-
-#         # Get Soul Frequencies
-#         soul_base_freq = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
-#         if soul_base_freq <= FLOAT_EPSILON: raise ValueError("Soul has invalid base frequency.")
-#         soul_harmonics = getattr(soul_spark, 'harmonics', [])
-#         # Ensure harmonics are valid and relate to base frequency
-#         if not soul_harmonics or not isinstance(soul_harmonics, list) or \
-#            abs(soul_harmonics[0] - soul_base_freq) > FLOAT_EPSILON * soul_base_freq:
-#              logger.debug("  Regenerating soul harmonics for signature calc.")
-#              if hasattr(soul_spark, '_generate_phi_integer_harmonics'):
-#                  soul_spark._generate_phi_integer_harmonics()
-#                  soul_harmonics = soul_spark.harmonics
-#              else:
-#                  raise AttributeError("SoulSpark missing harmonic generation method.")
-
-#         soul_freqs_list = [f for f in soul_harmonics if isinstance(f, (int, float)) and f > FLOAT_EPSILON]
-#         if not soul_freqs_list: soul_freqs_list = [soul_base_freq]
-#         soul_freqs_dict = {f'soul_h{i+1}': freq for i, freq in enumerate(soul_freqs_list)}
-#         logger.debug(f"  Soul Frequencies: {soul_freqs_dict}")
-
-#         # Find Resonance Points
-#         resonance_points_hz = []
-#         resonance_details = {} # Store details for debugging
-#         for creator_name, f_creator in creator_freqs_dict.items():
-#              for soul_name, f_soul in soul_freqs_dict.items():
-#                   res_score = calculate_resonance(f_creator, f_soul)
-#                   resonance_details[f"{creator_name}<->{soul_name}"] = res_score
-#                   # Increased threshold for strong resonance
-#                   if res_score > 0.8:
-#                        # Midpoint as resonance frequency
-#                        resonance_point = (f_creator + f_soul) / 2.0
-#                        resonance_points_hz.append(resonance_point)
-#                        logger.debug(f"    Strong Resonance Found: {creator_name}({f_creator:.1f}) - {soul_name}({f_soul:.1f}), Score={res_score:.3f}, Point={resonance_point:.1f}")
-
-#         logger.debug(f"  Resonance Detail Scores: {resonance_details}")
-
-#         # Ensure at least one resonance point (fallback if none strong enough)
-#         if not resonance_points_hz:
-#             logger.warning("  No strong resonance points found, using fallback midpoint.")
-#             resonance_points_hz.append((creator_freqs_list[0] + soul_freqs_list[0]) / 2.0)
-
-#         # Generate phases structure - Aim for slightly more coherence
-#         num_points = len(resonance_points_hz)
-#         phases = []
-#         if num_points > 0:
-#             # Introduce a bias towards phase alignment based on soul's current coherence
-#             coherence_norm = soul_spark.coherence / MAX_COHERENCE_CU
-#             mean_phase_target = PI * coherence_norm # Bias towards 0 or pi based on coherence
-#             phase_spread = PI * (1.0 - coherence_norm) * 0.8 # Reduced spread for higher coherence
-#             phases = np.random.normal(loc=mean_phase_target, scale=phase_spread, size=num_points)
-#             phases = (phases + PI) % (2 * PI) - PI # Wrap to -pi to pi around the target
-
-#         # Create final signature components
-#         frequencies = np.array(sorted(list(set(resonance_points_hz)))) # Unique sorted
-#         num_frequencies = len(frequencies)
-#         # Regenerate phases based on the unique, sorted frequencies
-#         phases = np.random.normal(loc=mean_phase_target, scale=phase_spread, size=num_frequencies)
-#         phases = (phases + PI) % (2 * PI) - PI # Wrap to -pi to pi
-
-#         # Amplitudes based on frequency (e.g., lower freqs slightly stronger) - simple model
-#         min_freq = min(frequencies) if num_frequencies > 0 else 1.0
-#         max_freq = max(frequencies) if num_frequencies > 0 else 1.0
-#         freq_range = max(FLOAT_EPSILON, max_freq - min_freq)
-#         # Basic amplitude: higher for lower frequencies within the resonant set
-#         amplitudes = 1.0 - np.clip((frequencies - min_freq) / freq_range, 0, 1) * 0.5 if freq_range > FLOAT_EPSILON else np.ones(num_frequencies)
-#         # Normalize amplitudes
-#         amp_sum = np.sum(amplitudes)
-#         amplitudes = amplitudes / max(FLOAT_EPSILON, amp_sum) if amp_sum > FLOAT_EPSILON else np.ones(num_frequencies) / max(1, num_frequencies)
-
-#         signature = {
-#             'creator_frequencies': creator_freqs_dict,
-#             'soul_frequencies': soul_freqs_dict,
-#             'resonance_points_hz': frequencies.tolist(),
-#             'primary_resonance_hz': max(frequencies) if num_frequencies > 0 else 0.0,
-#             'calculation_time': datetime.now().isoformat(),
-#             'base_frequency': float(soul_base_freq),
-#             'frequencies': frequencies.tolist(),
-#             'phases': phases.tolist(),
-#             'amplitudes': amplitudes.tolist(),
-#             'num_frequencies': num_frequencies
-#         }
-
-#         logger.debug(f"Created frequency signature with {num_frequencies} points. Keys: {list(signature.keys())}")
-#         if 'phases' not in signature or signature['phases'] is None:
-#             # This should not happen with the new logic, but keep as safeguard
-#             logger.error("CRITICAL: Failed to generate valid phases in frequency signature!")
-#             raise ValueError("Failed to generate valid phases in frequency signature")
-
-#         return signature
-
-#     except Exception as e:
-#         logger.error(f"Error calculating frequency signature: {e}", exc_info=True)
-#         # Hard fail - signature is critical
-#         raise RuntimeError("Frequency signature calculation failed critically.") from e
-
-# # --- Core Entanglement Functions ---
-
-# def establish_creator_connection(soul_spark: SoulSpark,
-#                                  kether_field: KetherField,
-#                                  base_creator_resonance: float, # Factor 0-1
-#                                  edge_of_chaos_ratio: float) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-#     """ Establishes connection. Uses SU/CU. Modifies SoulSpark. """
-#     logger.info(f"Establishing creator connection for soul {soul_spark.spark_id}...")
-#     # --- Input Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-#     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-#     if not (0.0 <= base_creator_resonance <= 1.0): raise ValueError("base_creator_resonance out of range.")
-#     if not (0.0 <= edge_of_chaos_ratio <= 1.0): raise ValueError("edge_of_chaos_ratio out of range.")
-
-#     try:
-#         # Use current soul state (SU/CU)
-#         stability_su = soul_spark.stability
-#         coherence_cu = soul_spark.coherence
-#         if stability_su < 0 or coherence_cu < 0:
-#             raise ValueError(f"Invalid S/C values for connection: S={stability_su}, C={coherence_cu}")
-#         stability_norm = stability_su / MAX_STABILITY_SU # Normalize 0-1
-#         coherence_norm = coherence_cu / MAX_COHERENCE_CU # Normalize 0-1
-#         logger.debug(f"  Connection Calc: StabNorm={stability_norm:.3f}, CohNorm={coherence_norm:.3f}, BaseRes={base_creator_resonance:.3f}")
-
-#         # Connection Quality (combine normalized state with base potential)
-#         # Increased weight for coherence
-#         connection_quality = (0.3 * stability_norm + 0.5 * coherence_norm + 0.2 * base_creator_resonance)
-#         # Chaos Factor: How close quality is to the edge of chaos target
-#         # Using a smoother Gaussian-like function instead of sharp cutoff
-#         chaos_deviation = abs(connection_quality - edge_of_chaos_ratio)
-#         chaos_factor = exp(-(chaos_deviation**2) / (2 * (0.15**2))) # Sigma=0.15 controls width
-#         logger.debug(f"  Connection Calc: ConnQual={connection_quality:.3f}, EdgeTarget={edge_of_chaos_ratio:.3f}, ChaosFactor={chaos_factor:.3f}")
-
-#         # Effective Strength: Modulated by quality and chaos factor
-#         effective_strength = base_creator_resonance * chaos_factor * connection_quality
-#         effective_strength = min(1.0, max(0.0, effective_strength)) # Clamp 0-1 factor
-
-#         # Calculate frequency signature *before* storing channel data
-#         freq_signature = _calculate_frequency_signature(soul_spark, kether_field)
-#         logger.debug(f"  Frequency signature generated: {json.dumps(freq_signature, default=str)}") # Log generated signature
-
-#         channel_id = str(uuid.uuid4())
-#         creation_time = datetime.now().isoformat()
-#         quantum_channel_data = {
-#             'channel_id': channel_id, 'spark_id': soul_spark.spark_id, 'creation_time': creation_time,
-#             'connection_strength': float(effective_strength),
-#             'connection_quality': float(connection_quality),
-#             'initial_soul_stability_su': float(stability_su), # Record initial absolute SU
-#             'initial_soul_coherence_cu': float(coherence_cu), # Record initial absolute CU
-#             'chaos_factor': float(chaos_factor), 'active': True,
-#             'frequency_signature': freq_signature # Store the calculated signature
-#         }
-#         logger.debug(f"  Quantum Channel Data: {quantum_channel_data}")
-
-#         # Update SoulSpark
-#         initial_alignment = soul_spark.creator_alignment # 0-1 factor
-#         soul_spark.creator_channel_id = channel_id
-#         soul_spark.creator_connection_strength = float(effective_strength) # 0-1 factor
-#         # Boost alignment based on strength
-#         soul_spark.creator_alignment = float(min(1.0, initial_alignment + ENTANGLEMENT_ALIGNMENT_BOOST_FACTOR * effective_strength))
-#         # Store frequency signature used for connection
-#         soul_spark.frequency_signature = freq_signature
-#         soul_spark.last_modified = creation_time
-#         logger.info(f"Creator connection established: Strength={effective_strength:.4f}, Alignment={soul_spark.creator_alignment:.4f}")
-
-#         # Record Metrics
-#         metrics_data = {
-#             'action': 'establish_connection', 'soul_id': soul_spark.spark_id, 'channel_id': channel_id,
-#             'strength': effective_strength, 'quality': connection_quality, 'chaos_factor': chaos_factor,
-#             'initial_stability_su': quantum_channel_data['initial_soul_stability_su'],
-#             'initial_coherence_cu': quantum_channel_data['initial_soul_coherence_cu'],
-#             'final_alignment': soul_spark.creator_alignment,
-#             'alignment_change': soul_spark.creator_alignment - initial_alignment,
-#             'success': True, 'timestamp': creation_time
-#         }
-#         if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-#         return quantum_channel_data, metrics_data
-
-#     except Exception as e:
-#         logger.error(f"Error establishing creator connection: {e}", exc_info=True)
-#         # Hard fail
-#         raise RuntimeError("Creator connection establishment failed critically.") from e
-
-# def form_resonance_patterns(soul_spark: SoulSpark,
-#                             quantum_channel_data: Dict[str, Any],
-#                             kether_field: KetherField) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-#     """ Forms resonance patterns based on Kether aspects and connection strength. """
-#     logger.info(f"Forming resonance patterns for soul {soul_spark.spark_id}...")
-#     # --- Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-#     if not isinstance(quantum_channel_data, dict): raise TypeError("quantum_channel_data invalid.")
-#     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-#     channel_id = quantum_channel_data.get('channel_id'); spark_id = quantum_channel_data.get('spark_id')
-#     connection_strength = quantum_channel_data.get('connection_strength') # 0-1 factor
-#     freq_signature = quantum_channel_data.get('frequency_signature')
-#     if not channel_id or not spark_id or connection_strength is None or not isinstance(freq_signature, dict):
-#         raise ValueError("Quantum channel data missing essential keys or invalid freq_signature.")
-
-#     try:
-#         kether_aspects = kether_field.get_aspects()
-#         if not kether_aspects: raise ValueError("Kether field aspect data is empty.")
-#         detailed_kether_aspects = kether_aspects.get('detailed_aspects', {})
-#         if not detailed_kether_aspects: raise ValueError("Kether detailed aspects missing.")
-
-#         patterns = {}
-#         # Add primary/secondary aspects from Kether data, strength scaled by connection_strength
-#         logger.debug("  Forming patterns from Kether primary/secondary aspects:")
-#         for name in kether_aspects.get('primary_aspects', []):
-#              if name in detailed_kether_aspects:
-#                   details = detailed_kether_aspects[name]
-#                   pat_strength = float(details.get('strength', 0.0) * connection_strength)
-#                   patterns[name] = {
-#                       'frequency': details.get('frequency', KETHER_FREQ),
-#                       'strength': pat_strength, 'pattern_type': 'primary', **details
-#                   }
-#                   logger.debug(f"    Added Primary Pattern: {name} (Strength: {pat_strength:.4f})")
-#         for name in kether_aspects.get('secondary_aspects', []):
-#              if name in detailed_kether_aspects:
-#                   details = detailed_kether_aspects[name]
-#                   pat_strength = float(details.get('strength', 0.0) * connection_strength * 0.7)
-#                   patterns[f"secondary_{name}"] = {
-#                       'frequency': details.get('frequency', KETHER_FREQ),
-#                       'strength': pat_strength, 'pattern_type': 'secondary', **details
-#                   }
-#                   logger.debug(f"    Added Secondary Pattern: {name} (Strength: {pat_strength:.4f})")
-
-#         # Add harmonic patterns based on calculated resonance points
-#         logger.debug("  Forming patterns from calculated resonance points:")
-#         resonance_points_hz = freq_signature.get('resonance_points_hz', [])
-#         if not resonance_points_hz: logger.warning("  No resonance points found in frequency signature!")
-#         for i, point_hz in enumerate(resonance_points_hz):
-#              if point_hz <= FLOAT_EPSILON: continue
-#              # Strength scales with connection strength
-#              strength = float(0.6 * connection_strength)
-#              patterns[f'harmonic_{i}'] = {
-#                  'frequency': float(point_hz), 'strength': strength,
-#                  'pattern_type': 'harmonic', 'description': f'Resonance at {point_hz:.2f} Hz'
-#              }
-#              logger.debug(f"    Added Harmonic Pattern: harmonic_{i} (Freq: {point_hz:.1f}, Strength: {strength:.4f})")
-
-#         # Calculate pattern coherence (average strength of formed patterns, 0-1 scale)
-#         pattern_coherence = 0.0
-#         if patterns:
-#             valid_strengths = [p.get('strength', 0.0) for p in patterns.values() if isinstance(p.get('strength'), (int, float))]
-#             if valid_strengths: pattern_coherence = sum(valid_strengths) / len(valid_strengths)
-#         logger.debug(f"  Calculated Pattern Coherence: {pattern_coherence:.4f}")
-
-#         formation_time = datetime.now().isoformat()
-#         resonance_pattern_data = {
-#             'channel_id': channel_id, 'spark_id': spark_id, 'patterns': patterns,
-#             'pattern_count': len(patterns), 'pattern_coherence': float(pattern_coherence),
-#             'formation_time': formation_time
-#         }
-
-#         # Update SoulSpark
-#         initial_resonance_factor = soul_spark.resonance # 0-1 factor
-#         soul_spark.resonance_patterns = patterns.copy() # Store formed patterns
-#         soul_spark.pattern_coherence = float(pattern_coherence) # Update 0-1 factor
-#         # Boost general resonance factor based on pattern coherence
-#         resonance_boost = ENTANGLEMENT_RESONANCE_BOOST_FACTOR * pattern_coherence
-#         soul_spark.resonance = float(min(1.0, initial_resonance_factor + resonance_boost))
-#         soul_spark.last_modified = formation_time
-#         logger.info(f"Patterns formed: {len(patterns)}. New Resonance Factor: {soul_spark.resonance:.4f} (+{resonance_boost:.4f}), P.Coh: {pattern_coherence:.4f}")
-
-#         # Record Metrics
-#         metrics_data = {
-#             'action': 'form_patterns', 'soul_id': spark_id, 'channel_id': channel_id,
-#             'pattern_count': len(patterns), 'pattern_coherence': pattern_coherence,
-#             'final_soul_resonance_factor': soul_spark.resonance,
-#             'resonance_factor_change': soul_spark.resonance - initial_resonance_factor,
-#             'success': True, 'timestamp': formation_time
-#         }
-#         if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-#         return resonance_pattern_data, metrics_data
-
-#     except Exception as e:
-#         logger.error(f"Error forming resonance patterns: {e}", exc_info=True)
-#         # Hard fail
-#         raise RuntimeError("Pattern formation failed critically.") from e
-
-
-# def transfer_creator_aspects(soul_spark: SoulSpark,
-#                              quantum_channel_data: Dict[str, Any],
-#                              resonance_pattern_data: Dict[str, Any],
-#                              kether_field: KetherField) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-#     """ Transfers Kether aspects scaled by connection quality/pattern resonance. No threshold. """
-#     logger.info(f"Transferring creator aspects to soul {soul_spark.spark_id}...")
-#     # --- Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-#     if not isinstance(quantum_channel_data, dict): raise TypeError("quantum_channel_data invalid.")
-#     if not isinstance(resonance_pattern_data, dict): raise TypeError("resonance_pattern_data invalid.")
-#     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-#     channel_id = quantum_channel_data.get('channel_id'); spark_id = quantum_channel_data.get('spark_id')
-#     connection_quality = quantum_channel_data.get('connection_quality') # 0-1 factor
-#     patterns = resonance_pattern_data.get('patterns')
-#     if not channel_id or not spark_id or connection_quality is None or patterns is None:
-#         raise ValueError("Channel/pattern data missing essential keys.")
-#     if not hasattr(soul_spark, 'aspects') or not isinstance(soul_spark.aspects, dict):
-#         setattr(soul_spark, 'aspects', {}) # Initialize if missing
-
-#     try:
-#         kether_aspects = kether_field.get_aspects()
-#         if not kether_aspects: raise ValueError("Kether field aspect data is empty.")
-#         detailed_kether_aspects = kether_aspects.get('detailed_aspects', {})
-#         if not detailed_kether_aspects: raise ValueError("Kether detailed aspects missing.")
-
-#         transferable_aspects = {} # Tracks potential transfers {name: {details}}
-#         gained_count = 0; strengthened_count = 0
-#         transfer_time = datetime.now().isoformat()
-#         total_original_strength = 0.0; total_imparted_strength = 0.0
-
-#         logger.debug("  Calculating aspect transfer efficiencies:")
-#         for name, kether_details in detailed_kether_aspects.items():
-#             kether_strength = float(kether_details.get('strength', 0.0)) # 0-1 factor
-#             if kether_strength <= FLOAT_EPSILON: continue
-#             total_original_strength += kether_strength
-
-#             # Efficiency depends on connection quality AND resonance pattern strength for this aspect
-#             pattern_strength = patterns.get(name, {}).get('strength', 0.0) # Check primary pattern
-#             if pattern_strength <= FLOAT_EPSILON: pattern_strength = patterns.get(f"secondary_{name}", {}).get('strength', 0.0)
-#             logger.debug(f"    Aspect '{name}': KetherStr={kether_strength:.3f}, ConnQual={connection_quality:.3f}, PatternStr={pattern_strength:.3f}")
-
-#             efficiency = (connection_quality * ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_BASE +
-#                           pattern_strength * ENTANGLEMENT_ASPECT_TRANSFER_EFFICIENCY_RESONANCE_SCALE)
-#             efficiency = min(1.0, max(0.0, efficiency))
-#             imparted_strength = kether_strength * efficiency # 0-1 strength scale
-#             total_imparted_strength += imparted_strength
-#             logger.debug(f"      -> Efficiency={efficiency:.4f}, ImpartedStr={imparted_strength:.4f}")
-
-#             # --- Record Potential Transfer ---
-#             transfer_data = {
-#                 'original_strength': kether_strength, 'transfer_efficiency': efficiency,
-#                 'imparted_strength': imparted_strength, 'aspect_type': 'Kether',
-#                 'details': kether_details # Store Kether's details
-#             }
-#             transferable_aspects[name] = transfer_data
-
-#             # --- Update SoulSpark Aspects (No Threshold) ---
-#             current_soul_strength = float(soul_spark.aspects.get(name, {}).get('strength', 0.0))
-#             # Blend/Add based on imparted strength - More aggressive addition
-#             new_strength = min(MAX_ASPECT_STRENGTH, current_soul_strength + imparted_strength)
-#             actual_gain = new_strength - current_soul_strength
-#             logger.debug(f"      -> Soul Aspect '{name}': CurrentStr={current_soul_strength:.4f}, NewStr={new_strength:.4f}, Gain={actual_gain:.4f}")
-
-#             if actual_gain > FLOAT_EPSILON:
-#                 details_copy = kether_details.copy()
-#                 details_copy['last_transfer_efficiency'] = efficiency
-#                 details_copy['last_imparted_strength'] = imparted_strength
-
-#                 if name not in soul_spark.aspects or current_soul_strength <= FLOAT_EPSILON:
-#                     soul_spark.aspects[name] = {'strength': new_strength, 'source': 'Kether', 'time_acquired': transfer_time, 'details': details_copy }
-#                     gained_count += 1
-#                     if hasattr(soul_spark, 'add_memory_echo'): soul_spark.add_memory_echo(f"Gained Kether aspect '{name}' Strength: {new_strength:.3f}")
-#                 else:
-#                     soul_spark.aspects[name]['strength'] = new_strength
-#                     soul_spark.aspects[name]['last_updated'] = transfer_time
-#                     soul_spark.aspects[name]['details'].update(details_copy) # Update details
-#                     strengthened_count += 1
-
-#         average_efficiency = (total_imparted_strength / total_original_strength) if total_original_strength > FLOAT_EPSILON else 0.0
-#         logger.debug(f"  Average Transfer Efficiency: {average_efficiency:.4f}")
-
-#         # --- No Direct Stability Boost ---
-#         initial_stability_su = soul_spark.stability # Store for metrics reporting
-#         stability_change_su = 0.0 # No direct change applied here
-#         logger.debug(f"  Direct stability boost REMOVED. Current SU: {initial_stability_su:.1f}")
-
-#         # Update alignment factor (Keep this factor boost)
-#         initial_alignment = soul_spark.creator_alignment
-#         # Slightly increase alignment boost as compensation for removing direct stability boost
-#         alignment_boost_factor = 0.20 # Increased from 0.15
-#         alignment_gain = alignment_boost_factor * average_efficiency
-#         soul_spark.creator_alignment = min(1.0, initial_alignment + alignment_gain)
-#         logger.debug(f"  Creator Alignment Updated: {initial_alignment:.4f} -> {soul_spark.creator_alignment:.4f} (+{alignment_gain:.4f})")
-
-#         soul_spark.last_modified = transfer_time
-#         logger.info(f"Aspect transfer: Gained={gained_count}, Strengthened={strengthened_count}, AvgEff={average_efficiency:.3f}")
-
-#         # Store Transfer Metrics
-#         aspect_transfer_metrics = { # Summary of what happened this step
-#             'aspects_gained_count': gained_count, 'aspects_strengthened_count': strengthened_count,
-#             'average_efficiency': average_efficiency, 'transfers': transferable_aspects }
-#         # Record Core Metrics
-#         metrics_data = { # Core metrics for tracking
-#             'action': 'transfer_aspects', 'soul_id': spark_id, 'channel_id': channel_id,
-#             'aspects_gained_count': gained_count, 'aspects_strengthened_count': strengthened_count,
-#             'avg_efficiency': average_efficiency,
-#             'initial_soul_alignment': initial_alignment, # Added initial for context
-#             'final_soul_alignment': soul_spark.creator_alignment,
-#             'initial_soul_stability_su': initial_stability_su, # Report initial SU for context
-#             'final_soul_stability_su': soul_spark.stability, # Report current SU (before update_state)
-#             'stability_change_su': stability_change_su, # Report 0 direct change
-#             'success': True, 'timestamp': transfer_time }
-#         if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-#         return aspect_transfer_metrics, metrics_data
-
-#     except Exception as e:
-#         logger.error(f"Error transferring creator aspects: {e}", exc_info=True)
-#         # Hard fail
-#         raise RuntimeError("Aspect transfer failed critically.") from e
-
-# def stabilize_creator_connection(soul_spark: SoulSpark,
-#                                  quantum_channel_data: Dict[str, Any],
-#                                  resonance_pattern_data: Dict[str, Any],
-#                                  iterations: int = ENTANGLEMENT_STABILIZATION_ITERATIONS) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-#     """ Stabilizes connection, applying factor improvements. S/C emerges via update_state. """
-#     logger.info(f"Stabilizing creator connection for soul {soul_spark.spark_id} ({iterations} iterations)...")
-#     # --- Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-#     if not isinstance(quantum_channel_data, dict): raise TypeError("quantum_channel_data invalid.")
-#     if not isinstance(resonance_pattern_data, dict): raise TypeError("resonance_pattern_data invalid.")
-#     if not isinstance(iterations, int) or iterations <= 0: raise ValueError("Iterations must be positive.")
-#     channel_id = quantum_channel_data.get('channel_id'); spark_id = quantum_channel_data.get('spark_id')
-#     if not channel_id or not spark_id : raise ValueError("Channel data missing keys.")
-
-#     try:
-#         # Store Initial State (Factors and current S/C for logging comparison)
-#         initial_metrics = {
-#             'connection_strength': soul_spark.creator_connection_strength, # 0-1
-#             'stability_su': soul_spark.stability, # SU
-#             'coherence_cu': soul_spark.coherence, # CU
-#             'creator_alignment': soul_spark.creator_alignment, # 0-1
-#             'resonance_factor': soul_spark.resonance, # 0-1
-#             'pattern_coherence': soul_spark.pattern_coherence # 0-1
-#         }
-#         current_strength = initial_metrics['connection_strength']
-#         current_pattern_coherence = initial_metrics['pattern_coherence']
-#         current_alignment = initial_metrics['creator_alignment']
-#         current_patterns = soul_spark.resonance_patterns.copy() # Get current patterns
-
-#         logger.info(f"Initial state for stabilization: Str={current_strength:.4f}, Stab={initial_metrics['stability_su']:.1f}SU, Coh={initial_metrics['coherence_cu']:.1f}CU, P.Coh={current_pattern_coherence:.3f}, Align={current_alignment:.3f}")
-
-#         # Stabilization Iterations
-#         for i in range(iterations):
-#             iter_start_time = datetime.now().isoformat()
-#             # Improvement factors (based on current state and iteration)
-#             # Use multiplier > 1 for strength increase
-#             strength_multiplier = ENTANGLEMENT_STABILIZATION_FACTOR_STRENGTH # e.g., 1.005
-#             strength_gain = current_strength * (strength_multiplier - 1.0) * (1.0 / (i + 1)) # Gain diminishes
-#             current_strength = min(1.0, current_strength + strength_gain)
-
-#             # Strengthen patterns and recalculate pattern coherence factor
-#             if current_patterns:
-#                 pattern_strengths = []
-#                 # Small additive boost, diminishing over iterations
-#                 pattern_boost_amount = 0.005 * (1.0 / (i + 1))
-
-#                 for name in current_patterns:
-#                     pat_str = current_patterns[name].get('strength', 0.0)
-#                     current_patterns[name]['strength'] = min(1.0, pat_str + pattern_boost_amount)
-#                     pattern_strengths.append(current_patterns[name]['strength'])
-#                 if pattern_strengths: current_pattern_coherence = sum(pattern_strengths) / len(pattern_strengths)
-
-#             # --- Update SoulSpark State (Factors Only) ---
-#             soul_spark.creator_connection_strength = float(current_strength)
-#             soul_spark.pattern_coherence = float(current_pattern_coherence)
-#             soul_spark.resonance_patterns = current_patterns.copy()
-
-#             # --- REMOVED Direct S/C Boosts ---
-
-#             # Boost alignment factor slightly too, based on strength gain
-#             alignment_gain = strength_gain * 0.05 # Small boost relative to strength gain
-#             current_alignment = min(1.0, current_alignment + alignment_gain)
-#             soul_spark.creator_alignment = float(current_alignment)
-
-#             soul_spark.last_modified = iter_start_time
-#             # Log factor changes, S/C will be updated later by update_state
-#             logger.debug(f"  Stabilization iter {i+1}: Str={current_strength:.4f}(+{strength_gain:.5f}), P.Coh={current_pattern_coherence:.4f}, Align={current_alignment:.4f}(+{alignment_gain:.5f})")
-
-#         # Store Final Metrics (Factors Only)
-#         final_factors = {
-#             'connection_strength': float(current_strength),
-#             'creator_alignment': float(current_alignment),
-#             'resonance_factor': soul_spark.resonance, # May have changed if patterns changed
-#             'pattern_coherence': float(current_pattern_coherence)
-#         }
-#         # Report current S/C before update_state for peak info in summary
-#         final_stabilization_metrics_before_update = {
-#              'stability_su': soul_spark.stability,
-#              'coherence_cu': soul_spark.coherence
-#         }
-
-#         stabilization_result = { # Summary of the process
-#             'iterations': iterations,
-#             'initial_metrics': initial_metrics, # Factors + initial S/C
-#             'final_factors': final_factors, # Factors only
-#             'final_metrics_before_update': final_stabilization_metrics_before_update, # S/C before recalc
-#             'stabilization_time': getattr(soul_spark, 'last_modified')
-#         }
-
-#         logger.info(f"Creator connection stabilization complete (Factors updated). Final Str={current_strength:.4f}")
-#         if hasattr(soul_spark, 'add_memory_echo'): soul_spark.add_memory_echo(f"Creator connection factors stabilized. Strength:{current_strength:.3f}")
-
-#         # Record Core Metrics (Record factors, S/C will be recorded in summary after update_state)
-#         metrics_data = {
-#             'action': 'stabilize_connection', 'soul_id': spark_id, 'channel_id': channel_id, 'iterations': iterations,
-#             'initial_strength': initial_metrics['connection_strength'],
-#             'final_strength': final_factors['connection_strength'],
-#             'initial_pattern_coherence': initial_metrics['pattern_coherence'],
-#             'final_pattern_coherence': final_factors['pattern_coherence'],
-#             'initial_alignment': initial_metrics['creator_alignment'],
-#             'final_alignment': final_factors['creator_alignment'],
-#             'success': True, 'timestamp': stabilization_result['stabilization_time']
-#         }
-#         if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement', metrics_data)
-#         return stabilization_result, metrics_data
-
-#     except Exception as e:
-#         logger.error(f"Error stabilizing creator connection: {e}", exc_info=True)
-#         # Hard fail
-#         raise RuntimeError("Stabilization failed critically.") from e
-
-# # --- Orchestration Function ---
-# def run_full_entanglement_process(soul_spark: SoulSpark,
-#                                   kether_field: KetherField,
-#                                   creator_resonance: float = 0.8, # Base potential factor 0-1
-#                                   edge_of_chaos_ratio: float = EDGE_OF_CHAOS_RATIO, # Target 0-1 factor
-#                                   stabilization_iterations: int = ENTANGLEMENT_STABILIZATION_ITERATIONS
-#                                   ) -> Tuple[SoulSpark, Dict[str, Any]]:
-#     """ Runs complete entanglement process. Uses SU/CU prerequisites. Modifies SoulSpark. """
-#     start_time_iso = datetime.now().isoformat(); start_time_dt = datetime.fromisoformat(start_time_iso)
-#     # --- Input Validation ---
-#     if not isinstance(soul_spark, SoulSpark): raise TypeError("soul_spark invalid.")
-#     if not isinstance(kether_field, KetherField): raise TypeError("kether_field invalid.")
-#     if not (0.0 <= creator_resonance <= 1.0): raise ValueError("creator_resonance invalid.")
-#     if not (0.0 <= edge_of_chaos_ratio <= 1.0): raise ValueError("edge_of_chaos_ratio invalid.")
-#     if not isinstance(stabilization_iterations, int) or stabilization_iterations < 0: raise ValueError("stabilization_iterations invalid.")
-
-#     spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#     process_metrics_summary = {'steps': {}}
-
-#     logger.info(f"--- Starting Full Entanglement Process for Soul {spark_id} ---")
-
-#     try:
-#         # --- Prerequisites Check ---
-#         if not _check_prerequisites(soul_spark, kether_field):
-#             # Raise error if prerequisites fail - Hard Fail
-#             raise ValueError("Soul prerequisites for Creator Entanglement not met.")
-
-#         # Store Initial State
-#         initial_state = { # Record state in correct units
-#              'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
-#              'resonance_factor': soul_spark.resonance, 'creator_alignment': soul_spark.creator_alignment,
-#              'aspect_count': len(soul_spark.aspects) }
-#         logger.debug(f"  Entanglement Initial State: {initial_state}")
-
-#         # --- Run Stages ---
-#         logger.info("Step 1: Establishing Connection...")
-#         channel_data, metrics1 = establish_creator_connection(soul_spark, kether_field, creator_resonance, edge_of_chaos_ratio)
-#         process_metrics_summary['steps']['connection'] = metrics1
-
-#         logger.info("Step 2: Forming Resonance Patterns...")
-#         pattern_data, metrics2 = form_resonance_patterns(soul_spark, channel_data, kether_field)
-#         process_metrics_summary['steps']['patterns'] = metrics2
-
-#         logger.info("Step 3: Transferring Creator Aspects...")
-#         transfer_metrics, metrics3 = transfer_creator_aspects(soul_spark, channel_data, pattern_data, kether_field)
-#         process_metrics_summary['steps']['transfer'] = metrics3
-
-#         logger.info("Step 4: Stabilizing Connection...")
-#         stabilization_result, metrics4 = stabilize_creator_connection(soul_spark, channel_data, pattern_data, stabilization_iterations)
-#         process_metrics_summary['steps']['stabilization'] = metrics4
-
-#         # --- Final State Update ---
-#         # Capture S/C *before* final update_state for peak reporting
-#         peak_stability_su = stabilization_result['final_metrics_before_update']['stability_su']
-#         peak_coherence_cu = stabilization_result['final_metrics_before_update']['coherence_cu']
-#         logger.debug(f"  Before final update_state in entanglement: S={peak_stability_su:.1f}, C={peak_coherence_cu:.1f}")
-
-#         setattr(soul_spark, FLAG_READY_FOR_COMPLETION, True)
-#         setattr(soul_spark, FLAG_READY_FOR_STRENGTHENING, True)
-#         last_mod_time = datetime.now().isoformat()
-#         setattr(soul_spark, 'last_modified', last_mod_time)
-
-#         if hasattr(soul_spark, 'update_state'):
-#             soul_spark.update_state()
-#             logger.debug(f"  After final update_state in entanglement: S={soul_spark.stability:.1f}, C={soul_spark.coherence:.1f}")
-#         else:
-#              logger.error("SoulSpark object missing 'update_state' method!")
-#              # Hard fail - critical method missing
-#              raise AttributeError("SoulSpark needs 'update_state' method for entanglement.")
-
-#         # Compile Overall Metrics
-#         end_time_iso = last_mod_time; end_time_dt = datetime.fromisoformat(end_time_iso)
-#         final_state = { # Report state in correct units after update_state
-#              'stability_su': soul_spark.stability, 'coherence_cu': soul_spark.coherence,
-#              'resonance_factor': soul_spark.resonance, 'creator_alignment': soul_spark.creator_alignment,
-#              'aspect_count': len(soul_spark.aspects) }
-#         overall_metrics = {
-#             'action': 'full_entanglement', 'soul_id': spark_id,
-#             'start_time': start_time_iso, 'end_time': end_time_iso,
-#             'duration_seconds': (end_time_dt - start_time_dt).total_seconds(),
-#             'initial_state': initial_state,
-#             'peak_stability_su_during_stabilization': float(peak_stability_su), # ADDED PEAK
-#             'peak_coherence_cu_during_stabilization': float(peak_coherence_cu), # ADDED PEAK
-#             'final_state': final_state, # State AFTER update_state
-#             'final_connection_strength': stabilization_result['final_factors']['connection_strength'], # Get factor
-#             'aspects_transferred_count': transfer_metrics.get('aspects_gained_count', 0) + transfer_metrics.get('aspects_strengthened_count', 0),
-#             'stability_change_su': final_state['stability_su'] - initial_state['stability_su'],
-#             'coherence_change_cu': final_state['coherence_cu'] - initial_state['coherence_cu'],
-#             'success': True,
-#         }
-#         if METRICS_AVAILABLE: metrics.record_metrics('creator_entanglement_summary', overall_metrics)
-
-#         logger.info(f"--- Full Entanglement Completed Successfully for Soul {spark_id} ---")
-#         return soul_spark, overall_metrics
-
-#     # --- Error Handling (Ensure Hard Fail) ---
-#     except (ValueError, TypeError, AttributeError) as e_val:
-#         logger.error(f"Entanglement failed for soul {spark_id} due to validation/attribute error: {e_val}", exc_info=True)
-#         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'prerequisites'
-#         record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_val))
-#         # Hard fail - re-raise critical setup errors
-#         raise ValueError(f"Entanglement validation failed: {e_val}") from e_val
-#     except RuntimeError as e_rt:
-#         logger.critical(f"Entanglement failed critically for soul {spark_id}: {e_rt}", exc_info=True)
-#         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'runtime'
-#         record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e_rt))
-#         # Hard fail - re-raise critical runtime errors
-#         raise e_rt
-#     except Exception as e:
-#         logger.critical(f"Unexpected error during entanglement for {spark_id}: {e}", exc_info=True)
-#         failed_step = list(process_metrics_summary['steps'].keys())[-1] if process_metrics_summary['steps'] else 'unexpected'
-#         record_entanglement_failure(spark_id, start_time_iso, failed_step, str(e))
-#         # Hard fail - wrap unexpected errors
-#         raise RuntimeError(f"Unexpected entanglement failure: {e}") from e
-
-# # --- Failure Metric Helper ---
-# def record_entanglement_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
-#     """ Helper to record failure metrics consistently. """
-#     if METRICS_AVAILABLE:
-#         try:
-#             end_time = datetime.now().isoformat()
-#             duration = (datetime.fromisoformat(end_time) - datetime.fromisoformat(start_time_iso)).total_seconds()
-#             metrics.record_metrics('creator_entanglement_summary', {
-#                 'action': 'full_entanglement', 'soul_id': spark_id,
-#                 'start_time': start_time_iso, 'end_time': end_time,
-#                 'duration_seconds': duration,
-#                 'success': False, 'error': error_msg, 'failed_step': failed_step
-#             })
-#         except Exception as metric_e:
-#             logger.error(f"Failed to record entanglement failure metrics for {spark_id}: {metric_e}")
-
-# # --- END OF FILE src/stage_1/soul_formation/creator_entanglement.py ---
-
-
-
-
+            logger.error(f"Failed to record CE failure metrics for {spark_id}: {metric_e}")

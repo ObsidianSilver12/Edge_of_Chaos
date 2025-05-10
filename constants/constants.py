@@ -25,16 +25,17 @@ SILVER_RATIO: float = 1 + np.sqrt(2)
 EDGE_OF_CHAOS_RATIO: float = 1.0 / PHI
 SCHUMANN_FREQUENCY: float = 7.83 # Hz
 CORD_ACTIVATION_ENERGY_COST: float = 50.0 # SEU cost for activating a life cord
-
-
+EDGE_OF_CHAOS_DEFAULT = 0.618 # Golden ratio - optimal edge of chaos parameter
 # --- Paths & Logging ---
 DATA_DIR_BASE: str = "output"
 LOG_LEVEL = logging.INFO # Use INFO, but DEBUG in specific files for tracing
 LOG_FORMAT: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 OUTPUT_DIR_BASE: str = "output"
-
+SPEED_OF_LIGHT: float = 299792458.0  # Speed of light in m/s
+ANCHOR_RESONANCE_MODIFIER: float = 0.85  # Modifier for anchor resonance calculations
+ANCHOR_STRENGTH_MODIFIER: float = 0.6  # Matches existing constant on line 359
+AIR_DENSITY: float = 1.225  # Air density in kg/m³ at sea level
 # --- Energy Units (Biomimetic Scaled Joules) ---
-
 
 # --- Soul Core Units & Ranges ---
 INITIAL_SPARK_BASE_FREQUENCY_HZ: float = 432.0
@@ -99,7 +100,7 @@ HS_TRIGGER_HARMONIC_PURITY: float = 0.90    # Target for (1.0 - Harmonic Deviati
 HS_TRIGGER_FACTOR_THRESHOLD: float = 0.95   # Target for Phi, P.Coh, Harmony, Torus factors (0-1)
 
 # Cycle Control
-HS_MAX_CYCLES: int = 100                   # Maximum refinement iterations if thresholds not met
+HS_MAX_CYCLES: int =  144                # Maximum refinement iterations if thresholds not met
 HS_UPDATE_STATE_INTERVAL: int = 10         # How many cycles between S/C recalculations via update_state()
 
 # Base rates for factor improvements per cycle (modulated by current state)
@@ -116,19 +117,24 @@ HS_HARMONIC_ADJUST_RATE: float = 0.002       # Max adjustment factor applied dur
 HS_ENERGY_ADJUST_FACTOR: float = 5.0        # Scales SEU gain/loss based on delta_harmony in a cycle
 
 
-# --- Creator Entanglement (CE) - Resonance & Connection Constants (NEW for V4.3.8+) ---
-
+# --- Creator Entanglement (CE) - Resonance & Connection Constants
 CE_RESONANCE_THRESHOLD: float = 0.75    # Min resonance score (0-1) considered 'strong' for certain effects (e.g., pattern modulation?)
 CE_CONNECTION_FREQ_WEIGHT: float = 0.6    # Weight of frequency resonance score in connection strength calculation
 CE_CONNECTION_COHERENCE_WEIGHT: float = 0.4 # Weight of soul's coherence (normalized) in connection strength calculation
 CE_PATTERN_MODULATION_STRENGTH: float = 0.05 # How strongly Kether's geometry influences soul's pattern coherence during connection
-
+CREATOR_POTENTIAL_DEFAULT = 0.7  # Default creator potential for entanglement
+ENTANGLEMENT_PREREQ_STABILITY_MIN_SU = 30.0  # Minimum stability required for entanglement
+ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU = 25.0  # Minimum coherence required for entanglement
+SPEED_OF_SOUND = 343.0  # Speed of sound in m/s, used for wavelength calculations
+ASPECT_TRANSFER_THRESHOLD = 0.3  # Minimum resonance * connection for aspect transfer
+ASPECT_TRANSFER_STRENGTH_FACTOR = 0.15  # Strength increase factor for existing aspects
+ASPECT_TRANSFER_INITIAL_STRENGTH = 0.4  # Initial strength for newly transferred aspects
 
 # --- NEW: Coherence Score Calculation Weights (Sum should ideally be 1.0) ---
 COHERENCE_WEIGHT_PHASE: float = 0.20      # Contribution from phase alignment
 COHERENCE_WEIGHT_HARMONY: float = 0.10   # Contribution from harmonic purity/alignment
-COHERENCE_WEIGHT_PATTERN: float = 0.20    # Contribution from pattern_coherence factor
-COHERENCE_WEIGHT_FIELD: float = 0.15      # Contribution from external field influences
+COHERENCE_WEIGHT_PATTERN: float = 0.25    # Contribution from pattern_coherence factor
+COHERENCE_WEIGHT_FIELD: float = 0.10     # Contribution from external field influences
 COHERENCE_WEIGHT_CREATOR: float = 0.10  # Contribution from creator connection strength
 COHERENCE_WEIGHT_TORUS = 0.25  # Contribution from toroidal coherence
 
@@ -209,6 +215,8 @@ FLAG_READY_FOR_JOURNEY="ready_for_journey";
 FLAG_SEPHIROTH_JOURNEY_COMPLETE="sephiroth_journey_complete"; 
 FLAG_READY_FOR_ENTANGLEMENT="ready_for_entanglement"; 
 FLAG_READY_FOR_COMPLETION="ready_for_completion"; 
+FLAG_CREATOR_ENTANGLED = "creator_entangled"  # Flag indicating successful creator entanglement
+FLAG_READY_FOR_HARMONIZATION = "ready_for_harmonization"  # Flag indicating readiness for harmonization
 FLAG_READY_FOR_STRENGTHENING="ready_for_strengthening"; 
 FLAG_HARMONICALLY_STRENGTHENED="harmonically_strengthened"; 
 FLAG_READY_FOR_LIFE_CORD="ready_for_life_cord"; 
@@ -288,8 +296,16 @@ CORD_INTEGRITY_FACTOR_CONN_STR: float = 0.4;
 CORD_INTEGRITY_FACTOR_STABILITY: float = 0.3; 
 CORD_INTEGRITY_FACTOR_EARTH_CONN: float = 0.3
 FINAL_STABILITY_BONUS_FACTOR: float = 0.15 # *** REVIEW: Scales SU bonus? ***
+
+
+#EEarth Harmonisation (Earth Resonance) Constants
 EARTH_ANCHOR_RESONANCE: float = 0.9
-ANCHOR_STRENGTH_MODIFIER: float = 0.6; EARTH_ANCHOR_STRENGTH: float = 0.9; 
+ANCHOR_STRENGTH_MODIFIER: float = 0.6; 
+EARTH_ANCHOR_STRENGTH: float = 0.9; 
+EARTH_CYCLE_FREQ_SCALING: float = 1.0e9
+ECHO_FIELD_STRENGTH_FACTOR: float = 0.85
+HARMONY_SCHUMANN_INTENSITY: float = 0.6
+HARMONY_CORE_INTENSITY: float = 0.4
 EARTH_FREQUENCY = 136.10; 
 EARTH_BREATH_FREQUENCY = 0.2
 EARTH_CONN_FACTOR_CONN_STR: float = 0.5; 
@@ -300,12 +316,24 @@ EARTH_HARMONY_DURATION_FACTOR_DEFAULT: float = 1.0
 EARTH_FREQUENCIES: Dict[str, float] = { "schumann": 7.83, "geomagnetic": 11.75, "core_resonance": EARTH_FREQUENCY, "breath_cycle": EARTH_BREATH_FREQUENCY, "heartbeat_cycle": 1.2, "circadian_cycle": 1.0/(24*3600)}
 EARTH_ELEMENTS: List[str] = ["earth", "water", "fire", "air", "aether"]
 
+# Surface resonance constants
+SURFACE_RESONANCE_FACTOR = 0.5
+SURFACE_RESONANCE_HARMONIC_THRESHOLD = 0.3
 
+# Element colors for layer visualization
+ELEMENT_COLORS = {
+    'earth': '#8B4513',
+    'air': '#87CEEB', 
+    'fire': '#FF4500',
+    'water': '#1E90FF',
+    'aether': '#E6E6FA'
+}
 
 # --- Earth Harmonization (Echo Attunement) Constants (NEW V4.3.8+) ---
 ECHO_PROJECTION_ENERGY_COST_FACTOR: float = 0.02 # % of spiritual energy cost
-ECHO_ATTUNEMENT_CYCLES: int = 8             # Number of attunement cycles
-ECHO_ATTUNEMENT_RATE: float = 0.05            # Base rate of state shift per cycle (modulated by resonance)
+ECHO_ATTUNEMENT_CYCLES: int = 84        # Number of attunement cycles
+ECHO_ATTUNEMENT_RATE: float = 0.8       # Base rate of state shift per cycle (modulated by resonance)
+ECHO_FIELD_COHERENCE_FACTOR: float = 0.75 # Coherence factor for echo field
 ATTUNEMENT_RESONANCE_THRESHOLD: float = 0.3   # Min resonance for attunement shift to occur
 ELEMENTAL_TARGET_EARTH: float = 0.8 # Target alignment for primary earth element
 ELEMENTAL_TARGET_OTHER: float = 0.4 # Target alignment for other elements
@@ -314,11 +342,11 @@ PLANETARY_FREQUENCIES: Dict[str, float] = { # Example Frequencies (Hz) - NEEDS R
     "Sun": 126.22, "Moon": 210.42, "Mercury": 141.27, "Venus": 221.23, "Earth": 194.71,
     "Mars": 144.72, "Jupiter": 183.58, "Saturn": 147.85, "Uranus": 207.36,
     "Neptune": 211.44, "Pluto": 140.25 }
-PLANETARY_ATTUNEMENT_CYCLES: int = 5 # Cycles for planetary resonance step
-PLANETARY_RESONANCE_RATE: float = 0.04 # Rate for planetary resonance factor gain
-GAIA_CONNECTION_CYCLES: int = 3 # Cycles for Gaia connection step
-GAIA_CONNECTION_FACTOR: float = 0.1 # Rate for Gaia connection factor gain
-STRESS_FEEDBACK_FACTOR: float = 0.01 # How much echo discordance impacts main soul stability variance
+PLANETARY_ATTUNEMENT_CYCLES: int = 21 # Cycles for planetary resonance step
+PLANETARY_RESONANCE_RATE: float = 0.0095 # Rate for planetary resonance factor gain
+GAIA_CONNECTION_CYCLES: int = 13 # Cycles for Gaia connection step
+GAIA_CONNECTION_FACTOR: float = 0.023 # Rate for Gaia connection factor gain
+STRESS_FEEDBACK_FACTOR: float = 0.0024 # How much echo discordance impacts main soul stability variance
 HARMONY_CYCLE_NAMES: List[str] = ["circadian", "heartbeat", "breath"]; 
 HARMONY_CYCLE_IMPORTANCE: Dict[str, float] = {"circadian": 0.6, "heartbeat": 0.8, "breath": 1.0}
 HARMONY_CYCLE_SYNC_TARGET_BASE: float = 0.9; 
@@ -462,6 +490,7 @@ BIRTH_CONN_STRENGTH_FACTOR: float = 0.5;
 BIRTH_CONN_STRENGTH_CAP: float = 0.95; 
 BIRTH_CONN_MOTHER_STRENGTH_FACTOR: float = 0.1
 BIRTH_CONN_TRAUMA_FACTOR: float = 0.3; 
+BIRTH_CONN_ACCEPTANCE_TRAUMA_FACTOR: float = 0.4 
 BIRTH_CONN_MOTHER_TRAUMA_REDUCTION: float = 0.2
 BIRTH_ACCEPTANCE_MIN: float = 0.2; 
 BIRTH_ACCEPTANCE_TRAUMA_FACTOR: float = 0.8; 
@@ -512,6 +541,7 @@ BIRTH_FINAL_STABILITY_PENALTY_FACTOR: float = 0.03 # Max % stability drop due to
 BIRTH_ATTACHMENT_MIN_CORD_INTEGRITY: float = 0.75 # Min cord integrity for attachment
 BIRTH_ALLOC_REGIONS: float = 0.30 # Proportion of BEU for Region Dev
 BIRTH_ALLOC_MYCELIAL: float = 0.60 # Proportion of BEU for Mycelial Store
+LIFE_CORD_FREQUENCIES = {'primary': 528.0}
 # Define fallback constants in case import fails
 BRAIN_FREQUENCIES = {
     'delta': (0.5, 4),      # Deep sleep
@@ -520,6 +550,19 @@ BRAIN_FREQUENCIES = {
     'gamma': (30, 100),     # High cognition
     'lambda': (100, 400)    # Higher spiritual states
 }
+
+# --- Energy Units ---
+SYNAPSE_ENERGY_JOULES: float = 1e-14       # Energy of one synaptic firing in Joules
+# SOUL Energy Scale: SEU <-> Joules
+ENERGY_SCALE_FACTOR: float = 1e14          # 1 SEU = 1e-14 Joules (Matches Synapse Energy)
+ENERGY_UNSCALE_FACTOR: float = 1e-14       # 1 Joule = 1e14 SEU (Inverse for reporting) # <<< ADD THIS BACK
+# BRAIN Energy Scale: BEU <-> Joules
+BRAIN_ENERGY_SCALE_FACTOR: float = 1e12    # 1 BEU = 1e-12 Joules (1 picoJoule) # <<< ENSURE THIS IS PRESENT
+BRAIN_ENERGY_UNIT_PER_JOULE: float = 1e12 
+ENERGY_BRAIN_14_DAYS_JOULES: float = 1e-14 * 24 * 60 * 60 * 14 # Energy of one synaptic firing in Joules over 14 days
+ENERGY_BRAIN_14_DAYS_SEU: float = ENERGY_BRAIN_14_DAYS_JOULES * ENERGY_SCALE_FACTOR # Energy of one synaptic firing in SEU over 14 days
+
+
 
 # --- Metrics Tracking ---
 PERSIST_INTERVAL_SECONDS: int = 60

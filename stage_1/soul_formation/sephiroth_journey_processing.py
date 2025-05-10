@@ -319,29 +319,172 @@ def record_interaction_failure(soul_id: str, sephirah: str, timestamp: str,
     
     logger.error(f"Interaction failure recorded: {failure_data}")
 
-# --- Frequency Nudging Helper ---
-def _apply_frequency_nudging(soul_spark: SoulSpark, target_frequency: float, resonance_strength: float) -> None:
+# --- Layer Resonance Helper ---
+def _develop_layer_resonance(soul_spark: SoulSpark, target_frequency: float, resonance_strength: float) -> Dict[str, Any]:
     """
-    Adjust soul's frequency toward target based on resonance strength.
-    Strong resonance = stronger nudge toward target frequency.
+    Develop resonance in the soul's outermost layer instead of nudging base frequency.
+    Records resonance information and enhances layer properties.
+    Fails hard if unable to process.
+    
+    Returns:
+        Dict with metrics about the resonance development process
     """
-    if not hasattr(soul_spark, 'frequency'):
-        logger.warning("Soul missing frequency attribute - skipping nudge")
-        return
+    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
+        logger.error(f"Cannot develop layer resonance: Soul {soul_spark.spark_id} has no layers")
+        raise ValueError("Soul has no layers for resonance development")
 
-    current_freq = soul_spark.frequency
-    freq_diff = target_frequency - current_freq
+    metrics = {
+        'harmonic_ratio': '',
+        'ratio_value': 0.0,
+        'resonance_effort': 0.0,
+        'density_gain': 0.0,
+        'uniformity_gain': 0.0
+    }
+
+    # Get most recent layer
+    latest_layer = soul_spark.layers[-1]
     
-    # Scale adjustment by resonance (stronger resonance = bigger adjustment)
-    adjustment_factor = resonance_strength * 0.1  # Max 10% adjustment per step
-    freq_adjustment = freq_diff * adjustment_factor
+    # Add debug logging to see the actual layer structure
+    logger.debug(f"Layer structure: {latest_layer.keys()}")
+    if 'density' in latest_layer:
+        logger.debug(f"Density structure: {latest_layer['density'].keys()}")
     
-    new_freq = current_freq + freq_adjustment
-    # Ensure frequency stays positive and within reasonable bounds
-    new_freq = max(0.1, min(1000.0, new_freq))
+    # Initialize resonant frequencies array if not present
+    if 'resonant_frequencies' not in latest_layer:
+        latest_layer['resonant_frequencies'] = []
+        
+    # Initialize harmonic_data if not present
+    if 'harmonic_data' not in latest_layer:
+        latest_layer['harmonic_data'] = {}
     
-    soul_spark.frequency = new_freq
-    logger.debug(f"Frequency nudged: {current_freq:.1f} -> {new_freq:.1f} Hz (target={target_frequency:.1f})")
+    # Record soul's base frequency for reference
+    base_freq = soul_spark.frequency
+    if base_freq <= FLOAT_EPSILON:
+        logger.error(f"Invalid base frequency {base_freq} for soul {soul_spark.spark_id}")
+        raise ValueError(f"Soul base frequency invalid: {base_freq}")
+    
+    # Calculate natural harmonic relationships
+    harmonic_matches = []
+    
+    # Check integer ratios (1:1, 2:1, 3:2, etc.)
+    for n in range(1, 6):
+        for d in range(1, 6):
+            if n == 0 or d == 0:
+                continue
+                
+            ratio_value = float(n) / float(d)
+            harmonic_freq = base_freq * ratio_value
+            # Calculate how close this harmonic is to target
+            deviation = abs(harmonic_freq - target_frequency) / max(target_frequency, FLOAT_EPSILON)
+            # Only consider close matches
+            if deviation < 0.1:
+                harmonic_matches.append({
+                    'ratio': f"{n}:{d}",
+                    'ratio_value': ratio_value,
+                    'frequency': harmonic_freq,
+                    'deviation': deviation,
+                    'is_integer': True
+                })
+    
+    # Check phi-based ratios
+    phi_ratios = [('phi', PHI), ('1/phi', 1.0/PHI), ('phi²', PHI**2), ('1/phi²', 1.0/(PHI**2))]
+    for name, ratio in phi_ratios:
+        harmonic_freq = base_freq * ratio
+        deviation = abs(harmonic_freq - target_frequency) / max(target_frequency, FLOAT_EPSILON)
+        if deviation < 0.1:
+            harmonic_matches.append({
+                'ratio': name,
+                'ratio_value': ratio,
+                'frequency': harmonic_freq,
+                'deviation': deviation,
+                'is_integer': False
+            })
+    
+    # If no natural harmonics found, create a custom one
+    if not harmonic_matches:
+        custom_ratio = target_frequency / base_freq
+        harmonic_matches.append({
+            'ratio': f"custom",
+            'ratio_value': custom_ratio,
+            'frequency': target_frequency,
+            'deviation': 0.0,
+            'is_integer': False
+        })
+    
+    # Sort by deviation (lowest first)
+    harmonic_matches.sort(key=lambda x: x['deviation'])
+    best_match = harmonic_matches[0]
+    
+    # Calculate resonance effort (lower with stronger resonance)
+    effort_base = best_match['deviation'] * (1.0 - resonance_strength)
+    # Prefer simpler ratios
+    ratio_complexity = 0.0
+    if best_match['is_integer']:
+        num, denom = best_match['ratio'].split(':')
+        ratio_complexity = (int(num) + int(denom)) / 20.0  # Scale to 0-1
+    else:
+        # Phi ratios get lower complexity score
+        ratio_complexity = 0.1
+    
+    total_effort = min(1.0, effort_base + ratio_complexity * 0.3)
+    
+    # Record this resonance in the layer
+    harmonic_data = {
+        'target_frequency': float(target_frequency),
+        'harmonic_ratio': best_match['ratio'],
+        'ratio_value': float(best_match['ratio_value']),
+        'resonance_strength': float(resonance_strength),
+        'resonance_effort': float(total_effort)
+    }
+    
+    # Store in layer data
+    latest_layer['harmonic_data'][str(len(latest_layer['harmonic_data']))] = harmonic_data
+    if target_frequency not in latest_layer['resonant_frequencies']:
+        latest_layer['resonant_frequencies'].append(float(target_frequency))
+        
+    # Limit stored frequencies to avoid bloat
+    if len(latest_layer['resonant_frequencies']) > 5:
+        latest_layer['resonant_frequencies'] = latest_layer['resonant_frequencies'][-5:]
+    
+    # Enhance layer density/quality based on resonance
+    current_density = latest_layer['density']['base_density']
+    # Good resonance with low effort = more density improvement
+    density_boost = max(0.0, 0.15 * (1.0 - total_effort) * resonance_strength)
+    new_density = min(1.0, current_density + density_boost)
+    latest_layer['density']['base_density'] = float(new_density)
+    
+    # Update metrics
+    metrics['harmonic_ratio'] = best_match['ratio']
+    metrics['ratio_value'] = best_match['ratio_value']
+    metrics['resonance_effort'] = total_effort
+    metrics['density_gain'] = new_density - current_density
+    
+    # Enhance uniformity if resonance is strong
+    if 'uniformity' in latest_layer['density'] and resonance_strength > 0.7:
+        current_uniformity = latest_layer['density']['uniformity']
+        uniformity_boost = max(0.0, 0.1 * resonance_strength * (1.0 - current_uniformity))
+        new_uniformity = min(1.0, current_uniformity + uniformity_boost)
+        latest_layer['density']['uniformity'] = float(new_uniformity)
+        metrics['uniformity_gain'] = new_uniformity - current_uniformity
+    
+    logger.debug(f"Layer resonance developed: Ratio={best_match['ratio']}, " 
+                f"Effort={total_effort:.4f}, Density: {current_density:.3f}->{new_density:.3f}")
+                
+    # Record interaction in soul metadata if tracking is available
+    if hasattr(soul_spark, 'interaction_history'):
+        interaction_data = {
+            'type': 'layer_resonance_development',
+            'timestamp': datetime.now().isoformat(),
+            'target_frequency': float(target_frequency),
+            'harmonic_ratio': best_match['ratio'],
+            'ratio_value': float(best_match['ratio_value']),
+            'resonance_strength': float(resonance_strength),
+            'effort': float(total_effort),
+            'density_boost': float(density_boost)
+        }
+        soul_spark.interaction_history.append(interaction_data)
+    
+    return metrics
 
 # --- Layer Formation Helper (Applies Influence Factor) ---
 def _form_sephirah_layer(soul_spark: SoulSpark,
@@ -368,15 +511,19 @@ def _form_sephirah_layer(soul_spark: SoulSpark,
             const.SEPHIROTH_ENERGY_EXCHANGE_RATE_K, delta_time=1.0 # Use rate constant
         )
         soul_spark.energy = min(const.MAX_SOUL_ENERGY_SEU,
-                                max(0.0, soul_spark.energy + energy_transfer))
+                              max(0.0, soul_spark.energy + energy_transfer))
         changes['energy_transfer_seu'] = energy_transfer
 
         # 2. Determine Layer Properties
         layer_density = resonance_strength # Simple mapping
         pattern_distortion = soul_spark.get_pattern_distortion() # 0=perfect, 1=max distortion
         layer_uniformity = max(0.0, min(1.0, 1.0 - pattern_distortion))
-        density_map_placeholder = {'base_density': layer_density, 'uniformity': layer_uniformity}
-        layer_details.update(density_map_placeholder)
+        
+        # Create density map with proper structure
+        density_map = {
+            'base_density': layer_density,
+            'uniformity': layer_uniformity
+        }
 
         # 3. Add Layer to Soul
         layer_color_hex = '#FFFFFF' # Fallback
@@ -386,7 +533,9 @@ def _form_sephirah_layer(soul_spark: SoulSpark,
                  r, g, b = [int(c * 255) for c in rgb]
                  layer_color_hex = f'#{r:02x}{g:02x}{b:02x}'
         except Exception as color_err: logger.warning(f"Could not format color: {color_err}")
-        soul_spark.add_layer(sephirah_name, density_map_placeholder, layer_color_hex, timestamp)
+        
+        # THIS IS THE KEY CHANGE - passing density_map directly
+        soul_spark.add_layer(sephirah_name, density_map, layer_color_hex, timestamp)
 
         # 4. Calculate & Apply Influence Factor Increment
         # Enhanced influence increment with resonance boost
@@ -445,16 +594,16 @@ def _form_sephirah_layer(soul_spark: SoulSpark,
 
     except Exception as e:
         logger.error(f"Error forming Sephirah layer for {sephirah_name}: {e}",
-                     exc_info=True)
+                   exc_info=True)
         raise RuntimeError(f"Layer formation failed for {sephirah_name}") from e
 
 
 # --- Main Orchestration Function (Uses Influence Factors) ---
 def process_sephirah_interaction(soul_spark: SoulSpark,
-                                 sephirah_influencer: SephirothField,
-                                 field_controller: 'FieldController', # Keep for context
-                                 duration: float
-                                 ) -> Tuple[SoulSpark, Dict[str, Any]]:
+                               sephirah_influencer: SephirothField,
+                               field_controller: 'FieldController', 
+                               duration: float
+                               ) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
     Processes interaction: Resonance -> Nudge Freq -> Aspects -> Layer/Energy/Influence/Geometry
     -> Update State. Modifies SoulSpark. Includes DETAILED LOGGING. Fails hard.
@@ -475,36 +624,11 @@ def process_sephirah_interaction(soul_spark: SoulSpark,
     start_time_iso = datetime.now().isoformat()
     start_time_dt = datetime.fromisoformat(start_time_iso)
 
-    # --- Metrics variables ---
-    interaction_metrics: Dict[str, Any] = {} # Initialize
-    initial_state_metrics: Dict[str, Any] = {}
-    final_state_metrics: Dict[str, Any] = {}
-    imparted_aspects: Dict[str, float] = {}
-    step_changes: Dict[str, Any] = {}
-    gained_count = 0
-    strengthened_count = 0
-    freq_res = 0.0
-    geom_res = 0.0
-    resonance_strength = 0.0
-
     try:
-        # --- Capture Initial State for this interaction ---
-        e_before = soul_spark.energy
-        s_before = soul_spark.stability
-        c_before = soul_spark.coherence
-        inf_before = getattr(soul_spark, 'cumulative_sephiroth_influence', 0.0)
-        freq_before = soul_spark.frequency
-        initial_state_metrics = { # Capture for final report
-            'energy_seu': e_before, 'stability_su': s_before,
-            'coherence_cu': c_before, 'aspect_count': len(soul_spark.aspects),
-            'layer_count': len(soul_spark.layers)
-        }
-        logger.info(f"  {sephirah_name}: BEFORE - E={e_before:.1f}, S={s_before:.1f}, C={c_before:.1f}, CumulInf={inf_before:.4f}, Freq={freq_before:.1f}Hz")
-
         # --- 1. Calculate Resonance ---
         logger.info(f"  {sephirah_name}: Step 1: Calculating resonance...")
         freq_res = calculate_resonance(soul_spark.frequency,
-                                       sephirah_influencer.target_frequency)
+                                    sephirah_influencer.target_frequency)
         geom_res = calculate_geometric_resonance(soul_spark, sephirah_influencer)
         # Combine using weighted average
         total_weight = (const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_FREQ +
@@ -513,16 +637,12 @@ def process_sephirah_interaction(soul_spark: SoulSpark,
         if total_weight <= const.FLOAT_EPSILON: total_weight = 1.0
         resonance_strength = (
             (freq_res * const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_FREQ +
-             geom_res * const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_GEOM +
-             (freq_res * geom_res * const.PHI) * const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_PHI) # Used PHI constant
+            geom_res * const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_GEOM +
+            (freq_res * geom_res * const.PHI) * const.SEPHIROTH_JOURNEY_RESONANCE_WEIGHT_PHI)
             / total_weight
         )
-        resonance_strength = max(0.0, min(1.0, resonance_strength)) # Clamp 0-1
+        resonance_strength = max(0.0, min(1.0, resonance_strength))  # Clamp 0-1
         logger.info(f"  {sephirah_name}: Resonance - Freq={freq_res:.3f}, Geom={geom_res:.3f} -> Total={resonance_strength:.4f}")
-
-        # --- Action 1b: Enhanced Frequency Nudging ---
-        logger.info(f"  {sephirah_name}: Starting frequency nudging...")
-        _apply_frequency_nudging(soul_spark, sephirah_influencer.target_frequency, resonance_strength)
 
         # --- 2. Acquire Aspects ---
         logger.info(f"  {sephirah_name}: Step 2: Acquiring aspects...")
@@ -531,88 +651,99 @@ def process_sephirah_interaction(soul_spark: SoulSpark,
         )
         # Detailed logging happens inside _acquire_sephirah_aspects
 
-        # --- 3. Form Layer, Transfer Energy, Apply Effects (Modifies Influence) ---
+        # --- 3. Form Layer, Transfer Energy, Apply Effects ---
         logger.info(f"  {sephirah_name}: Step 3: Forming layer, applying energy/influence/geometry...")
-        # Ensure duration scaling is considered or removed if effect is instantaneous
-        # For now, assuming _form_sephirah_layer represents a single 'step' interaction
         step_changes = _form_sephirah_layer(
             soul_spark, sephirah_influencer, resonance_strength
         )
         log_layer = (f"  {sephirah_name}: Layer     - "
-                     f"dE={step_changes.get('energy_transfer_seu', 0.0):+.2f}, "
-                     f"dInf={step_changes.get('sephirah_influence_increment', 0.0):+.5f}")
-        logger.info(log_layer) # Changed to INFO
+                    f"dE={step_changes.get('energy_transfer_seu', 0.0):+.2f}, "
+                    f"dInf={step_changes.get('sephirah_influence_increment', 0.0):+.5f}")
+        logger.info(log_layer)
         if step_changes.get('geometric_effects'):
-             logger.info(f"  {sephirah_name}: Geometry  - Changes: {step_changes['geometric_effects']}") # Changed to INFO
-
-
-        # --- 4. Update Soul's Emergent State (SU/CU Scores) ---
-        logger.info(f"  {sephirah_name}: Step 4: Updating internal state scores...")
-        if hasattr(soul_spark, 'update_state'):
-            soul_spark.update_state()
-        else:
-             logger.error("SoulSpark object missing 'update_state' method!")
-             raise AttributeError("SoulSpark needs 'update_state' method.")
-
-        # --- Capture and Log Final State for this interaction ---
-        e_after = soul_spark.energy
-        s_after = soul_spark.stability
-        c_after = soul_spark.coherence
-        inf_after = getattr(soul_spark, 'cumulative_sephiroth_influence', 0.0)
-        freq_after = soul_spark.frequency
-        # Calculate S/C deltas for this *interaction*
-        s_delta_interaction = s_after - s_before
-        c_delta_interaction = c_after - c_before
-        logger.info(f"  {sephirah_name}: AFTER  - E={e_after:.1f}, S={s_after:.1f}({s_delta_interaction:+.2f}), C={c_after:.1f}({c_delta_interaction:+.2f}), CumulInf={inf_after:.4f}, Freq={freq_after:.1f}Hz")
-
+            logger.info(f"  {sephirah_name}: Geometry  - Changes: {step_changes['geometric_effects']}")
+        
+        # Step 4: Now that we have a layer, develop resonance in it
+        logger.info(f"  {sephirah_name}: Step 4: Developing layer resonance...")
+        
+        # Get layer resonance metrics but don't add them as an extra return value
+        layer_resonance_metrics = _develop_layer_resonance(
+            soul_spark, sephirah_influencer.target_frequency, resonance_strength
+        )
+        
+        # Log layer resonance results
+        if layer_resonance_metrics:
+            layer_ratio = layer_resonance_metrics.get('harmonic_ratio', 'unknown')
+            layer_effort = layer_resonance_metrics.get('resonance_effort', 0.0)
+            density_gain = layer_resonance_metrics.get('density_gain', 0.0)
+            uniformity_gain = layer_resonance_metrics.get('uniformity_gain', 0.0)
+            
+            logger.info(f"  {sephirah_name}: Resonance - Ratio={layer_ratio}, "
+                      f"Effort={layer_effort:.3f}, Density+={density_gain:.3f}, "
+                      f"Uniformity+={uniformity_gain:.3f}")
+            
+            # Add resonance metrics to step_changes for overall metrics
+            step_changes['layer_resonance'] = layer_resonance_metrics
+        
         # --- 5. Compile Metrics ---
-        end_time_iso = datetime.now().isoformat(); end_time_dt = datetime.fromisoformat(end_time_iso)
-        final_state_metrics = { # Capture final state for report
-            'energy_seu': e_after, 'stability_su': s_after,
-            'coherence_cu': c_after, 'aspect_count': len(soul_spark.aspects),
+        end_time_iso = datetime.now().isoformat()
+        end_time_dt = datetime.fromisoformat(end_time_iso)
+        
+        # Get initial and final state values
+        initial_state_metrics = {
+            'energy_seu': getattr(soul_spark, '_initial_energy', 0.0),
+            'stability_su': getattr(soul_spark, '_initial_stability', 0.0),
+            'coherence_cu': getattr(soul_spark, '_initial_coherence', 0.0),
+            'aspect_count': len(getattr(soul_spark, '_initial_aspects', {})),
+            'layer_count': len(getattr(soul_spark, '_initial_layers', []))
+        }
+        
+        # Get final state values
+        e_after = getattr(soul_spark, 'energy', 0.0)
+        s_after = getattr(soul_spark, 'stability', 0.0)
+        c_after = getattr(soul_spark, 'coherence', 0.0)
+        
+        final_state_metrics = {
+            'energy_seu': e_after,
+            'stability_su': s_after,
+            'coherence_cu': c_after,
+            'aspect_count': len(soul_spark.aspects),
             'layer_count': len(soul_spark.layers)
         }
         interaction_metrics = {
-            'action': 'sephirah_interaction_glyph', 'soul_id': spark_id,
-            'sephirah': sephirah_name, 'start_time': start_time_iso,
+            'action': 'sephirah_interaction_glyph',
+            'soul_id': spark_id,
+            'sephirah': sephirah_name,
+            'start_time': start_time_iso,
             'end_time': end_time_iso,
             'duration_seconds': (end_time_dt - start_time_dt).total_seconds(),
-            'simulated_duration': duration, 'resonance_achieved': resonance_strength,
+            'simulated_duration': duration,
+            'resonance_achieved': resonance_strength,
             'freq_resonance_component': freq_res,
             'geom_resonance_component': geom_res,
             'aspects_gained_count': gained_count,
             'aspects_strengthened_count': strengthened_count,
-            'imparted_aspect_strengths_summary': f"{len(imparted_aspects)} aspects impacted", # Summary
-            'layer_formation_changes': step_changes, # Includes energy, influence_increment, geom effects
-            'initial_state': initial_state_metrics, 'final_state': final_state_metrics,
+            'imparted_aspect_strengths_summary': f"{len(imparted_aspects)} aspects impacted",
+            'layer_formation_changes': step_changes,  # This now includes layer_resonance metrics
+            'initial_state': initial_state_metrics,
+            'final_state': final_state_metrics,
             'success': True,
         }
+
         if METRICS_AVAILABLE:
-             metrics.record_metrics('sephiroth_journey_step', interaction_metrics)
+            metrics.record_metrics('sephiroth_journey_step', interaction_metrics)
 
-        logger.info(f"--- Finished SephInteraction: {sephirah_name.capitalize()} (Res={resonance_strength:.4f}) ---")
-
+        # --- 5. Update Soul's Emergent State (SU/CU Scores) ---
+        logger.info(f"  {sephirah_name}: Step 5: Updating internal state scores...")
+        if hasattr(soul_spark, 'update_state'):
+            soul_spark.update_state()
+        else:
+            logger.error("SoulSpark object missing 'update_state' method!")
+            raise AttributeError("SoulSpark needs 'update_state' method.")
+            
         return soul_spark, interaction_metrics
-
-    # --- Error Handling ---
-    # ... (Keep existing error handling) ...
-    except (ValueError, TypeError, AttributeError) as e_val:
-        logger.error(f"Sephirah interaction failed for {spark_id} in "
-                     f"{sephirah_name}: {e_val}", exc_info=True)
-        record_interaction_failure(spark_id, sephirah_name, start_time_iso,
-                                   'validation/attribute', str(e_val))
-        raise # Re-raise specific errors
-    except RuntimeError as e_rt:
-        logger.critical(f"Sephirah interaction failed critically for {spark_id} "
-                        f"in {sephirah_name}: {e_rt}", exc_info=True)
-        record_interaction_failure(spark_id, sephirah_name, start_time_iso,
-                                   'runtime', str(e_rt))
-        raise # Re-raise runtime errors
     except Exception as e:
-        logger.critical(f"Unexpected error during interaction for {spark_id} "
-                        f"in {sephirah_name}: {e}", exc_info=True)
-        record_interaction_failure(spark_id, sephirah_name, start_time_iso,
-                                   'unexpected', str(e))
-        raise RuntimeError(f"Unexpected Sephirah interaction failure: {e}") from e
-
+        logger.error(f"Error during Sephirah interaction for {soul_spark.spark_id} in "
+                   f"{sephirah_name}: {e}", exc_info=True)
+        raise RuntimeError(f"Sephirah interaction failed for {sephirah_name}") from e
 # --- END OF REVISED Journey Function ---

@@ -13,6 +13,7 @@ Author: Soul Development Framework Team
 import logging
 import numpy as np
 from typing import Dict, List, Any, Tuple, Optional
+from datetime import datetime
 import math
 
 # Configure logging
@@ -111,7 +112,59 @@ class FieldHarmonics:
         "yesod": "icosahedron",
         "malkuth": "hexahedron"
     }
-    
+
+    @staticmethod
+    def generate_sound_file(field_type: str, sound_params: Dict[str, Any], 
+                        event_type: str, identifier: str = "") -> Optional[str]:
+        """
+        Generate an actual sound file from parameters.
+        
+        Args:
+            field_type: Type of field ('void', 'kether', etc.)
+            sound_params: Dictionary of sound parameters
+            event_type: Type of event ("transition", "burst", "resonance", etc.)
+            identifier: Additional identifier (soul ID, location, etc.)
+            
+        Returns:
+            Path to the generated sound file or None if generation failed
+        """
+        # Import sound_generator if needed
+        try:
+            from sound.sound_generator import SoundGenerator
+            sound_gen_available = True
+            
+            if sound_gen_available:
+                # Create sound generator
+                sound_gen = SoundGenerator(output_dir="output/sounds/field_interactions")
+                
+                # Calculate base frequency from field type
+                base_freq = 432.0  # Default frequency
+                if field_type in FieldHarmonics.SEPHIROTH_FREQUENCIES:
+                    base_freq = FieldHarmonics.SEPHIROTH_FREQUENCIES[field_type]
+
+                # Calculate ratio for harmonics (using golden ratio as default)
+                ratio = (1 + math.sqrt(5)) / 2
+                
+                # Generate harmonic tone with correct parameter names
+                sound = sound_gen.generate_harmonic_tone(
+                    base_frequency=base_freq,
+                    harmonics=[1.0, ratio],
+                    amplitudes=[0.8, 0.4],
+                    duration=3.0,
+                    fade_in_out=0.5
+                )
+                
+                # Save the sound
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"field_interaction_{field_type}_{event_type}_{timestamp}.wav"
+                sound_file = sound_gen.save_sound(sound, filename)
+                
+                if sound_file:
+                    logger.info(f"Generated sound file for light interaction: {sound_file}")
+                    
+        except Exception as sound_err:
+            logger.error(f"Error generating light interaction sound: {sound_err}", exc_info=True)
+   
     @staticmethod
     def get_sephirah_frequency(sephirah_name: str) -> float:
         """
