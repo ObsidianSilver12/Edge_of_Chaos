@@ -568,6 +568,38 @@ def visualize_64_star_tetrahedron(star_data: Dict[str, Any],
     
     return fig
 
+def get_base_glyph_elements(center: Tuple[float, float, float], size: float) -> Dict[str, Any]:
+    """
+    Returns 3D lines for Star Tetrahedron (Merkaba) base glyph. Size is edge length.
+    """
+    star_data = generate_star_tetrahedron(center, size)
+    lines_data = []
+    all_verts_list_st = [] # Renamed
+
+    up_verts_st_np = np.array(star_data['upright']['vertices']) # Renamed
+    all_verts_list_st.extend(up_verts_st_np.tolist())
+    for v_idx1, v_idx2 in star_data['upright']['edges']:
+        lines_data.append((up_verts_st_np[v_idx1].tolist(), up_verts_st_np[v_idx2].tolist()))
+
+    down_verts_st_np = np.array(star_data['inverted']['vertices']) # Renamed
+    all_verts_list_st.extend(down_verts_st_np.tolist())
+    for v_idx1, v_idx2 in star_data['inverted']['edges']:
+        lines_data.append((down_verts_st_np[v_idx1].tolist(), down_verts_st_np[v_idx2].tolist()))
+    
+    overall_verts_st_np = np.array(all_verts_list_st) # Renamed
+    min_coords_st = np.min(overall_verts_st_np, axis=0); max_coords_st = np.max(overall_verts_st_np, axis=0) # Renamed
+    padding_st = size * 0.15 # Renamed (using 'size' as it's edge_length)
+
+    return {
+        'lines': lines_data,
+        'projection_type': '3d',
+         'bounding_box': {
+            'xmin': float(min_coords_st[0]-padding_st), 'xmax': float(max_coords_st[0]+padding_st),
+            'ymin': float(min_coords_st[1]-padding_st), 'ymax': float(max_coords_st[1]+padding_st),
+            'zmin': float(min_coords_st[2]-padding_st), 'zmax': float(max_coords_st[2]+padding_st),
+        }
+    }
+
 # Example usage
 if __name__ == "__main__":
     # Create a 64 star tetrahedron

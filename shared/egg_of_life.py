@@ -661,6 +661,31 @@ def visualize_egg_of_life_3d(egg_data: Dict[str, Any],
     
     return fig
 
+def get_base_glyph_elements(center: Tuple[float, float], radius: float) -> Dict[str, Any]:
+    """
+    Returns the geometric elements (circles) for a simple line art
+    representation of the Egg of Life.
+    """
+    egg_data = generate_egg_of_life_2d(center, radius, resolution=10) # Low res for data
+    
+    circles_data = []
+    for center_pos_egg in egg_data['centers']: # Renamed
+        circles_data.append({'center': tuple(center_pos_egg), 'radius': egg_data['radius']})
+
+    all_x_egg = [c[0] for c in egg_data['centers']]; all_y_egg = [c[1] for c in egg_data['centers']] # Renamed
+    padding_egg = egg_data['radius'] * 0.2 # Renamed
+
+    return {
+        'circles': circles_data,
+        'projection_type': '2d',
+        'bounding_box': {
+            'xmin': float(min(all_x_egg) - egg_data['radius'] - padding_egg), 
+            'xmax': float(max(all_x_egg) + egg_data['radius'] + padding_egg),
+            'ymin': float(min(all_y_egg) - egg_data['radius'] - padding_egg), 
+            'ymax': float(max(all_y_egg) + egg_data['radius'] + padding_egg),
+        }
+    }
+
 # Example usage
 if __name__ == "__main__":
     # Create a 2D egg of life

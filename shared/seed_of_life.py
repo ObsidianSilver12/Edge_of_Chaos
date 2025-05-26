@@ -386,6 +386,36 @@ class SeedOfLife:
                 f"Outer Hexagon Radius: {props['outer_hexagon_radius']:.4f}\n"
                 f"Resolution: {self.resolution}x{self.resolution}")
 
+    def get_base_glyph_elements(self) -> Dict[str, Any]:
+        """
+        Returns the geometric elements (circles) for a simple line art
+        representation of the Seed of Life.
+        """
+        if not hasattr(self, 'circle_centers') or not self.circle_centers:
+            # Ensure circle_centers is populated, assuming _calculate_circle_centers is a method
+            if hasattr(self, '_calculate_circle_centers'):
+                self._calculate_circle_centers() 
+            else: # Fallback if method name differs or not present
+                self.generate_2d_pattern() # This might populate circle_centers indirectly or be an error
+                if not hasattr(self, 'circle_centers') or not self.circle_centers:
+                    raise AttributeError("SeedOfLife instance does not have 'circle_centers' populated for glyph generation.")
+
+
+        circles_data = []
+        for center_pos_sl in self.circle_centers: # Renamed center_pos
+            circles_data.append({'center': tuple(center_pos_sl), 'radius': self.radius})
+
+        all_x_sl = [c[0] for c in self.circle_centers]; all_y_sl = [c[1] for c in self.circle_centers] # Renamed all_x, all_y
+        padding_sl = self.radius * 0.2 # Renamed padding
+
+        return {
+            'circles': circles_data,
+            'projection_type': '2d',
+            'bounding_box': {
+                'xmin': float(min(all_x_sl) - self.radius - padding_sl), 'xmax': float(max(all_x_sl) + self.radius + padding_sl),
+                'ymin': float(min(all_y_sl) - self.radius - padding_sl), 'ymax': float(max(all_y_sl) + self.radius + padding_sl),
+            }
+        }
 
 if __name__ == "__main__":
     # Example usage

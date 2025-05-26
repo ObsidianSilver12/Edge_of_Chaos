@@ -18,6 +18,8 @@ import uuid
 from datetime import datetime
 from math import sqrt, pi as PI, exp, sin, cos, tanh
 from constants.constants import *
+from stage_1.evolve.core.evolve_constants import *
+from stage_1.evolve.brain_structure.brain_seed import BrainSeed
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
@@ -27,8 +29,10 @@ if not logger.handlers:
 # --- Dependency Imports ---
 try:
     from stage_1.soul_spark.soul_spark import SoulSpark
-    from stage_1.soul_formation.brain_seed import BrainSeed, create_brain_seed
-    from stage_1.soul_formation.brain_soul_attachment import attach_soul_to_brain, distribute_soul_aspects
+    from stage_1.evolve.brain_structure.brain_seed import BrainSeed, create_brain_seed
+    from stage_1.evolve.brain_structure.brain_soul_attachment import attach_soul_to_brain, distribute_soul_aspects
+    from stage_1.evolve.core.mother_resonance import create_mother_resonance_data
+    from stage_1.evolve.mycelial.mother_integration import create_mother_integration_controller
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import dependencies for Birth: {e}", exc_info=True)
     raise ImportError(f"Core dependencies missing for Birth: {e}") from e
@@ -112,6 +116,58 @@ def _find_resonant_layer_indices(soul_spark: SoulSpark, frequency: float) -> Lis
         if best_resonance > 0.3:
             resonant_indices.append(i)
     return resonant_indices
+
+# --- Mother Profile Helper ---
+def _create_or_get_mother_profile(provided_profile: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Creates mother profile if not provided, or validates and returns provided profile.
+    """
+    if provided_profile:
+        logger.debug("Using provided mother profile")
+        return provided_profile
+    
+    logger.info("Creating default mother resonance profile for birth")
+    try:
+        # Create mother resonance data
+        mother_data = create_mother_resonance_data()
+        logger.debug(f"Created mother profile with {len(mother_data)} attributes")
+        return mother_data
+    except Exception as e:
+        logger.warning(f"Failed to create mother profile: {e}. Using minimal profile.")
+        # Return minimal profile as fallback
+        return {
+            'nurturing_capacity': 0.7,
+            'love_resonance': 0.8,
+            'spiritual': {'connection': 0.6}
+        }
+
+def _load_existing_brain_seed(soul_spark: SoulSpark) -> BrainSeed:
+    """
+    Loads existing brain seed from previous stages instead of creating new one.
+    """
+    spark_id = getattr(soul_spark, 'spark_id', 'unknown')
+    
+    # Try to load from various possible locations
+    possible_paths = [
+        f"output/brain_seeds/brain_{spark_id}_developed.json",
+        f"output/brain_seeds/brain_{spark_id}_basic.json",
+        f"output/brain_seeds/brain_{spark_id}.json"
+    ]
+    
+    for brain_path in possible_paths:
+        try:
+            if os.path.exists(brain_path):
+                logger.info(f"Loading existing brain seed from {brain_path}")
+                brain_seed = BrainSeed.load_state(brain_path)
+                logger.debug(f"Loaded brain seed with {brain_seed.base_energy_level:.2E} BEU")
+                return brain_seed
+        except Exception as e:
+            logger.warning(f"Failed to load brain seed from {brain_path}: {e}")
+            continue
+    
+    # If no existing brain seed found, this is an error
+    raise FileNotFoundError(f"No existing brain seed found for soul {spark_id}. "
+                           f"Brain seed should be created in earlier stages before birth.")
 
 # --- Core Birth Functions ---
 
@@ -909,6 +965,10 @@ def perform_birth(soul_spark: SoulSpark,
     brain_seed = None
 
     try:
+        # --- Create or Get Mother Profile ---
+        mother_profile = _create_or_get_mother_profile(mother_profile)
+        logger.info(f"Using mother profile with nurturing: {mother_profile.get('nurturing_capacity', 'unknown')}")
+        
         # --- Check Prerequisites and Properties ---
         _ensure_soul_properties(soul_spark)
         _check_prerequisites(soul_spark)
@@ -955,7 +1015,7 @@ def perform_birth(soul_spark: SoulSpark,
         logger.debug(f"Allocating BEU -> Core: {core_beu:.2E}, Mycelial Store: {mycelial_beu:.2E}")
         
         # Create Minimal Brain Seed
-        brain_seed = create_brain_seed(soul_spark, initial_beu=core_beu, initial_mycelial_beu=mycelial_beu)
+        brain_seed = create_brain_seed(initial_beu=core_beu, initial_mycelial_beu=mycelial_beu, initial_frequency=soul_spark.frequency)
         
         # Create standing waves between brain and soul
         standing_waves = _create_brain_soul_standing_waves(soul_spark, brain_seed)
@@ -1063,7 +1123,6 @@ def perform_birth(soul_spark: SoulSpark,
         record_birth_failure(spark_id, start_time_iso, failed_step, str(e), mother_profile is not None)
         setattr(soul_spark, FLAG_INCARNATED, False)
         raise RuntimeError(f"Unexpected birth process failure: {e}") from e
-
 # --- Failure Metric Helper ---
 def record_birth_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str, mother_active: bool):
     """ Helper to record failure metrics consistently. """

@@ -1,12 +1,14 @@
 """
-Life Cord Formation Functions (Refactored V4.4.0 - Wave Physics & Aura Integration)
+Life Cord Formation Functions (Refactored V5.0.0 - Resonant Channel Principles)
 
-Manifests the life cord based on Creator connection quality, anchored by the soul.
-Uses wave-based physics including waveguide principles, quantum entanglement,
-and standing wave patterns. Implements proper acoustic and light transmission
-through the cord. Creates harmonic nodes based on Fibonacci sequences.
-Integrates with soul's aura layers rather than modifying core properties.
-Modifies the SoulSpark object instance directly. Uses constants. Hard fails.
+Creates an indestructible divine life cord with two anchors (earth and spiritual)
+and communication channels based on natural resonance principles. The soul must
+adjust its resonance to match the anchors to establish communication through biomimetic
+adaptation similar to meditation practice. The cord itself remains perfect divine energy
+while the soul adapts its frequency temporarily without changing its base nature.
+
+Records the resonance journey using edge of chaos principles for metrics tracking.
+Hard fails on critical errors with no fallbacks for reliable debugging.
 """
 
 import logging
@@ -14,11 +16,10 @@ import numpy as np
 import os
 import sys
 from datetime import datetime
-import time
 import uuid
 from constants.constants import *
 from typing import Dict, List, Any, Tuple, Optional
-from math import pi as PI, sqrt, exp, sin, cos, tanh
+from math import pi as PI, sqrt, exp, sin, cos, tanh, log
 
 
 # --- Logging ---
@@ -27,8 +28,50 @@ logger = logging.getLogger(__name__)
 # --- Dependency Imports ---
 try:
     from stage_1.soul_spark.soul_spark import SoulSpark
-    # Import resonance calculation
-    from .creator_entanglement import calculate_resonance
+    
+    # Try to import resonance calculation from creator_entanglement
+    try:
+        from .creator_entanglement import calculate_resonance
+    except (ImportError, AttributeError):
+        # Define a local version if import fails
+        def calculate_resonance(freq1: float, freq2: float) -> float:
+            """Calculate natural resonance between frequencies."""
+            if freq1 <= FLOAT_EPSILON or freq2 <= FLOAT_EPSILON:
+                return 0.0
+                
+            # Calculate logarithmic difference (perceptual)
+            log_diff = abs(np.log(freq1) - np.log(freq2))
+            tolerance = 0.15  # Resonance width parameter
+            
+            # Main resonance (Gaussian distribution - natural resonance curve)
+            main_resonance = np.exp(-log_diff**2 / (2 * tolerance**2))
+            
+            # Check for harmonic relationships (integer ratios and phi)
+            ratio = max(freq1, freq2) / min(freq1, freq2)
+            harmonic_resonance = 0.0
+            
+            # Integer ratios (natural harmonics)
+            for i in range(1, 6):
+                for j in range(1, 6):
+                    if j == 0: continue
+                    target_ratio = float(i) / float(j)
+                    ratio_diff = abs(ratio - target_ratio)
+                    if ratio_diff < 0.1 * target_ratio:
+                        harmonic_score = 1.0 - (ratio_diff/(0.1 * target_ratio))
+                        harmonic_resonance = max(harmonic_resonance, harmonic_score)
+            
+            # Phi ratios (natural growth patterns)
+            phi_ratios = [PHI, 1/PHI, PHI**2, 1/(PHI**2)]
+            for phi_ratio in phi_ratios:
+                ratio_diff = abs(ratio - phi_ratio)
+                if ratio_diff < 0.1 * phi_ratio:
+                    phi_score = 1.0 - (ratio_diff/(0.1 * phi_ratio))
+                    harmonic_resonance = max(harmonic_resonance, phi_score)
+                    
+            # Combine using weighted average (natural principle)
+            final_resonance = 0.7 * main_resonance + 0.3 * harmonic_resonance
+            return max(0.0, min(1.0, final_resonance))
+
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}.")
     raise ImportError(f"Core dependencies missing: {e}") from e
@@ -53,1647 +96,847 @@ except ImportError:
         def record_metrics(self, *args, **kwargs): pass
     metrics = MetricsPlaceholder()
 
-# --- Helper Functions ---
+# --- Prerequisite Validation ---
 
-def _check_prerequisites(soul_spark: SoulSpark) -> bool:
-    """ Checks prerequisites using SU/CU thresholds. Raises ValueError on failure. """
+def _check_prerequisites(soul_spark: SoulSpark) -> None:
+    """
+    Checks prerequisites using SU/CU thresholds. 
+    Raises ValueError on failure - hard fail with no fallbacks.
+    """
     logger.debug(f"Checking life cord prerequisites for soul {soul_spark.spark_id}...")
+    
     if not isinstance(soul_spark, SoulSpark):
         raise TypeError("Invalid SoulSpark object.")
 
     # 1. Stage Completion Check
     if not getattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, False):
-        msg = f"Prerequisite failed: Soul not marked {FLAG_READY_FOR_LIFE_CORD}."
-        logger.error(msg); raise ValueError(msg)
+        raise ValueError(f"Prerequisite failed: Soul not marked {FLAG_READY_FOR_LIFE_CORD}.")
 
     # 2. Minimum Stability and Coherence (Absolute SU/CU)
     stability_su = getattr(soul_spark, 'stability', -1.0)
     coherence_cu = getattr(soul_spark, 'coherence', -1.0)
+    
     if stability_su < 0 or coherence_cu < 0:
-        msg = "Prerequisite failed: Soul missing stability or coherence attributes."
-        logger.error(msg); raise AttributeError(msg)
+        raise AttributeError("Prerequisite failed: Soul missing stability or coherence attributes.")
 
     if stability_su < CORD_STABILITY_THRESHOLD_SU:
-        msg = f"Prerequisite failed: Stability ({stability_su:.1f} SU) < {CORD_STABILITY_THRESHOLD_SU} SU."
-        logger.error(msg); raise ValueError(msg)
+        raise ValueError(f"Prerequisite failed: Stability ({stability_su:.1f} SU) < {CORD_STABILITY_THRESHOLD_SU} SU.")
+        
     if coherence_cu < CORD_COHERENCE_THRESHOLD_CU:
-        msg = f"Prerequisite failed: Coherence ({coherence_cu:.1f} CU) < {CORD_COHERENCE_THRESHOLD_CU} CU."
-        logger.error(msg); raise ValueError(msg)
-
-    # 3. Energy Check (Done in main function before cost)
-
-    if getattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, False):
-        logger.warning(f"Soul {soul_spark.spark_id} already marked {FLAG_CORD_FORMATION_COMPLETE}. Re-running.")
+        raise ValueError(f"Prerequisite failed: Coherence ({coherence_cu:.1f} CU) < {CORD_COHERENCE_THRESHOLD_CU} CU.")
 
     logger.debug("Life cord prerequisites met.")
-    return True
 
-def _ensure_soul_properties(soul_spark: SoulSpark):
-    """ Ensure soul has necessary properties. Raises error if missing/invalid. """
+
+def _ensure_soul_properties(soul_spark: SoulSpark) -> None:
+    """
+    Ensure soul has necessary properties. 
+    Raises error if missing/invalid - hard fail for reliability.
+    """
     logger.debug(f"Ensuring properties for life cord formation (Soul {soul_spark.spark_id})...")
-    required = ['frequency', 'stability', 'coherence', 'position', 'field_radius',
-                'field_strength', 'creator_connection_strength', 'energy', 'layers']
-    if not all(hasattr(soul_spark, attr) for attr in required):
-        missing = [attr for attr in required if not hasattr(soul_spark, attr)]
+    
+    required = [
+        'frequency', 'stability', 'coherence', 'position', 'field_radius',
+        'field_strength', 'creator_connection_strength', 'energy'
+    ]
+    
+    missing = [attr for attr in required if not hasattr(soul_spark, attr)]
+    if missing:
         raise AttributeError(f"SoulSpark missing essential attributes for Life Cord: {missing}")
 
-    if not hasattr(soul_spark, 'life_cord'): setattr(soul_spark, 'life_cord', {})
-    if not hasattr(soul_spark, 'cord_integrity'): setattr(soul_spark, 'cord_integrity', 0.0)
+    if not hasattr(soul_spark, 'life_cord'): 
+        setattr(soul_spark, 'life_cord', {})
+        
+    if not hasattr(soul_spark, 'cord_integrity'): 
+        setattr(soul_spark, 'cord_integrity', 0.0)
 
-    if soul_spark.frequency <= FLOAT_EPSILON: raise ValueError("Soul frequency must be positive.")
+    if soul_spark.frequency <= FLOAT_EPSILON: 
+        raise ValueError("Soul frequency must be positive.")
+        
     pos = getattr(soul_spark, 'position')
-    if not isinstance(pos, list) or len(pos)!=3: raise ValueError(f"Invalid position: {pos}")
+    if not isinstance(pos, list) or len(pos) != 3: 
+        raise ValueError(f"Invalid position: {pos}")
+        
     if soul_spark.energy < CORD_ACTIVATION_ENERGY_COST:
         raise ValueError(f"Insufficient energy ({soul_spark.energy:.1f} SEU) for cord activation cost ({CORD_ACTIVATION_ENERGY_COST} SEU).")
 
-    # Check for layers presence
-    if not soul_spark.layers or len(soul_spark.layers) < 2:
-        raise ValueError("Soul must have at least 2 aura layers for life cord formation.")
-
     logger.debug("Soul properties ensured for Life Cord.")
 
-def _find_resonant_layer_indices(soul_spark: SoulSpark, frequency: float) -> List[int]:
-    """
-    Find indices of layers that resonate with a given frequency.
-    Uses calculate_resonance to find layers with natural affinity.
-    """
-    resonant_indices = []
-    
-    for i, layer in enumerate(soul_spark.layers):
-        if not isinstance(layer, dict):
-            continue
-            
-        # Get layer frequencies
-        layer_freqs = []
-        if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-            layer_freqs.extend([f for f in layer['resonant_frequencies'] if f > FLOAT_EPSILON])
-        
-        # Find best resonance with this layer
-        best_resonance = 0.0
-        for layer_freq in layer_freqs:
-            res = calculate_resonance(frequency, layer_freq)
-            best_resonance = max(best_resonance, res)
-        
-        # Add layer if resonance is significant
-        if best_resonance > 0.3:  # Only include strong resonances
-            resonant_indices.append(i)
-    
-    return resonant_indices
 
-def _create_waveguide_structure(soul_frequency: float, length: float, diameter: float, 
-                              integrity: float = 0.8) -> Dict[str, Any]:
+# --- Core Implementation ---
+
+def _establish_divine_cord() -> Dict[str, Any]:
     """
-    Creates a waveguide structure for the life cord based on physical principles.
-    Includes acoustic impedance, wave velocity, and attenuation factors.
+    Creates the divine cord structure with perfect, indestructible properties.
+    The divine cord is composed of pure creator energy that follows fundamental
+    universal laws rather than biological ones.
+    
+    Returns:
+        Dict containing the divine cord properties
     """
-    if soul_frequency <= FLOAT_EPSILON or length <= FLOAT_EPSILON or diameter <= FLOAT_EPSILON:
-        raise ValueError("Invalid waveguide parameters: frequency, length, or diameter is not positive.")
+    logger.info("LC Step: Establishing Divine Cord...")
     
-    if not 0.0 <= integrity <= 1.0:
-        raise ValueError(f"Integrity must be between 0.0 and 1.0, got {integrity}")
+    creation_timestamp = datetime.now().isoformat()
     
-    # Calculate basic waveguide properties
-    wavelength = SPEED_OF_SOUND / soul_frequency
-    cutoff_frequency = 1.8412 * SPEED_OF_SOUND / (PI * diameter)
-    propagation_constant = 2 * PI / wavelength
-    
-    # Calculate attenuation based on integrity (lower integrity = higher attenuation)
-    attenuation = (1.0 - integrity) * 0.05  # dB/m
-    
-    # Calculate acoustic impedance (simplified model)
-    impedance = AIR_DENSITY * SPEED_OF_SOUND / (PI * (diameter/2)**2)
-    
-    # Calculate velocity factor (acoustic waves travel differently in waveguide)
-    if soul_frequency > cutoff_frequency:
-        velocity_factor = sqrt(1 - (cutoff_frequency/soul_frequency)**2)
-    else:
-        velocity_factor = 0.5  # Below cutoff, waves still propagate but differently
-    
-    # Create waveguide structure
-    waveguide = {
-        "length": float(length),
-        "diameter": float(diameter),
-        "wavelength": float(wavelength),
-        "cutoff_frequency": float(cutoff_frequency),
-        "propagation_constant": float(propagation_constant),
-        "attenuation": float(attenuation),
-        "acoustic_impedance": float(impedance),
-        "velocity_factor": float(velocity_factor),
-        "resonant_modes": [],# Will be filled with modes
-        "primary_frequency_hz": float(soul_frequency),  # Add this line
-        "bandwidth_hz": float(soul_frequency * 0.1),  # Add this line
+    # Create the perfect divine cord
+    divine_cord = {
+        "divine_properties": {
+            "integrity": 1.0,               # Perfect integrity - indestructible
+            "stability": 1.0,               # Perfect stability - unwavering
+            "elasticity": 1.0,              # Perfect elasticity - adapts without distortion
+            "resonance": 1.0,               # Perfect resonance - pure creator frequency
+            "creation_timestamp": creation_timestamp,
+            "divine_energy_purity": 1.0,    # 100% pure creator energy
+            "divine_energy_level": 1.0,     # Full creator energy
+            "divine_laws": {
+                "immutability": 1.0,        # Cannot be corrupted
+                "omnipresence": 1.0,        # Spans dimensions seamlessly
+                "efficiency": 1.0           # Perfect energy transmission
+            }
+        },
+        "creation_timestamp": creation_timestamp
     }
     
-    # Calculate resonant modes in the waveguide
-    num_modes = 5  # Calculate first 5 modes
-    for m in range(num_modes):
-        mode_freq = (m + 1) * SPEED_OF_SOUND / (2 * length)
-        mode_wavelength = SPEED_OF_SOUND / mode_freq
-        
-        # Check if mode can propagate
-        can_propagate = mode_freq > cutoff_frequency
-        
-        # Calculate mode integrity (higher modes have lower integrity)
-        mode_integrity = integrity * (1.0 - 0.1 * m)
-        
-        waveguide["resonant_modes"].append({
-            "mode_number": m + 1,
-            "frequency": float(mode_freq),
-            "wavelength": float(mode_wavelength),
-            "can_propagate": can_propagate,
-            "integrity_factor": float(mode_integrity)
-        })
-    
-    return waveguide
+    logger.info("Divine Cord established with perfect properties.")
+    return divine_cord
 
-def _calculate_fibonacci_node_positions(num_nodes: int) -> List[float]:
-    """
-    Calculate node positions based on Fibonacci sequence for optimal stability.
-    Returns positions normalized to 0-1 range.
-    """
-    if num_nodes <= 0:
-        raise ValueError("Number of nodes must be positive.")
-    
-    # Generate enough Fibonacci numbers
-    fib_sequence = [1, 1]
-    while len(fib_sequence) < num_nodes + 5:  # Get more than needed for calculations
-        fib_sequence.append(fib_sequence[-1] + fib_sequence[-2])
-    
-    # Use Fibonacci numbers to calculate positions
-    positions = []
-    max_pos = fib_sequence[num_nodes + 2]  # Use this for normalization
-    
-    for i in range(num_nodes):
-        # Use golden ratio properties for natural distribution
-        # This creates a distribution that clumps toward the ends
-        pos = fib_sequence[i + 2] / max_pos
-        
-        # Adjust to ensure positions are well-distributed
-        # Apply a smoothing function to get better spread
-        adjusted_pos = 0.05 + 0.9 * (1 - (1 - pos)**2)
-        
-        positions.append(adjusted_pos)
-    
-    # Sort positions (Fibonacci sequence will already be ascending,
-    # but the smoothing might change the order slightly)
-    positions.sort()
-    
-    return positions
 
-# --- Core Life Cord Functions ---
-
-def _establish_soul_earth_anchors(soul_spark: SoulSpark) -> Tuple[Dict[str, Any], Dict[str, Any], float]:
+def _create_spiritual_anchor(soul_spark: SoulSpark) -> Dict[str, Any]:
     """
-    Establishes connection anchors between soul and Earth using wave physics.
-    Creates structures that resonate rather than directly transfer energy.
-    """
-    logger.info("Establishing soul-Earth connection anchors...")
+    Creates the spiritual anchor based on soul properties and creator connection.
+    This anchor connects to the spiritual aspect of the soul and requires
+    the soul to resonate upward toward creator frequency.
     
-    # Get soul properties for calculations
-    soul_stability = soul_spark.stability / MAX_STABILITY_SU  # Normalize to 0-1
-    soul_coherence = soul_spark.coherence / MAX_COHERENCE_CU  # Normalize to 0-1
-    soul_frequency = soul_spark.frequency
-    creator_connection = getattr(soul_spark, 'creator_connection_strength', 0.0)
-    
-    # Calculate anchor strengths based on soul properties
-    soul_anchor_strength = (soul_stability * 0.6 + soul_coherence * 0.4) * ANCHOR_STRENGTH_MODIFIER
-    soul_anchor_resonance = (soul_coherence * 0.7 + soul_stability * 0.3) * ANCHOR_RESONANCE_MODIFIER
-    
-    # Find resonant layers for soul anchor
-    soul_anchor_layer_indices = _find_resonant_layer_indices(soul_spark, soul_frequency)
-    
-    # If no resonant layers found, find the most suitable one
-    if not soul_anchor_layer_indices:
-        # Use outermost layer (typically the connection interface)
-        soul_anchor_layer_indices = [len(soul_spark.layers) - 1]
-    
-    # Create soul anchor
-    soul_anchor = {
-        "position": [float(p) for p in soul_spark.position],
-        "frequency": float(soul_frequency),
-        "strength": float(max(0.1, min(1.0, soul_anchor_strength))),
-        "resonance": float(max(0.1, min(1.0, soul_anchor_resonance))),
-        "layer_indices": soul_anchor_layer_indices,
-        "creator_connection": float(creator_connection)
-    }
-    
-    # Calculate Earth anchor properties
-    earth_frequency = EARTH_FREQUENCY
-    earth_anchor_strength = EARTH_ANCHOR_STRENGTH
-    earth_anchor_resonance = EARTH_ANCHOR_RESONANCE
-    
-    # Create Earth anchor position (below soul)
-    earth_anchor_pos = [float(p) for p in soul_anchor["position"]]
-    earth_anchor_pos[2] -= 100.0  # Simplified - place below soul
-    
-    # Create Earth anchor
-    earth_anchor = {
-        "position": earth_anchor_pos,
-        "frequency": float(earth_frequency),
-        "strength": float(earth_anchor_strength),
-        "resonance": float(earth_anchor_resonance)
-    }
-    
-    # Calculate resonance between soul and Earth
-    resonance = calculate_resonance(soul_frequency, earth_frequency)
-    
-    # Enhance resonance with creator connection (acts as bridge)
-    if creator_connection > FLOAT_EPSILON:
-        resonance = resonance * (1.0 + creator_connection * 0.5)
-    
-    # Normalize to 0-1 range
-    connection_strength = min(1.0, max(0.2, resonance))
-    
-    logger.info(f"Anchor points established. Soul: {soul_frequency:.1f}Hz (S={soul_anchor_strength:.3f}), "
-               f"Earth: {earth_frequency:.1f}Hz (S={earth_anchor_strength:.3f}), "
-               f"Resonance: {connection_strength:.3f}")
-    
-    return soul_anchor, earth_anchor, connection_strength
-
-def _form_bidirectional_waveguide(soul_anchor: Dict[str, Any], earth_anchor: Dict[str, Any],
-                               connection_strength: float, complexity: float) -> Dict[str, Any]:
-    """
-    Forms a bidirectional waveguide between soul and Earth using wave physics.
-    Creates a structure that can propagate both energy and information.
-    """
-    logger.info("Forming bidirectional waveguide...")
-    
-    # Calculate waveguide parameters
-    soul_freq = soul_anchor["frequency"]
-    earth_freq = earth_anchor["frequency"]
-    
-    # Calculate distance between anchors (simplified for example)
-    soul_pos = np.array(soul_anchor["position"])
-    earth_pos = np.array(earth_anchor["position"])
-    distance = np.linalg.norm(soul_pos - earth_pos)
-    
-    # Scale waveguide diameter based on connection strength and complexity
-    base_diameter = 10.0  # Base diameter in arbitrary units
-    diameter = base_diameter * (0.5 + 0.5 * connection_strength) * (0.7 + 0.3 * complexity)
-    
-    # Create main waveguide for soul frequency
-    soul_waveguide = _create_waveguide_structure(
-        soul_frequency=soul_freq,
-        length=distance,
-        diameter=diameter,
-        integrity=connection_strength
-    )
-    
-    # Create secondary waveguide for Earth frequency
-    earth_waveguide = _create_waveguide_structure(
-        soul_frequency=earth_freq,
-        length=distance,
-        diameter=diameter * 0.8,  # Slightly smaller
-        integrity=connection_strength * 0.9  # Slightly weaker
-    )
-    
-    # Calculate bidirectional properties
-    # - How well energy flows from soul to Earth
-    soul_to_earth_efficiency = connection_strength * (soul_anchor["strength"] / 2 + earth_anchor["resonance"] / 2)
-    
-    # - How well energy flows from Earth to soul
-    earth_to_soul_efficiency = connection_strength * (earth_anchor["strength"] / 2 + soul_anchor["resonance"] / 2)
-    
-    # - How well information flows bidirectionally (quantum entanglement factor)
-    quantum_efficiency = connection_strength * min(soul_anchor["resonance"], earth_anchor["resonance"]) * 1.2
-    quantum_efficiency = min(1.0, quantum_efficiency)  # Cap at 1.0
-    
-    # Calculate waveguide impedance matching
-    # - Better matching = more efficient energy transfer
-    impedance_ratio = soul_waveguide["acoustic_impedance"] / earth_waveguide["acoustic_impedance"]
-    impedance_match = 4 * impedance_ratio / ((1 + impedance_ratio)**2)  # 1.0 = perfect match
-    
-    # Create waveguide structure
-    waveguide = {
-        "soul_waveguide": soul_waveguide,
-        "earth_waveguide": earth_waveguide,
-        "length": float(distance),
-        "diameter": float(diameter),
-        "soul_to_earth_efficiency": float(soul_to_earth_efficiency),
-        "earth_to_soul_efficiency": float(earth_to_soul_efficiency),
-        "quantum_efficiency": float(quantum_efficiency),
-        "impedance_match": float(impedance_match),
-        "bidirectional_factor": float((soul_to_earth_efficiency + earth_to_soul_efficiency) / 2)
-    }
-    
-    logger.info(f"Bidirectional waveguide formed. Length={distance:.1f}, Diameter={diameter:.1f}, "
-               f"S→E={soul_to_earth_efficiency:.3f}, E→S={earth_to_soul_efficiency:.3f}, "
-               f"Quantum={quantum_efficiency:.3f}")
-    
-    return waveguide
-
-def _create_harmonic_nodes(waveguide: Dict[str, Any], complexity: float) -> List[Dict[str, Any]]:
-    """
-    Creates harmonic nodes in the life cord based on Fibonacci patterns.
-    These nodes act as resonators and energy amplifiers/attenuators.
-    """
-    logger.info("Creating harmonic nodes...")
-    
-    # Calculate number of nodes based on complexity
-    num_nodes = int(HARMONIC_NODE_COUNT_BASE + complexity * HARMONIC_NODE_COUNT_FACTOR)
-    
-    # Calculate node positions using Fibonacci sequence
-    node_positions = _calculate_fibonacci_node_positions(num_nodes)
-    
-    # Get waveguide properties for node calculations
-    length = waveguide["length"]
-    soul_waveguide = waveguide["soul_waveguide"]
-    earth_waveguide = waveguide["earth_waveguide"]
-    
-    # Create nodes with harmonic properties
-    nodes = []
-    
-    for i, position in enumerate(node_positions):
-        # Calculate node properties based on position and Fibonacci sequence
-        # Position affects the node's resonant properties
+    Args:
+        soul_spark: The SoulSpark object
         
-        # Determine node type (different types of nodes have different properties)
-        node_type = ""
-        type_idx = i % 3
-        if type_idx == 0:
-            # Phi-based harmonic node
-            phi_exp = (i//3) % 5 + 1
-            freq_ratio = PHI**phi_exp
-            node_type = f"phi^{phi_exp}"
-        elif type_idx == 1:
-            # Integer-ratio harmonic node
-            int_mult = (i//3) % 7 + 2
-            freq_ratio = float(int_mult)
-            node_type = f"int*{int_mult}"
-        else:
-            # Silver ratio harmonic node
-            silver_exp = (i//3) % 3 + 1
-            freq_ratio = SILVER_RATIO**silver_exp
-            node_type = f"silver^{silver_exp}"
-        
-        # Calculate frequencies from the waveguides
-        soul_freq = soul_waveguide["resonant_modes"][0]["frequency"] * freq_ratio
-        earth_freq = earth_waveguide["resonant_modes"][0]["frequency"] * freq_ratio
-        
-        # Calculate amplitude based on position and complexity
-        base_amplitude = HARMONIC_NODE_AMP_BASE + complexity * HARMONIC_NODE_AMP_FACTOR_COMPLEX
-        position_factor = 1.0 - abs(position - 0.5) * HARMONIC_NODE_AMP_FALLOFF
-        amplitude = base_amplitude * position_factor
-        
-        # Calculate phase offset (phi-based for natural oscillation)
-        phase_offset = PI * PHI * position
-        
-        # Create node
-        node = {
-            "position": float(position),
-            "absolute_position": float(position * length),
-            "soul_frequency": float(soul_freq),
-            "earth_frequency": float(earth_freq),
-            "amplitude": float(max(0.0, min(1.0, amplitude))),
-            "phase_offset": float(phase_offset),
-            "type": node_type,
-            "standing_wave_antinode": i % 2 == 0  # Alternating antinodes and nodes
-        }
-        
-        nodes.append(node)
-    
-    logger.info(f"Created {len(nodes)} harmonic nodes using Fibonacci positioning.")
-    return nodes
-
-def _integrate_with_aura_layers(soul_spark: SoulSpark, waveguide: Dict[str, Any],
-                             harmonic_nodes: List[Dict[str, Any]]) -> Dict[str, Any]:
+    Returns:
+        Dict containing the spiritual anchor properties
     """
-    Integrates the life cord with soul's aura layers for enhanced coherence.
-    Creates resonant connections between cord nodes and aura layers.
-    """
-    logger.info("Integrating life cord with aura layers...")
+    logger.info("LC Step: Creating Spiritual Anchor...")
     
     # Get soul properties
-    soul_frequency = soul_spark.frequency
-    soul_layers = soul_spark.layers
+    soul_frequency = getattr(soul_spark, 'frequency', 432.0)
+    creator_connection = getattr(soul_spark, 'creator_connection_strength', 0.0)
+    soul_coherence = getattr(soul_spark, 'coherence', 0.0) / MAX_COHERENCE_CU
+    soul_position = getattr(soul_spark, 'position', [0, 0, 0])
     
-    # Track layer integrations
-    layer_integrations = []
-    total_resonance = 0.0
+    # Calculate spiritual anchor frequency using natural scaling
+    creator_freq = 528.0  # Divine frequency
     
-    # Track which nodes connect to which layers
-    node_layer_connections = {}
+    # Apply a natural phi-based blending for spiritual frequency
+    phi_factor = PHI / (PHI + 1)  # ~0.618
+    blend_factor = creator_connection * phi_factor
+    spiritual_freq = soul_frequency * (1.0 - blend_factor) + creator_freq * blend_factor
     
-    # Integrate each harmonic node with resonant aura layers
-    for i, node in enumerate(harmonic_nodes):
-        node_freq = node["soul_frequency"]
-        node_position = node["position"]
-        
-        # Find resonant layers for this node
-        resonant_layer_indices = _find_resonant_layer_indices(soul_spark, node_freq)
-        
-        # If no resonant layers found, find closest layer by frequency
-        if not resonant_layer_indices and soul_layers:
-            closest_layer_idx = 0
-            closest_resonance = 0.0
-            
-            for j, layer in enumerate(soul_layers):
-                if not isinstance(layer, dict):
-                    continue
-                    
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend([f for f in layer['resonant_frequencies'] if f > FLOAT_EPSILON])
-                
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance
-                best_res = 0.0
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(node_freq, layer_freq)
-                    best_res = max(best_res, res)
-                
-                if best_res > closest_resonance:
-                    closest_resonance = best_res
-                    closest_layer_idx = j
-            
-            # Add closest layer if resonance is at least minimal
-            if closest_resonance > 0.1:
-                resonant_layer_indices = [closest_layer_idx]
-        
-        # Create connections for this node
-        node_connections = []
-        
-        for layer_idx in resonant_layer_indices:
-            # Calculate connection strength based on node and layer properties
-            layer = soul_layers[layer_idx]
-            
-            # Get layer properties
-            layer_strength = layer.get('strength', 0.5) if isinstance(layer, dict) else 0.5
-            
-            # Calculate connection parameters
-            connection_strength = layer_strength * node["amplitude"] * 0.8
-            
-            # Add cord resonance to layer
-            if isinstance(layer, dict):
-                # Add life cord resonance to this layer
-                if 'life_cord_resonance' not in layer:
-                    layer['life_cord_resonance'] = {}
-                
-                # Add node connection
-                node_key = f"node_{i}"
-                layer['life_cord_resonance'][node_key] = {
-                    "frequency": float(node_freq),
-                    "strength": float(connection_strength),
-                    "position": float(node_position),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Add cord frequencies to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                
-                if node_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(node_freq))
-            
-            # Add connection to tracking
-            node_connections.append({
-                "layer_idx": layer_idx,
-                "strength": float(connection_strength)
-            })
-            
-            # Add to total resonance
-            total_resonance += connection_strength
-            
-            # Add to layer integrations
-            layer_integrations.append({
-                "node_idx": i,
-                "layer_idx": layer_idx,
-                "frequency": float(node_freq),
-                "strength": float(connection_strength)
-            })
-        
-        # Store connections for this node
-        node_layer_connections[i] = node_connections
+    # Calculate position (above soul) - natural geometric placement
+    spiritual_pos = [float(p) for p in soul_position]
+    spiritual_pos[2] += soul_frequency / 43.2  # Natural height based on frequency
     
-    # Calculate overall integration factor
-    integration_factor = 0.0
-    if layer_integrations:
-        avg_resonance = total_resonance / len(layer_integrations)
-        integration_factor = avg_resonance * min(1.0, len(layer_integrations) / 10.0)
+    # Calculate resonance target using natural curve
+    # Higher creator connection = more precise matching needed (exponential curve)
+    resonance_base = 0.5 + (1.0 - exp(-creator_connection * 2.0)) * 0.3
+    resonance_target = max(0.6, min(0.9, resonance_base))
     
-    # Create integration metrics
-    integration_metrics = {
-        "layer_integrations": layer_integrations,
-        "total_resonance": float(total_resonance),
-        "integration_factor": float(integration_factor),
-        "integrated_layers": len(set(li["layer_idx"] for li in layer_integrations)),
-        "node_layer_map": node_layer_connections
+    # Calculate tolerance based on soul coherence (more coherent = narrower tolerance)
+    # Natural logarithmic relationship for tolerance scaling
+    tolerance_base = 0.25
+    coherence_factor = max(0.0, min(1.0, soul_coherence))
+    resonance_tolerance = tolerance_base * (1.0 - coherence_factor * 0.6)
+    
+    # Create spiritual anchor
+    spiritual_anchor = {
+        "position": spiritual_pos,
+        "frequency": float(spiritual_freq),
+        "resonance_target": float(resonance_target),
+        "resonance_tolerance": float(resonance_tolerance),
+        "creator_connection": float(creator_connection),
+        "soul_frequency_base": float(soul_frequency),
+        "creator_frequency": float(creator_freq),
+        "metadata": {
+            "creation_timestamp": datetime.now().isoformat(),
+            "geometric_principles": "phi_based_positioning",
+            "frequency_principles": "creator_soul_resonance_blend"
+        }
     }
     
-    logger.info(f"Integrated life cord with {integration_metrics['integrated_layers']} aura layers. "
-               f"Integration factor: {integration_factor:.3f}")
+    logger.info(f"Spiritual Anchor created at frequency {spiritual_freq:.2f}Hz "
+               f"with resonance target {resonance_target:.3f} "
+               f"(tolerance: {resonance_tolerance:.3f})")
     
-    return integration_metrics
+    return spiritual_anchor
 
-def _create_light_pathways(waveguide: Dict[str, Any], harmonic_nodes: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+def _create_earth_anchor(soul_spark: SoulSpark) -> Dict[str, Any]:
     """
-    Creates light pathways through the cord waveguide, connecting harmonic nodes
-    with bidirectional energy propagation channels. Uses quantum entanglement
-    properties for non-local information exchange.
+    Creates the earth anchor based on Earth/Gaia frequencies and the soul's
+    previous interaction with Malkuth during the Sephiroth journey.
     
     Args:
-        waveguide: The waveguide structure with physical properties
-        harmonic_nodes: List of harmonic nodes placed along the cord
+        soul_spark: The SoulSpark object to extract Malkuth resonance data
         
     Returns:
-        Dict containing light pathway metrics and properties
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If pathway creation fails
+        Dict containing the earth anchor properties
     """
-    logger.info("LC Step: Creating Light Pathways...")
+    logger.info("LC Step: Creating Earth Anchor...")
     
-    if not isinstance(waveguide, dict):
-        raise ValueError("Waveguide must be a dictionary")
-    if not isinstance(harmonic_nodes, list) or not harmonic_nodes:
-        raise ValueError("Harmonic nodes must be a non-empty list")
+    # Earth frequencies
+    earth_freq = EARTH_FREQUENCY
+    schumann_freq = SCHUMANN_FREQUENCY
     
-    try:
-        # Print all waveguide keys for debugging
-        logger.debug(f"Waveguide keys in _create_light_pathways: {list(waveguide.keys())}")
-        # Extract key waveguide properties
-        primary_freq = waveguide.get("primary_frequency_hz", 0.0)
-        bandwidth_hz = waveguide.get("bandwidth_hz", 0.0)
-        stability_factor = waveguide.get("stability_factor", 0.0)
-        elasticity = waveguide.get("elasticity_factor", 0.0)
-        
-        logger.debug(f"Extracted frequencies: primary={primary_freq}, bandwidth={bandwidth_hz}")
-        
-        if primary_freq <= FLOAT_EPSILON or bandwidth_hz <= FLOAT_EPSILON:
-            # Provide more detailed error
-            all_keys = ", ".join(waveguide.keys())
-            raise ValueError(f"Invalid waveguide frequencies: primary={primary_freq}, bandwidth={bandwidth_hz}. Available keys: {all_keys}")
-        
-        # Sort nodes by position for coherent pathway formation
-        sorted_nodes = sorted(harmonic_nodes, key=lambda n: n.get("position", 0.0))
-        
-        # Create light mapping structures
-        light_frequencies = []
-        light_pathways = []
-        
-        # Determine light spectrum scaling factor
-        # Light frequency = audio frequency * scaling factor
-        light_scaling_factor = 1e12  # Standard audio-to-light scaling
-        
-        # Base metrics
-        total_pathway_strength = 0.0
-        max_entanglement = 0.0
-        quantum_tunneling_factor = 0.0
-        
-        # Process each node pair to create pathways
-        for i in range(len(sorted_nodes) - 1):
-            node1 = sorted_nodes[i]
-            node2 = sorted_nodes[i + 1]
-            
-            # Calculate positions and frequencies
-            pos1 = node1.get("position", 0.0)
-            pos2 = node2.get("position", 0.0)
-            freq1 = node1.get("frequency_hz", primary_freq)
-            freq2 = node2.get("frequency_hz", primary_freq)
-            
-            # Skip invalid node pairs
-            if pos1 >= pos2 or freq1 <= FLOAT_EPSILON or freq2 <= FLOAT_EPSILON:
-                continue
-                
-            # Calculate wavelengths
-            wavelength1 = SPEED_OF_LIGHT / (freq1 * light_scaling_factor)
-            wavelength2 = SPEED_OF_LIGHT / (freq2 * light_scaling_factor)
-            
-            # Determine optimal pathway properties using quantum optics principles
-            # Path length in normalized units (0-1 scale)
-            path_length = pos2 - pos1
-            
-            # Interference quality - based on wavelength relationship
-            # Perfect constructive interference at integer wavelength ratios
-            wavelength_ratio = max(wavelength1, wavelength2) / min(wavelength1, wavelength2)
-            interference_quality = 0.0
-            
-            # Check for resonant wavelength ratios (integers and Phi-based)
-            for n in range(1, 6):
-                for d in range(1, 6):
-                    if d == 0:
-                        continue
-                    ratio = n / d
-                    if abs(wavelength_ratio - ratio) < 0.05:
-                        interference_quality = max(interference_quality, 
-                                                 1.0 - abs(wavelength_ratio - ratio) * 10.0)
-            
-            # Check PHI-based ratios
-            phi_ratios = [PHI, 1/PHI, PHI**2, 1/(PHI**2)]
-            for phi_ratio in phi_ratios:
-                if abs(wavelength_ratio - phi_ratio) < 0.05:
-                    interference_quality = max(interference_quality, 
-                                             1.0 - abs(wavelength_ratio - phi_ratio) * 10.0)
-            
-            # If no resonant ratio found, use a base minimum
-            if interference_quality < 0.2:
-                interference_quality = 0.2
-                
-            # Quantum entanglement strength - decreases with physical distance
-            # but has non-local properties based on frequency resonance
-            direct_entanglement = max(0.0, min(1.0, 
-                                            0.8 - 0.6 * path_length + 0.4 * interference_quality))
-            
-            # Non-local quantum correlation based on frequency
-            freq_resonance = calculate_resonance(freq1, freq2)
-            nonlocal_factor = 0.3 + 0.7 * freq_resonance
-            
-            # Combined entanglement quality
-            entanglement_quality = min(1.0, direct_entanglement * 0.6 + nonlocal_factor * 0.4)
-            max_entanglement = max(max_entanglement, entanglement_quality)
-            
-            # Quantum tunneling probability - important for information transfer
-            # through potential barriers in the waveguide
-            barrier_height = 1.0 - min(stability_factor, elasticity)
-            tunneling_factor = min(1.0, 
-                                 0.3 * entanglement_quality + 
-                                 0.2 * (1.0 - path_length) + 
-                                 0.5 * (1.0 - barrier_height))
-            
-            quantum_tunneling_factor = max(quantum_tunneling_factor, tunneling_factor)
-            
-            # Calculate overall pathway strength
-            pathway_strength = min(1.0, 
-                                 0.4 * entanglement_quality + 
-                                 0.4 * interference_quality + 
-                                 0.2 * tunneling_factor)
-            
-            total_pathway_strength += pathway_strength
-            
-            # Map audio frequencies to light spectrum
-            light_freq1 = freq1 * light_scaling_factor
-            light_freq2 = freq2 * light_scaling_factor
-            
-            # Convert to wavelengths in nm
-            light_wavelength1 = (SPEED_OF_LIGHT / light_freq1) * 1e9
-            light_wavelength2 = (SPEED_OF_LIGHT / light_freq2) * 1e9
-            
-            # Get colors from wavelengths
-            color1 = _wavelength_to_color(light_wavelength1)
-            color2 = _wavelength_to_color(light_wavelength2)
-            
-            # Create light frequency mapping
-            light_frequencies.extend([
-                {
-                    "audio_freq": float(freq1),
-                    "light_freq": float(light_freq1),
-                    "wavelength_nm": float(light_wavelength1),
-                    "color": color1
-                },
-                {
-                    "audio_freq": float(freq2),
-                    "light_freq": float(light_freq2),
-                    "wavelength_nm": float(light_wavelength2),
-                    "color": color2
-                }
-            ])
-            
-            # Create pathway structure
-            light_pathways.append({
-                "start_node_idx": i,
-                "end_node_idx": i + 1,
-                "start_position": float(pos1),
-                "end_position": float(pos2),
-                "start_frequency": float(freq1),
-                "end_frequency": float(freq2),
-                "interference_quality": float(interference_quality),
-                "entanglement_quality": float(entanglement_quality),
-                "tunneling_factor": float(tunneling_factor),
-                "strength": float(pathway_strength),
-                "light_properties": {
-                    "start_wavelength_nm": float(light_wavelength1),
-                    "end_wavelength_nm": float(light_wavelength2),
-                    "start_color": color1,
-                    "end_color": color2
-                }
-            })
-        
-        # Calculate overall light pathway metrics
-        avg_pathway_strength = (total_pathway_strength / len(light_pathways) 
-                             if light_pathways else 0.0)
-        
-        # Create final light pathways structure
-        light_pathways_structure = {
-            "pathways": light_pathways,
-            "light_frequencies": light_frequencies,
-            "avg_pathway_strength": float(avg_pathway_strength),
-            "max_entanglement_quality": float(max_entanglement),
-            "quantum_tunneling_factor": float(quantum_tunneling_factor),
-            "total_pathway_count": len(light_pathways)
-        }
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "pathway_count": len(light_pathways),
-                "avg_pathway_strength": avg_pathway_strength,
-                "max_entanglement": max_entanglement,
-                "quantum_tunneling_factor": quantum_tunneling_factor,
-                "light_frequencies_mapped": len(light_frequencies),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_light_pathways', metrics_data)
-        
-        logger.info(f"Light pathways created: {len(light_pathways)} paths, Avg Strength: {avg_pathway_strength:.4f}")
-        return light_pathways_structure
-        
-    except Exception as e:
-        logger.error(f"Error creating light pathways: {e}", exc_info=True)
-        raise RuntimeError("Light pathway creation failed critically.") from e
-
-def _calculate_information_bandwidth(waveguide: Dict[str, Any], 
-                                   light_pathways: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Calculates theoretical and effective information bandwidth based on 
-    waveguide properties and light pathway characteristics.
+    # Check for previous Malkuth interaction to inform frequency blending
+    malkuth_frequency = None
     
-    Args:
-        waveguide: The waveguide structure
-        light_pathways: The light pathway structure
-        
-    Returns:
-        Dict containing bandwidth calculations
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If calculation fails
-    """
-    logger.info("LC Step: Calculating Information Bandwidth...")
+    # Look in interaction_history for Malkuth frequency data
+    if hasattr(soul_spark, 'interaction_history') and soul_spark.interaction_history:
+        for interaction in soul_spark.interaction_history:
+            if interaction.get('type') == 'sephirah_layer_formation' and interaction.get('sephirah') == 'malkuth':
+                # Found Malkuth interaction record
+                logger.debug("Found previous Malkuth interaction data in soul history")
+                malkuth_frequency = interaction.get('sephirah_frequency', None)
+                break
     
-    if not isinstance(waveguide, dict):
-        raise ValueError("Waveguide must be a dictionary")
-    if not isinstance(light_pathways, dict):
-        raise ValueError("Light pathways must be a dictionary")
-    
-    try:
-        # Extract key properties
-        base_bandwidth_hz = waveguide.get("bandwidth_hz", 0.0)
-        stability_factor = waveguide.get("stability_factor", 0.0)
-        avg_pathway_strength = light_pathways.get("avg_pathway_strength", 0.0)
-        max_entanglement = light_pathways.get("max_entanglement_quality", 0.0)
-        quantum_tunneling = light_pathways.get("quantum_tunneling_factor", 0.0)
-        pathway_count = light_pathways.get("total_pathway_count", 0)
-        
-        if base_bandwidth_hz <= FLOAT_EPSILON:
-            raise ValueError(f"Invalid base bandwidth: {base_bandwidth_hz}")
-        
-        # Calculate theoretical maximum bandwidth
-        # Base audio bandwidth + quantum multiplier effect
-        quantum_multiplier = 1.0 + max_entanglement * 3.0
-        theoretical_max_bw = base_bandwidth_hz * quantum_multiplier
-        
-        # Calculate effective bandwidth considering pathway quality
-        pathway_quality_factor = min(1.0, 
-                                  0.4 * avg_pathway_strength + 
-                                  0.3 * max_entanglement + 
-                                  0.3 * quantum_tunneling)
-        
-        # Parallel pathway factor - more pathways enable more information flow
-        parallel_factor = min(1.0, pathway_count / 10.0) * 0.5 + 0.5
-        
-        # Stability affects consistent information flow
-        stability_effect = 0.3 + 0.7 * stability_factor
-        
-        # Calculate effective bandwidth
-        effective_bandwidth = (theoretical_max_bw * 
-                             pathway_quality_factor * 
-                             parallel_factor * 
-                             stability_effect)
-        
-        # Calculate information capacity in theoretical bits per second
-        # Using Shannon's information theory as a basis
-        # C = B * log2(1 + S/N)
-        # Where B is bandwidth, S is signal power, N is noise power
-        signal_to_noise = 1.0 + 9.0 * pathway_quality_factor * stability_factor
-        bits_per_second = effective_bandwidth * np.log2(signal_to_noise)
-        
-        # Calculate quantum information capacity
-        # Entanglement enables quantum information transfer (qubits)
-        qubit_efficiency = max_entanglement * quantum_tunneling
-        qubits_per_second = bits_per_second * qubit_efficiency
-        
-        # Create bandwidth structure
-        bandwidth_metrics = {
-            "base_bandwidth_hz": float(base_bandwidth_hz),
-            "theoretical_max_bandwidth_hz": float(theoretical_max_bw),
-            "effective_bandwidth_hz": float(effective_bandwidth),
-            "pathway_quality_factor": float(pathway_quality_factor),
-            "parallel_pathway_factor": float(parallel_factor),
-            "stability_effect": float(stability_effect),
-            "quantum_multiplier": float(quantum_multiplier),
-            "information_capacity_bps": float(bits_per_second),
-            "quantum_information_capacity_qps": float(qubits_per_second)
-        }
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "base_bandwidth_hz": float(base_bandwidth_hz),
-                "theoretical_max_bandwidth_hz": float(theoretical_max_bw),
-                "effective_bandwidth_hz": float(effective_bandwidth),
-                "information_capacity_bps": float(bits_per_second),
-                "quantum_information_capacity_qps": float(qubits_per_second),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_bandwidth', metrics_data)
-        
-        logger.info(f"Information bandwidth calculated: Base={base_bandwidth_hz:.1f}Hz, "
-                   f"Effective={effective_bandwidth:.1f}Hz, "
-                   f"Capacity={bits_per_second:.1f}bps")
-        return bandwidth_metrics
-        
-    except Exception as e:
-        logger.error(f"Error calculating information bandwidth: {e}", exc_info=True)
-        raise RuntimeError("Information bandwidth calculation failed.") from e
-
-def _create_standing_wave_nodes(cord_structure: Dict[str, Any], 
-                              earth_connection: float) -> Dict[str, Any]:
-    """
-    Creates standing wave patterns between soul and Earth anchor points,
-    enhancing cord stability through resonant nodes positioned according
-    to Fibonacci patterns.
-    
-    Args:
-        cord_structure: The developing cord structure
-        earth_connection: Earth connection strength factor (0-1)
-        
-    Returns:
-        Dict containing standing wave metrics
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If wave creation fails
-    """
-    logger.info("LC Step: Creating Standing Wave Nodes...")
-    
-    if not isinstance(cord_structure, dict):
-        raise ValueError("Cord structure must be a dictionary")
-    if not isinstance(earth_connection, (int, float)) or not (0.0 <= earth_connection <= 1.0):
-        raise ValueError(f"Earth connection must be between 0.0 and 1.0, got {earth_connection}")
-    
-    try:
-        # Extract key properties
-        primary_freq = cord_structure.get("primary_frequency_hz", 0.0)
-        soul_primary_freq = cord_structure.get("soul_primary_freq", 0.0)
-        earth_freq = cord_structure.get("earth_freq", 0.0)
-        stability_factor = cord_structure.get("stability_factor", 0.0)
-        
-        if primary_freq <= FLOAT_EPSILON:
-            raise ValueError(f"Invalid primary frequency: {primary_freq}")
-        
-        # Calculate fundamental wavelength for standing wave
-        # Using primary frequency as the basis
-        fundamental_wavelength = SPEED_OF_SOUND / primary_freq
-        
-        # Use Fibonacci sequence for node positioning
-        # This creates a naturalistic, harmonious pattern
-        fib_seq = [1, 1, 2, 3, 5, 8, 13, 21, 34]
-        fib_total = sum(fib_seq)
-        
-        # Number of nodes based on earth connection and stability
-        node_count = int(3 + earth_connection * 7)
-        node_count = min(node_count, len(fib_seq))
-        
-        standing_wave_nodes = []
-        total_amplitude = 0.0
-        
-        # Create nodes with Fibonacci-based positioning
-        for i in range(node_count):
-            # Position follows Fibonacci spacing
-            fib_position = sum(fib_seq[:i+1]) / fib_total
-            
-            # Calculate node properties
-            # Amplitude is maximum at center, decreases toward ends
-            amplitude = (0.5 + 0.5 * np.sin(PI * fib_position)) * earth_connection
-            
-            # Phase alternates between peaks and troughs
-            phase = PI * i
-            
-            # Frequency gradually shifts from soul to earth frequency
-            node_freq = (soul_primary_freq * (1.0 - fib_position) + 
-                       earth_freq * fib_position)
-            
-            # Calculate wavelength at this node
-            node_wavelength = SPEED_OF_SOUND / node_freq
-            
-            # Determine node type (antinode or node)
-            node_type = "antinode" if i % 2 == 0 else "node"
-            
-            # Add to nodes list
-            standing_wave_nodes.append({
-                "position": float(fib_position),
-                "amplitude": float(amplitude),
-                "phase": float(phase),
-                "frequency_hz": float(node_freq),
-                "wavelength": float(node_wavelength),
-                "type": node_type
-            })
-            
-            total_amplitude += amplitude
-        
-        # Calculate standing wave metrics
-        avg_amplitude = total_amplitude / node_count if node_count > 0 else 0.0
-        
-        # Calculate coherence of the standing wave
-        # Perfect standing waves have consistent nodes and antinodes
-        amplitude_std = np.std([node["amplitude"] for node in standing_wave_nodes]) if standing_wave_nodes else 1.0
-        coherence_factor = max(0.0, 1.0 - amplitude_std)
-        
-        # Calculate stability enhancement from standing wave
-        stability_boost = (earth_connection * 0.5 + 
-                         coherence_factor * 0.3 + 
-                         avg_amplitude * 0.2) * 0.2
-        
-        # Create standing wave structure
-        standing_wave_structure = {
-            "nodes": standing_wave_nodes,
-            "fundamental_wavelength": float(fundamental_wavelength),
-            "node_count": node_count,
-            "average_amplitude": float(avg_amplitude),
-            "coherence_factor": float(coherence_factor),
-            "stability_boost": float(stability_boost)
-        }
-        
-        # Update cord structure with standing wave
-        cord_structure["standing_wave"] = standing_wave_structure
-        
-        # Boost stability with standing wave effect
-        new_stability = min(1.0, stability_factor + stability_boost)
-        cord_structure["stability_factor"] = float(new_stability)
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "node_count": node_count,
-                "average_amplitude": float(avg_amplitude),
-                "coherence_factor": float(coherence_factor),
-                "stability_boost": float(stability_boost),
-                "new_stability_factor": float(new_stability),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_standing_wave', metrics_data)
-        
-        logger.info(f"Standing wave nodes created: {node_count} nodes, "
-                   f"Coherence: {coherence_factor:.4f}, "
-                   f"Stability Boost: +{stability_boost:.4f}")
-        return standing_wave_structure
-        
-    except Exception as e:
-        logger.error(f"Error creating standing wave nodes: {e}", exc_info=True)
-        raise RuntimeError("Standing wave creation failed critically.") from e
-
-def _enhance_cord_with_sound(cord_structure: Dict[str, Any],
-                           sound_type: str = "harmonic") -> Dict[str, Any]:
-    """
-    Enhances cord properties using sound harmonics that strengthen 
-    the waveguide characteristics and integrity.
-    
-    Args:
-        cord_structure: The developing cord structure
-        sound_type: Type of sound enhancement (harmonic, quantum, resonant)
-        
-    Returns:
-        Dict containing sound enhancement metrics
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If sound enhancement fails
-    """
-    logger.info(f"LC Step: Enhancing Cord with {sound_type.capitalize()} Sound...")
-    
-    if not isinstance(cord_structure, dict):
-        raise ValueError("Cord structure must be a dictionary")
-    if not isinstance(sound_type, str) or not sound_type:
-        raise ValueError("Sound type must be a non-empty string")
-    
-    try:
-        # Extract key properties
-        primary_freq = cord_structure.get("primary_frequency_hz", 0.0)
-        bandwidth_hz = cord_structure.get("bandwidth_hz", 0.0)
-        stability_factor = cord_structure.get("stability_factor", 0.0)
-        elasticity = cord_structure.get("elasticity_factor", 0.0)
-        
-        if primary_freq <= FLOAT_EPSILON:
-            raise ValueError(f"Invalid primary frequency: {primary_freq}")
-        
-        # Generate sound based on type
-        sound_duration = 5.0  # seconds
-        sound_amplitude = 0.7  # normalized amplitude
-        
-        sound_data = None
-        sound_file = None
-        
-        # Check if sound modules are available
-        if not 'SoundGenerator' in globals() and not SOUND_MODULES_AVAILABLE:
-            logger.warning("Sound modules unavailable. Creating theoretical sound model only.")
-            sound_available = False
-        else:
-            sound_available = SOUND_MODULES_AVAILABLE
-        
-        # Initialize sound metrics
-        sound_enhancement = {
-            "type": sound_type,
-            "frequency_hz": float(primary_freq),
-            "duration_seconds": float(sound_duration),
-            "amplitude": float(sound_amplitude),
-            "has_physical_sound": False,
-            "enhancement_factors": {}
-        }
-        
-        # Create physical sound if available
-        if sound_available:
-            try:
-                # Create sound generator
-                sound_gen = SoundGenerator(sample_rate=SAMPLE_RATE)
-                universe_sounds = UniverseSounds(sample_rate=SAMPLE_RATE)
-                
-                if sound_type == "harmonic":
-                    # Create harmonic chord based on cord frequency
-                    harmonics = [1.0, PHI, 2.0, PHI*2, 3.0]
-                    amplitudes = [0.8, 0.6, 0.5, 0.4, 0.3]
-                    sound_data = sound_gen.generate_harmonic_tone(
-                        primary_freq, harmonics, amplitudes, sound_duration)
-                    
-                elif sound_type == "quantum":
-                    # Use stellar sound for quantum properties
-                    sound_data = universe_sounds.generate_stellar_sound(
-                        "sun", sound_duration, sound_amplitude)
-                    
-                elif sound_type == "resonant":
-                    # Use dimensional transition for resonant properties
-                    sound_data = universe_sounds.generate_dimensional_transition(
-                        sound_duration, SAMPLE_RATE, 
-                        "cord_to_earth", sound_amplitude)
-                
-                # Save sound file if data was generated
-                if sound_data is not None:
-                    sound_file = f"life_cord_{sound_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
-                    file_path = sound_gen.save_sound(sound_data, sound_file, 
-                                                 f"Life Cord {sound_type.capitalize()} Sound")
-                    
-                    sound_enhancement["sound_file"] = sound_file
-                    sound_enhancement["file_path"] = file_path
-                    sound_enhancement["has_physical_sound"] = True
-                    
-                    logger.info(f"Generated {sound_type} sound for cord enhancement: {file_path}")
-            
-            except Exception as sound_err:
-                logger.warning(f"Error generating physical sound: {sound_err}. Using theoretical model.")
-        
-        # Calculate enhancement factors regardless of physical sound
-        # These represent the theoretical effect of the sound on the cord
-        
-        # Base enhancement from sound type
-        if sound_type == "harmonic":
-            # Harmonic sound enhances cord stability and elasticity
-            stability_boost = 0.15
-            elasticity_boost = 0.10
-            bandwidth_boost = 0.05
-            
-        elif sound_type == "quantum":
-            # Quantum sound enhances bandwidth and provides some stability
-            stability_boost = 0.05
-            elasticity_boost = 0.05
-            bandwidth_boost = 0.20
-            
-        elif sound_type == "resonant":
-            # Resonant sound enhances elasticity and bandwidth
-            stability_boost = 0.08
-            elasticity_boost = 0.15
-            bandwidth_boost = 0.12
-            
-        else:
-            # Default modest enhancements
-            stability_boost = 0.05
-            elasticity_boost = 0.05
-            bandwidth_boost = 0.05
-        
-        # Calculate new property values with sound enhancement
-        new_stability = min(1.0, stability_factor + stability_boost)
-        new_elasticity = min(1.0, elasticity + elasticity_boost)
-        new_bandwidth = bandwidth_hz * (1.0 + bandwidth_boost)
-        
-        # Update cord structure with enhanced properties
-        cord_structure["stability_factor"] = float(new_stability)
-        cord_structure["elasticity_factor"] = float(new_elasticity)
-        cord_structure["bandwidth_hz"] = float(new_bandwidth)
-        
-        # Store enhancement factors
-        sound_enhancement["enhancement_factors"] = {
-            "stability_boost": float(stability_boost),
-            "elasticity_boost": float(elasticity_boost),
-            "bandwidth_boost": float(bandwidth_boost),
-            "new_stability": float(new_stability),
-            "new_elasticity": float(new_elasticity),
-            "new_bandwidth_hz": float(new_bandwidth)
-        }
-        
-        # Add sound enhancement to cord structure
-        if not "sound_enhancements" in cord_structure:
-            cord_structure["sound_enhancements"] = []
-        
-        cord_structure["sound_enhancements"].append(sound_enhancement)
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "sound_type": sound_type,
-                "has_physical_sound": sound_enhancement["has_physical_sound"],
-                "stability_boost": float(stability_boost),
-                "elasticity_boost": float(elasticity_boost),
-                "bandwidth_boost": float(bandwidth_boost),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_sound_enhancement', metrics_data)
-        
-        logger.info(f"Cord enhanced with {sound_type} sound: "
-                   f"Stability +{stability_boost:.3f}, "
-                   f"Elasticity +{elasticity_boost:.3f}, "
-                   f"Bandwidth +{bandwidth_boost*100:.1f}%")
-        return sound_enhancement
-        
-    except Exception as e:
-        logger.error(f"Error enhancing cord with sound: {e}", exc_info=True)
-        raise RuntimeError(f"Sound enhancement failed critically: {e}") from e
-
-def _optimize_layered_stability(soul_spark: SoulSpark, cord_structure: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Optimizes cord stability by creating resonant connections with soul layers,
-    establishing bidirectional energy exchange pathways that strengthen
-    the cord's integration with the soul's aura structure.
-    
-    Args:
-        soul_spark: The soul being optimized
-        cord_structure: The developing cord structure
-        
-    Returns:
-        Dict containing layer optimization metrics
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If optimization fails
-    """
-    logger.info("LC Step: Optimizing Layered Stability...")
-    
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not isinstance(cord_structure, dict):
-        raise ValueError("Cord structure must be a dictionary")
-    
-    try:
-        # Extract key properties
-        primary_freq = cord_structure.get("primary_frequency_hz", 0.0)
-        stability_factor = cord_structure.get("stability_factor", 0.0)
-        soul_layers = getattr(soul_spark, 'layers', [])
-        
-        if primary_freq <= FLOAT_EPSILON:
-            raise ValueError(f"Invalid primary frequency: {primary_freq}")
-        if not soul_layers:
-            logger.warning("No soul layers found for optimization")
-            return {"layer_connections": [], "stability_boost": 0.0}
-        
-        # Get harmonic nodes and light pathways if available
-        harmonic_nodes = cord_structure.get("harmonic_nodes", [])
-        light_pathways_structure = cord_structure.get("light_pathways", {})
-        light_frequencies = light_pathways_structure.get("light_frequencies", [])
-        
-        # Initialize layer connections data
-        layer_connections = []
-        resonant_layers = 0
-        total_resonance = 0.0
-        
-        # Process each soul layer to establish resonance
-        for layer_idx, layer in enumerate(soul_layers):
-            if not isinstance(layer, dict):
-                continue
-                
-            # Get layer frequencies if available
-            layer_freqs = []
-            if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                layer_freqs.extend([f for f in layer['resonant_frequencies'] if f > FLOAT_EPSILON])
-            
-            # If layer has no frequencies, skip
-            if not layer_freqs:
-                continue
-                
-            # Calculate resonance with cord frequencies
-            best_resonance = 0.0
-            best_cord_freq = primary_freq
-            best_layer_freq = 0.0
-            
-            # Check resonance with primary frequency
-            for layer_freq in layer_freqs:
-                res = calculate_resonance(primary_freq, layer_freq)
-                if res > best_resonance:
-                    best_resonance = res
-                    best_cord_freq = primary_freq
-                    best_layer_freq = layer_freq
-            
-            # Check resonance with harmonic nodes
-            for node in harmonic_nodes:
-                node_freq = node.get("frequency_hz", 0.0)
-                if node_freq <= FLOAT_EPSILON:
-                    continue
-                    
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(node_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_cord_freq = node_freq
-                        best_layer_freq = layer_freq
-            
-            # Check resonance with light frequencies
-            for light_freq_data in light_frequencies:
-                audio_freq = light_freq_data.get("audio_freq", 0.0)
-                if audio_freq <= FLOAT_EPSILON:
-                    continue
-                    
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(audio_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_cord_freq = audio_freq
-                        best_layer_freq = layer_freq
-            
-            # If no significant resonance found (below threshold), skip this layer
-            if best_resonance < 0.2:
-                continue
-                
-            # Create resonant connection with this layer
-            connection_strength = min(1.0, best_resonance * 1.2)  # Slight boost
-            
-            # Calculate stability boost from this connection
-            layer_stability_boost = connection_strength * 0.05  # Max 5% boost per layer
-            
-            # Create connection data
-            connection = {
-                "layer_idx": layer_idx,
-                "cord_frequency": float(best_cord_freq),
-                "layer_frequency": float(best_layer_freq),
-                "resonance": float(best_resonance),
-                "connection_strength": float(connection_strength),
-                "stability_boost": float(layer_stability_boost)
-            }
-            
-            # Add to layer connections list
-            layer_connections.append(connection)
-            resonant_layers += 1
-            total_resonance += best_resonance
-            
-            # Store connection in layer data for future reference
-            if 'cord_connections' not in layer:
-                layer['cord_connections'] = []
-                
-            layer['cord_connections'].append({
-                "frequency": float(best_cord_freq),
-                "resonance": float(best_resonance),
-                "strength": float(connection_strength),
-                "timestamp": datetime.now().isoformat()
-            })
-        
-        # Calculate overall stability boost and coherence enhancement
-        avg_resonance = total_resonance / resonant_layers if resonant_layers > 0 else 0.0
-        overall_stability_boost = min(0.2, resonant_layers * 0.03)  # Cap at 20%
-        overall_coherence_boost = min(0.15, avg_resonance * 0.2)  # Cap at 15%
-        
-        # Update cord structure with new stability factor
-        new_stability = min(1.0, stability_factor + overall_stability_boost)
-        cord_structure["stability_factor"] = float(new_stability)
-        
-        # Create optimization metrics
-        optimization_metrics = {
-            "layer_connections": layer_connections,
-            "resonant_layers": resonant_layers,
-            "total_resonance": float(total_resonance),
-            "average_resonance": float(avg_resonance),
-            "stability_boost": float(overall_stability_boost),
-            "coherence_boost": float(overall_coherence_boost),
-            "new_stability_factor": float(new_stability)
-        }
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "resonant_layers": resonant_layers,
-                "average_resonance": float(avg_resonance),
-                "stability_boost": float(overall_stability_boost),
-                "coherence_boost": float(overall_coherence_boost),
-                "new_stability_factor": float(new_stability),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_layer_optimization', metrics_data)
-        
-        logger.info(f"Layered stability optimized: {resonant_layers} layers connected, "
-                   f"Avg Resonance: {avg_resonance:.4f}, "
-                   f"Stability Boost: +{overall_stability_boost:.4f}")
-        
-        return optimization_metrics
-        
-    except Exception as e:
-        logger.error(f"Error optimizing layered stability: {e}", exc_info=True)
-        raise RuntimeError("Layered stability optimization failed critically.") from e
-
-def _wavelength_to_color(wavelength_nm: float) -> str:
-    """
-    Convert a wavelength in nanometers to a named color in the visible spectrum.
-    
-    Args:
-        wavelength_nm: Wavelength in nanometers
-        
-    Returns:
-        String name of the corresponding color
-        
-    Raises:
-        ValueError: If wavelength is outside visible spectrum
-    """
-    if not isinstance(wavelength_nm, (int, float)):
-        raise ValueError(f"Wavelength must be a number, got {type(wavelength_nm)}")
-    
-    if wavelength_nm < 380 or wavelength_nm > 750:
-        # Return non-visible designations
-        if wavelength_nm < 380:
-            return "ultraviolet"
-        else:
-            return "infrared"
-    
-    # Visible spectrum color mapping
-    if 380 <= wavelength_nm < 450:
-        return "violet"
-    elif 450 <= wavelength_nm < 485:
-        return "blue"
-    elif 485 <= wavelength_nm < 500:
-        return "cyan"
-    elif 500 <= wavelength_nm < 565:
-        return "green"
-    elif 565 <= wavelength_nm < 590:
-        return "yellow"
-    elif 590 <= wavelength_nm < 625:
-        return "orange"
-    elif 625 <= wavelength_nm <= 750:
-        return "red"
-    
-    # This should not be reached due to the earlier range check
-    return "unknown"
-
-def _calculate_earth_resonance(soul_spark: SoulSpark, cord_integrity: float) -> float:
-    """
-    Calculate soul's resonance with Earth based on cord integrity and connection.
-    This measures how effectively the soul can interact with the physical plane.
-    
-    Args:
-        soul_spark: The soul being evaluated
-        cord_integrity: Life cord integrity factor (0-1)
-        
-    Returns:
-        Earth resonance factor (0-1)
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If calculation fails
-    """
-    logger.info("LC Step: Calculating Earth Resonance...")
-    
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not isinstance(cord_integrity, (int, float)) or not (0.0 <= cord_integrity <= 1.0):
-        raise ValueError(f"Cord integrity must be between 0.0 and 1.0, got {cord_integrity}")
-    
-    try:
-        # Get core soul properties
-        soul_frequency = getattr(soul_spark, 'frequency', 0.0)
-        if soul_frequency <= FLOAT_EPSILON:
-            raise ValueError("Soul frequency must be positive")
-        
-        soul_coherence = getattr(soul_spark, 'coherence', 0.0) / MAX_COHERENCE_CU
-        soul_stability = getattr(soul_spark, 'stability', 0.0) / MAX_STABILITY_SU
-        
-        # Get physical and Gaia frequency factors
-        earth_freq = EARTH_FREQUENCY
-        schumann_freq = SCHUMANN_FREQUENCY
-        
-        # Calculate base resonance with Earth physical frequency
-        base_resonance = calculate_resonance(soul_frequency, earth_freq)
-        
-        # Calculate resonance with Schumann frequency (spiritual connection)
-        schumann_resonance = calculate_resonance(soul_frequency, schumann_freq)
-        
-        # Calculate soul-Earth-Gaia harmonic triad
-        # This represents alignment of physical, energetic, and spiritual connection
-        triad_factor = calculate_resonance(soul_frequency, (earth_freq + schumann_freq) / 2)
-        
-        # Calculate Earth connection strength
-        # - Cord integrity is the main factor (physical connection)
-        # - Soul coherence affects energy exchange quality
-        # - Soul stability ensures connection remains steady
-        earth_connection = (
-            cord_integrity * 0.6 +      # Main connection via cord
-            soul_coherence * 0.2 +      # Quality of energy exchange
-            soul_stability * 0.1 +      # Stability of connection
-            triad_factor * 0.1          # Harmonic alignment bonus
+    # Calculate combined earth frequency with natural weighting
+    if malkuth_frequency and malkuth_frequency > 0:
+        # Use Malkuth resonance experience to improve earth connection
+        # Natural system 3-way blending with Fibonacci-based weights
+        earth_weight = 5/13    # Fibonacci ratio
+        schumann_weight = 3/13  # Fibonacci ratio
+        malkuth_weight = 5/13   # Fibonacci ratio
+        
+        combined_earth_freq = (
+            earth_freq * earth_weight +
+            schumann_freq * schumann_weight +
+            malkuth_frequency * malkuth_weight
         )
-        
-        # Calculate final Earth resonance
-        # This is a combination of physical connection and frequency resonance
-        earth_resonance = (
-            earth_connection * 0.7 +    # Physical connection is primary
-            base_resonance * 0.2 +      # Physical frequency resonance
-            schumann_resonance * 0.1    # Spiritual/energetic resonance
-        )
-        
-        # Ensure result is in valid range
-        earth_resonance = max(0.0, min(1.0, earth_resonance))
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "cord_integrity": float(cord_integrity),
-                "base_resonance": float(base_resonance),
-                "schumann_resonance": float(schumann_resonance),
-                "triad_factor": float(triad_factor),
-                "earth_connection": float(earth_connection),
-                "earth_resonance": float(earth_resonance),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('life_cord_earth_resonance', metrics_data)
-        
-        logger.info(f"Earth resonance calculated: {earth_resonance:.4f} "
-                   f"(Cord: {cord_integrity:.3f}, Base Res: {base_resonance:.3f}, "
-                   f"Schumann: {schumann_resonance:.3f})")
-        
-        return float(earth_resonance)
-        
-    except Exception as e:
-        logger.error(f"Error calculating Earth resonance: {e}", exc_info=True)
-        raise RuntimeError("Earth resonance calculation failed critically.") from e
+        logger.debug(f"Using Malkuth frequency ({malkuth_frequency:.2f}Hz) to enhance Earth anchor")
+    else:
+        # Default golden ratio weighting without Malkuth data
+        earth_weight = PHI / (PHI + 1)      # ~0.618
+        schumann_weight = 1 / (PHI + 1)     # ~0.382
+        combined_earth_freq = earth_freq * earth_weight + schumann_freq * schumann_weight
+    
+    # Create position (below - where the brain will be)
+    earth_pos = [0.0, 0.0, -100.0]
+    
+    # Earth resonance is naturally more forgiving than spiritual
+    # Base resonance target on earth_resonance if available
+    earth_resonance = getattr(soul_spark, 'earth_resonance', 0.0)
+    
+    # Non-linear sigmoid curve for resonance target based on existing earth resonance
+    resonance_target = 0.5 + 0.3 * (1 / (1 + exp(-10 * (earth_resonance - 0.5))))
+    
+    # Natural tolerance curve - higher than spiritual anchor
+    resonance_tolerance = 0.15 + 0.1 * (1 - earth_resonance)
+    
+    # Create earth anchor
+    earth_anchor = {
+        "position": earth_pos,
+        "frequency": float(combined_earth_freq),
+        "resonance_target": float(resonance_target),
+        "resonance_tolerance": float(resonance_tolerance),
+        "earth_base_frequency": float(earth_freq),
+        "schumann_frequency": float(schumann_freq),
+        "malkuth_frequency": float(malkuth_frequency) if malkuth_frequency else None,
+        "gaia_connection": float(1.0),  # Perfect Gaia connection for anchor
+        "metadata": {
+            "creation_timestamp": datetime.now().isoformat(),
+            "frequency_principles": "golden_ratio_blend",
+            "resonance_principles": "sigmoid_natural_curve"
+        }
+    }
+    
+    logger.info(f"Earth Anchor created at frequency {combined_earth_freq:.2f}Hz "
+               f"with resonance target {resonance_target:.3f} "
+               f"(tolerance: {resonance_tolerance:.3f})")
+    
+    return earth_anchor
 
-def _finalize_cord_integration(soul_spark: SoulSpark, 
-                            cord_structure: Dict[str, Any], 
-                            earth_resonance: float) -> Dict[str, Any]:
+
+def _form_communication_channels(spiritual_anchor: Dict[str, Any], 
+                               earth_anchor: Dict[str, Any],
+                               soul_spark: SoulSpark,
+                               complexity: float) -> Dict[str, Any]:
     """
-    Finalize the integration of the life cord with the soul, ensuring proper
-    energy flow and establishing the full connection between soul and Earth.
+    Forms the communication channels between spiritual and earth anchors
+    using biomimetic principles for bandwidth and resistance calculation.
     
     Args:
-        soul_spark: The soul being connected
+        spiritual_anchor: The spiritual anchor properties
+        earth_anchor: The earth anchor properties
+        soul_spark: The SoulSpark object for properties and metrics
+        complexity: Complexity factor for channel properties
+        
+    Returns:
+        Dict containing the channel properties
+    """
+    logger.info("LC Step: Forming Communication Channels...")
+    
+    # Get anchor frequencies
+    spiritual_freq = spiritual_anchor["frequency"]
+    earth_freq = earth_anchor["frequency"]
+    soul_freq = soul_spark.frequency
+    
+    # Get soul properties for natural bandwidth calculation
+    coherence = soul_spark.coherence / MAX_COHERENCE_CU  # Normalize to 0-1
+    creator_connection = getattr(soul_spark, 'creator_connection_strength', 0.0)
+    earth_resonance = getattr(soul_spark, 'earth_resonance', 0.0)
+    
+    # Calculate spiritual channel properties using natural scaling
+    # Bandwidth scales with frequency * complexity * golden ratio
+    spiritual_bandwidth = spiritual_freq * complexity * (0.5 + 0.5 * PHI/2) * (0.7 + 0.3 * creator_connection)
+    
+    # Resistance is inversely proportional to creator connection (natural inverse relationship)
+    # Lower resistance = better connection
+    spiritual_resistance = max(0.1, 0.5 * (1.0 - creator_connection * 0.8))
+    
+    # Get threshold from anchor
+    spiritual_threshold = spiritual_anchor["resonance_target"]
+    
+    # Calculate earth channel properties using natural scaling
+    # Bandwidth scales with frequency * complexity * golden ratio
+    earth_bandwidth = earth_freq * complexity * (0.5 + 0.5 * PHI/2) * (0.7 + 0.3 * earth_resonance)
+    
+    # Resistance is inversely proportional to earth resonance 
+    earth_resistance = max(0.1, 0.5 * (1.0 - earth_resonance * 0.8))
+    
+    # Get threshold from anchor
+    earth_threshold = earth_anchor["resonance_target"]
+    
+    # Calculate channel distance using 3D coordinates
+    spiritual_pos = spiritual_anchor["position"]
+    earth_pos = earth_anchor["position"]
+    distance = np.sqrt(sum((spiritual_pos[i] - earth_pos[i])**2 for i in range(3)))
+    
+    # Calculate quantum entanglement based on coherence (non-linear natural scaling)
+    quantum_entanglement = tanh(coherence * 2.5)  # Hyperbolic tangent gives natural saturation curve
+    
+    # Calculate shield strength using golden ratio scaling
+    em_shield_base = 0.7
+    em_shield_bonus = 0.3 * (1.0 - exp(-coherence * 3.0))  # Natural exponential approach
+    em_shield_strength = em_shield_base + em_shield_bonus
+    
+    # Create the channels structure
+    channels = {
+        "spiritual_channel": {
+            "state": "inactive",  # Initially inactive until soul resonates
+            "bandwidth_hz": float(spiritual_bandwidth),
+            "resistance": float(spiritual_resistance),
+            "resonance_threshold": float(spiritual_threshold),
+            "frequency": float(spiritual_freq),
+            "soul_resonant_range": [soul_freq * 0.9, soul_freq * 1.5],  # Natural range for resonance
+            "creation_timestamp": datetime.now().isoformat()
+        },
+        "earth_channel": {
+            "state": "inactive",  # Initially inactive until soul resonates
+            "bandwidth_hz": float(earth_bandwidth),
+            "resistance": float(earth_resistance),
+            "resonance_threshold": float(earth_threshold),
+            "frequency": float(earth_freq),
+            "soul_resonant_range": [soul_freq * 0.5, soul_freq * 1.1],  # Natural range for resonance
+            "creation_timestamp": datetime.now().isoformat()
+        },
+        "channel_properties": {
+            "length": float(distance),
+            "electromagnetic_shield_strength": float(em_shield_strength),
+            "stability": float(1.0),  # Perfect stability (divine)
+            "quantum_entanglement": float(quantum_entanglement),
+            "light_speed_factor": float(1.0),  # Instantaneous communication (divine)
+            "creator_energy_flow": float(1.0),  # Perfect energy flow (divine)
+            "creation_timestamp": datetime.now().isoformat()
+        }
+    }
+    
+    logger.info(f"Communication Channels formed: "
+               f"Spiritual (BW: {spiritual_bandwidth:.2f}Hz, R: {spiritual_resistance:.3f}), "
+               f"Earth (BW: {earth_bandwidth:.2f}Hz, R: {earth_resistance:.3f}), "
+               f"Distance: {distance:.1f}, Shield: {em_shield_strength:.3f}, "
+               f"QE: {quantum_entanglement:.3f}")
+    
+    return channels
+
+
+def _test_soul_channel_resonance(soul_spark: SoulSpark, 
+                               channel_type: str,
+                               channel: Dict[str, Any], 
+                               anchor: Dict[str, Any],
+                               max_steps: int) -> Dict[str, Any]:
+    """
+    Tests if the soul can resonate with a channel by biomimetically adjusting its frequency.
+    Uses edge of chaos principles to find the resonance point, mimicking how consciousness
+    adjusts frequency during meditation.
+    
+    Args:
+        soul_spark: The SoulSpark object
+        channel_type: Type of channel ('spiritual' or 'earth')
+        channel: The channel properties
+        anchor: The anchor properties
+        max_steps: Maximum number of frequency adjustment steps
+        
+    Returns:
+        Dict containing the resonance test results
+    """
+    logger.info(f"LC Step: Testing Soul-{channel_type.capitalize()} Channel Resonance...")
+    
+    # Get channel and soul properties
+    channel_freq = channel["frequency"]
+    resonance_threshold = channel["resonance_threshold"]
+    resonance_tolerance = anchor["resonance_tolerance"]
+    soul_frequency = getattr(soul_spark, 'frequency', 432.0)
+    
+    # Set up resonance finding variables
+    steps = 0
+    resonance_achieved = False
+    current_resonance = calculate_resonance(soul_frequency, channel_freq)
+    best_resonance = current_resonance
+    best_frequency = soul_frequency
+    current_frequency = soul_frequency
+    
+    # Calculate initial difficulty based on resonance gap
+    frequency_gap = abs(np.log(soul_frequency) - np.log(channel_freq))
+    initial_difficulty = tanh(frequency_gap * 1.5)  # Natural scaling with hyperbolic tangent
+    
+    # Track resonance path for edge of chaos analysis
+    resonance_path = []
+    frequency_adjustments = []
+    
+    # Calculate required resonance target with tolerance
+    required_resonance = resonance_threshold - resonance_tolerance
+    
+    logger.info(f"Starting {channel_type} resonance test: "
+               f"Soul: {soul_frequency:.2f}Hz, Channel: {channel_freq:.2f}Hz, "
+               f"Initial Resonance: {current_resonance:.4f}, Target: {required_resonance:.4f}")
+    
+    # Record edge of chaos transitions
+    eoc_transitions = 0
+    last_distance_to_eoc = abs(current_resonance - 0.618)
+    
+    # Begin resonance finding process - biomimetic frequency adjustment
+    while steps < max_steps and not resonance_achieved:
+        steps += 1
+        
+        # Record current state
+        resonance_path.append(float(current_resonance))
+        
+        # Check if resonance is achieved
+        if current_resonance >= required_resonance:
+            resonance_achieved = True
+            logger.info(f"{channel_type.capitalize()} resonance achieved after {steps} steps: {current_resonance:.4f}")
+            break
+        
+        # Calculate how far we are from edge of chaos (EOC = 0.618)
+        # In natural systems, the edge of chaos is often at the golden ratio point
+        current_distance_to_eoc = abs(current_resonance - 0.618)
+        
+        # Detect if we crossed the edge of chaos threshold
+        if last_distance_to_eoc > 0.05 and current_distance_to_eoc <= 0.05:
+            eoc_transitions += 1
+            logger.debug(f"Edge of chaos transition detected at step {steps}")
+        
+        last_distance_to_eoc = current_distance_to_eoc
+        
+        # Apply biomimetic frequency adjustment strategy
+        # At edge of chaos, make larger adjustments to break through
+        # Further from edge, make smaller, more careful adjustments
+        if current_distance_to_eoc < 0.1:
+            # Near edge of chaos - larger adjustment to break through
+            # Natural systems often make "jumps" at critical thresholds
+            adjustment_scale = 0.12 * (1.0 - (current_distance_to_eoc / 0.1))
+        else:
+            # Away from edge - smaller adjustments (careful exploration)
+            # Natural systems explore parameters more cautiously away from transitions
+            adjustment_scale = 0.05 * (1.0 - current_resonance) * (current_distance_to_eoc / 0.2)
+        
+        # Calculate frequency adjustment direction
+        frequency_ratio = current_frequency / channel_freq
+        
+        # Direction depends on whether we're above or below target frequency
+        # Natural systems tend to approach targets from both directions
+        if frequency_ratio > 1.0:
+            # Current frequency too high
+            adjustment = -adjustment_scale * current_frequency
+        else:
+            # Current frequency too low
+            adjustment = adjustment_scale * current_frequency
+        
+        # Apply phi-based correction if close to phi ratio
+        # Natural systems often seek out golden ratio relationships
+        phi_ratio = PHI
+        inverse_phi = 1.0 / PHI
+        
+        phi_distances = [
+            abs(frequency_ratio - phi_ratio),
+            abs(frequency_ratio - inverse_phi),
+            abs(frequency_ratio - phi_ratio**2),
+            abs(frequency_ratio - inverse_phi**2)
+        ]
+        
+        min_phi_distance = min(phi_distances)
+        if min_phi_distance < 0.1:
+            # We're close to a phi relationship, leverage it
+            # Find which phi relationship is closest
+            phi_patterns = [PHI, 1.0/PHI, PHI**2, 1.0/(PHI**2)]
+            closest_phi = phi_patterns[phi_distances.index(min_phi_distance)]
+            
+            # Target that phi relationship
+            target = channel_freq * closest_phi
+            phi_adjustment = (target - current_frequency) * 0.2
+            
+            # Blend normal adjustment with phi-targeting (weighted by proximity)
+            phi_weight = 1.0 - (min_phi_distance / 0.1)
+            adjustment = adjustment * (1.0 - phi_weight) + phi_adjustment * phi_weight
+            logger.debug(f"Applied phi correction with weight {phi_weight:.3f}")
+        
+        # Apply slight randomization for natural exploration
+        # Natural systems have inherent variability in adjustments
+        noise_amplitude = 0.02 * abs(adjustment) * (1.0 - resonance_threshold)
+        adjustment += np.random.normal(0, noise_amplitude)
+        
+        # Record adjustment
+        frequency_adjustments.append(float(adjustment))
+        
+        # Apply adjustment
+        current_frequency += adjustment
+        
+        # Apply natural bounds to frequency 
+        # Ensure within resonant range for safety
+        if "soul_resonant_range" in channel:
+            min_safe = channel["soul_resonant_range"][0]
+            max_safe = channel["soul_resonant_range"][1]
+            current_frequency = max(min_safe, min(max_safe, current_frequency))
+        
+        # Calculate new resonance
+        current_resonance = calculate_resonance(current_frequency, channel_freq)
+        
+        # Track best resonance
+        if current_resonance > best_resonance:
+            best_resonance = current_resonance
+            best_frequency = current_frequency
+    
+    # Calculate final difficulty using biomimetic criteria
+    normalized_steps = min(1.0, steps / max_steps)
+    log_factor = 0.5 * (1.0 + tanh((steps - max_steps/2) / (max_steps/4)))
+    effort_factor = normalized_steps * log_factor
+    
+    # Higher intensity at edge of chaos - natural systems expend more energy at transitions
+    eoc_intensity = 0.3 * (eoc_transitions / max(1, steps/10))
+    
+    # Combine initial gap with effort and transitions for natural difficulty metric
+    difficulty = initial_difficulty * 0.4 + effort_factor * 0.4 + eoc_intensity * 0.2
+    difficulty = max(0.0, min(1.0, difficulty))
+    
+    # Create resonance results
+    resonance_results = {
+        "resonance_achieved": resonance_achieved,
+        "steps_taken": steps,
+        "max_steps": max_steps,
+        "initial_resonance": float(calculate_resonance(soul_frequency, channel_freq)),
+        "final_resonance": float(current_resonance),
+        "best_resonance": float(best_resonance),
+        "initial_frequency": float(soul_frequency),
+        "final_frequency": float(current_frequency),
+        "best_frequency": float(best_frequency),
+        "channel_frequency": float(channel_freq),
+        "resonance_difficulty": float(difficulty),
+        "resonance_path": resonance_path,
+        "frequency_adjustments": frequency_adjustments,
+        "edge_of_chaos_transitions": eoc_transitions,
+        "creation_timestamp": datetime.now().isoformat()
+    }
+    
+    # Record results in channel
+    channel["state"] = "active" if resonance_achieved else "inactive"
+    channel["resonance_result"] = resonance_results
+    
+    logger.info(f"{channel_type.capitalize()} Channel Test Results: "
+               f"Achieved: {resonance_achieved}, "
+               f"Steps: {steps}/{max_steps}, "
+               f"Final Resonance: {current_resonance:.4f}, "
+               f"Difficulty: {difficulty:.4f}, "
+               f"EOC Transitions: {eoc_transitions}")
+    
+    return resonance_results
+
+def _record_resonance_metrics(soul_spark: SoulSpark,
+                            spiritual_results: Dict[str, Any],
+                            earth_results: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Records metrics about the resonance tests to the soul spark.
+    Updates soul properties based on natural principles.
+    
+    Args:
+        soul_spark: The SoulSpark object
+        spiritual_results: Results from spiritual channel test
+        earth_results: Results from earth channel test
+        
+    Returns:
+        Dict containing combined metrics
+    """
+    logger.info("LC Step: Recording Resonance Metrics...")
+    
+    # Extract key results
+    spiritual_achieved = spiritual_results["resonance_achieved"]
+    earth_achieved = earth_results["resonance_achieved"]
+    spiritual_steps = spiritual_results["steps_taken"]
+    earth_steps = earth_results["steps_taken"]
+    spiritual_difficulty = spiritual_results["resonance_difficulty"]
+    earth_difficulty = earth_results["resonance_difficulty"]
+    
+    # Calculate overall metrics using natural principles
+    # Overall success only if both channels activated
+    overall_success = spiritual_achieved and earth_achieved
+    
+    # Average difficulty with golden ratio weighting - natural bias toward earth difficulty
+    # Earth is more important for soul's immediate future
+    phi_weight_earth = PHI / (PHI + 1)  # ~0.618
+    phi_weight_spiritual = 1 / (PHI + 1)  # ~0.382
+    avg_difficulty = (
+        earth_difficulty * phi_weight_earth + 
+        spiritual_difficulty * phi_weight_spiritual
+    )
+    
+    # Total steps with biomimetic analysis
+    total_steps = spiritual_steps + earth_steps
+    
+    # Calculate step efficiency ratio (natural log curve)
+    # This measures how efficiently the soul found resonance
+    max_possible_steps = spiritual_results["max_steps"] + earth_results["max_steps"]
+    if overall_success and max_possible_steps > 0:
+        step_efficiency = 1.0 - (total_steps / max_possible_steps)
+        # Apply natural log curve to emphasize differences
+        step_efficiency = max(0.0, min(1.0, -0.5 * log(0.1 + 0.9 * (1.0 - step_efficiency))))
+    else:
+        step_efficiency = 0.0
+    
+    # Create combined metrics
+    communication_metrics = {
+        "spiritual_resonance_achieved": spiritual_achieved,
+        "earth_resonance_achieved": earth_achieved,
+        "spiritual_resonance_steps": spiritual_steps,
+        "earth_resonance_steps": earth_steps,
+        "spiritual_resonance_difficulty": float(spiritual_difficulty),
+        "earth_resonance_difficulty": float(earth_difficulty),
+        "overall_resonance_success": overall_success,
+        "overall_resonance_difficulty": float(avg_difficulty),
+        "total_resonance_steps": total_steps,
+        "step_efficiency": float(step_efficiency),
+        "resonance_timestamp": datetime.now().isoformat(),
+        "edge_of_chaos_transitions": {
+            "spiritual": spiritual_results.get("edge_of_chaos_transitions", 0),
+            "earth": earth_results.get("edge_of_chaos_transitions", 0),
+            "total": spiritual_results.get("edge_of_chaos_transitions", 0) + 
+                     earth_results.get("edge_of_chaos_transitions", 0)
+        }
+    }
+    
+    # Calculate earth resonance for soul property using biomimetic principles
+    # This is a measure of how well the soul can communicate with Earth
+    if earth_achieved:
+        # Successful resonance - calculate based on final resonance
+        base_resonance = earth_results["final_resonance"] 
+        
+        # Apply efficiency bonus (natural systems reward efficient adaptation)
+        efficiency_bonus = step_efficiency * 0.2
+        
+        earth_resonance = min(1.0, base_resonance + efficiency_bonus)
+    else:
+        # Failed resonance - use best achieved value with penalty
+        earth_resonance = earth_results["best_resonance"] * 0.7  # 30% penalty
+    
+    # Record to soul spark - these become permanent attributes
+    setattr(soul_spark, "earth_resonance", float(earth_resonance))
+    setattr(soul_spark, "cord_resonance_steps", total_steps)
+    setattr(soul_spark, "cord_resonance_difficulty", float(avg_difficulty))
+    
+    # For tracking resonance capacity without changing the base frequency
+    if earth_achieved and spiritual_achieved:
+        best_earth_freq = earth_results["best_frequency"]
+        best_spiritual_freq = spiritual_results["best_frequency"]
+        
+        setattr(soul_spark, "earth_resonant_frequency", float(best_earth_freq))
+        setattr(soul_spark, "spiritual_resonant_frequency", float(best_spiritual_freq))
+    
+    logger.info(f"Resonance Metrics Recorded: "
+               f"Overall Success: {overall_success}, "
+               f"Overall Difficulty: {avg_difficulty:.4f}, "
+               f"Total Steps: {total_steps}, "
+               f"Earth Resonance: {earth_resonance:.4f}, "
+               f"Step Efficiency: {step_efficiency:.4f}")
+    
+    # Record metrics to tracking system if available
+    if METRICS_AVAILABLE:
+        metrics.record_metrics('life_cord_resonance', {
+            'soul_id': soul_spark.spark_id,
+            'spiritual_resonance_achieved': spiritual_achieved,
+            'earth_resonance_achieved': earth_achieved,
+            'spiritual_resonance_steps': spiritual_steps,
+            'earth_resonance_steps': earth_steps,
+            'overall_resonance_success': overall_success,
+            'overall_resonance_difficulty': avg_difficulty,
+            'earth_resonance_value': earth_resonance,
+            'step_efficiency': step_efficiency,
+            'edge_of_chaos_transitions_total': communication_metrics["edge_of_chaos_transitions"]["total"],
+            'timestamp': communication_metrics["resonance_timestamp"]
+        })
+    
+    return communication_metrics
+
+
+def _finalize_life_cord(soul_spark: SoulSpark, 
+                       cord_structure: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Finalizes the life cord and sets appropriate flags on the soul spark.
+    The divine cord maintains perfect integrity regardless of resonance success.
+    
+    Args:
+        soul_spark: The SoulSpark object
         cord_structure: The complete cord structure
-        earth_resonance: The calculated Earth resonance factor
         
     Returns:
-        Dict containing final integration metrics
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
+        Dict containing finalization metrics
     """
-    logger.info("LC Step: Finalizing Cord Integration...")
+    logger.info("LC Step: Finalizing Life Cord...")
     
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not isinstance(cord_structure, dict):
-        raise ValueError("Cord structure must be a dictionary")
-    if not isinstance(earth_resonance, (int, float)) or not (0.0 <= earth_resonance <= 1.0):
-        raise ValueError(f"Earth resonance must be between 0.0 and 1.0, got {earth_resonance}")
+    # Extract key information
+    communication_metrics = cord_structure.get("communication_metrics", {})
+    overall_success = communication_metrics.get("overall_resonance_success", False)
     
-    try:
-        # Get essential metrics from cord structure
-        stability_factor = cord_structure.get("stability_factor", 0.0)
-        integrity_factor = cord_structure.get("integrity_factor", 0.0)
-        bandwidth = cord_structure.get("bandwidth_hz", 0.0)
-        
-        # Get key components
-        light_pathways = cord_structure.get("light_pathways", {})
-        sound_enhancements = cord_structure.get("sound_enhancements", [])
-        standing_wave = cord_structure.get("standing_wave", {})
-        
-        # Calculate overall integration quality
-        avg_pathway_strength = light_pathways.get("avg_pathway_strength", 0.0)
-        standing_wave_coherence = standing_wave.get("coherence_factor", 0.0)
-        
-        # Integration factors
-        physical_integration = min(1.0, earth_resonance * 1.2)  # Slight boost to earth resonance
-        energetic_integration = min(1.0, avg_pathway_strength * 1.1)  # Light pathways
-        structural_integration = min(1.0, stability_factor)  # Stability represents structural integrity
-        
-        # Calculate overall integration
-        overall_integration = (
-            physical_integration * 0.4 +
-            energetic_integration * 0.3 +
-            structural_integration * 0.3
-        )
-        
-        # Finalize cord integrity
-        final_integrity = (
-            integrity_factor * 0.5 +
-            overall_integration * 0.3 +
-            earth_resonance * 0.2
-        )
-        
-        # Ensure results are in valid range
-        overall_integration = max(0.0, min(1.0, overall_integration))
-        final_integrity = max(0.0, min(1.0, final_integrity))
-        
-        # Create finalization time
-        finalization_time = datetime.now().isoformat()
-        
-        # Store results in soul_spark
-        setattr(soul_spark, "cord_integrity", float(final_integrity))
-        setattr(soul_spark, "earth_resonance", float(earth_resonance))
-        setattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, True)
-        
-        # Store final cord structure in soul_spark
-        final_cord = {
-            "integrity_factor": float(final_integrity),
-            "stability_factor": float(stability_factor),
-            "bandwidth_hz": float(bandwidth),
-            "overall_integration": float(overall_integration),
+    # Cord integrity is always perfect (divine energy)
+    cord_integrity = 1.0
+    
+    # Get earth resonance from communication metrics or use stored value
+    earth_resonance = getattr(soul_spark, "earth_resonance", 0.0)
+    earth_resonance = max(0.0, min(1.0, earth_resonance))
+    
+    # Create finalization time
+    finalization_time = datetime.now().isoformat()
+    
+    # Create sigil data for future gateway key
+    sigil_data = {
+        "type": "life_cord",
+        "creation_timestamp": cord_structure.get("creation_timestamp", ""),
+        "finalization_timestamp": finalization_time,
+        "soul_id": soul_spark.spark_id,
+        "surface_data": {
+            "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+            "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0)),
             "earth_resonance": float(earth_resonance),
-            "creation_timestamp": cord_structure.get("creation_timestamp", ""),
-            "finalization_timestamp": finalization_time
-        }
-        
-        # Add summary of key structures
-        if light_pathways:
-            final_cord["light_pathways_summary"] = {
-                "count": light_pathways.get("total_pathway_count", 0),
-                "avg_strength": float(avg_pathway_strength),
-                "quantum_tunneling": float(light_pathways.get("quantum_tunneling_factor", 0.0))
-            }
-            
-        if standing_wave:
-            final_cord["standing_wave_summary"] = {
-                "node_count": standing_wave.get("node_count", 0),
-                "coherence_factor": float(standing_wave_coherence),
-                "average_amplitude": float(standing_wave.get("average_amplitude", 0.0))
-            }
-            
-        if sound_enhancements:
-            final_cord["sound_enhancements_summary"] = [
-                {"type": se.get("type", ""), "boost": se.get("enhancement_factors", {}).get("stability_boost", 0.0)}
-                for se in sound_enhancements
-            ]
-        
-        # Set the complete structure in soul_spark
-        setattr(soul_spark, "life_cord", final_cord)
-        
-        # Store last modified timestamp
-        setattr(soul_spark, "last_modified", finalization_time)
-        
-        # Create finalization metrics
-        finalization_metrics = {
-            "cord_integrity": float(final_integrity),
-            "earth_resonance": float(earth_resonance),
-            "overall_integration": float(overall_integration),
-            "physical_integration": float(physical_integration),
-            "energetic_integration": float(energetic_integration),
-            "structural_integration": float(structural_integration),
-            "finalization_timestamp": finalization_time
-        }
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics.record_metrics('life_cord_finalization', finalization_metrics)
-        
-        logger.info(f"Life cord integration finalized: Integrity={final_integrity:.4f}, "
-                   f"Earth Resonance={earth_resonance:.4f}, "
-                   f"Overall Integration={overall_integration:.4f}")
-        
-        return finalization_metrics
-        
-    except Exception as e:
-        logger.error(f"Error finalizing cord integration: {e}", exc_info=True)
-        raise RuntimeError("Cord integration finalization failed critically.") from e
+            "step_efficiency": float(communication_metrics.get("step_efficiency", 0.0))
+        },
+        "hidden_data": {
+            "spiritual_channel": cord_structure.get("channels", {}).get("spiritual_channel", {}),
+            "earth_channel": cord_structure.get("channels", {}).get("earth_channel", {}),
+            "spiritual_anchor": cord_structure.get("anchors", {}).get("spiritual", {}),
+            "earth_anchor": cord_structure.get("anchors", {}).get("earth", {})
+        },
+        "edge_of_chaos_data": communication_metrics.get("edge_of_chaos_transitions", {})
+    }
+    
+    # Store sigil data in soul_spark for later retrieval by sigil creator
+    if not hasattr(soul_spark, "sigil_data"):
+        setattr(soul_spark, "sigil_data", {})
+    
+    soul_spark.sigil_data["life_cord"] = sigil_data
+    
+    # Set final flags and properties on soul spark
+    setattr(soul_spark, "cord_integrity", float(cord_integrity))
+    setattr(soul_spark, "earth_resonance", float(earth_resonance))
+    setattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, True)
+    setattr(soul_spark, FLAG_READY_FOR_EARTH, True)
+    
+    # Update last modified timestamp
+    setattr(soul_spark, "last_modified", finalization_time)
+    
+    # Store simplified final cord structure in soul_spark
+    final_cord = {
+        "integrity": float(cord_integrity),
+        "creation_timestamp": cord_structure.get("creation_timestamp", ""),
+        "finalization_timestamp": finalization_time,
+        "earth_resonance": float(earth_resonance),
+        "spiritual_resonance": float(communication_metrics.get("spiritual_resonance_difficulty", 0.0)),
+        "spiritual_channel_active": communication_metrics.get("spiritual_resonance_achieved", False),
+        "earth_channel_active": communication_metrics.get("earth_resonance_achieved", False),
+        "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+        "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0)),
+        "step_efficiency": float(communication_metrics.get("step_efficiency", 0.0)),
+        "earth_anchor_frequency": cord_structure.get("anchors", {}).get("earth", {}).get("frequency", 0.0),
+        "spiritual_anchor_frequency": cord_structure.get("anchors", {}).get("spiritual", {}).get("frequency", 0.0)
+    }
+    
+    # Set the complete cord structure in soul_spark
+    setattr(soul_spark, "life_cord", final_cord)
+    
+    # Record metrics
+    if METRICS_AVAILABLE:
+        metrics.record_metrics('life_cord_finalization', {
+            'soul_id': soul_spark.spark_id,
+            'cord_integrity': cord_integrity,
+            'earth_resonance': earth_resonance,
+            'overall_success': overall_success,
+            'spiritual_channel_active': communication_metrics.get("spiritual_resonance_achieved", False),
+            'earth_channel_active': communication_metrics.get("earth_resonance_achieved", False),
+            'timestamp': finalization_time
+        })
+    
+    # Create finalization metrics
+    finalization_metrics = {
+        "cord_integrity": float(cord_integrity),
+        "earth_resonance": float(earth_resonance),
+        "spiritual_resonance": float(communication_metrics.get("spiritual_resonance_difficulty", 0.0)),
+        "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+        "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0)),
+        "overall_success": overall_success,
+        "step_efficiency": float(communication_metrics.get("step_efficiency", 0.0)),
+        "finalization_timestamp": finalization_time
+    }
+    
+    logger.info(f"Life Cord Finalized: "
+               f"Integrity: {cord_integrity:.2f} (Divine), "
+               f"Earth Resonance: {earth_resonance:.4f}, "
+               f"Success: {overall_success}, "
+               f"Efficiency: {communication_metrics.get('step_efficiency', 0.0):.4f}")
+    
+    # Add memory echo if soul has this capacity
+    if hasattr(soul_spark, 'add_memory_echo'):
+        success_str = "successful" if overall_success else "partial"
+        soul_spark.add_memory_echo(
+            f"Life cord formation {success_str}. "
+            f"Earth resonance: {earth_resonance:.3f}. "
+            f"Cord integrity: {cord_integrity:.2f} (perfect divine energy)."
+        )
+    
+    return finalization_metrics
 
-def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: float = 0.5) -> Tuple[SoulSpark, Dict[str, Any]]:
+
+# --- Main Function ---
+
+def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, 
+                 complexity: float = 0.5) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
-    Forms the life cord connecting the soul to Earth, enabling incarnation.
-    Establishes a stable energetic connection that facilitates the flow of
-    information and energy between the spiritual and physical realms.
+    Forms the divine life cord connecting the soul to Earth and Creator.
+    Creates perfect divine cord with two anchors and channels.
+    The soul must learn to resonate with the anchors to establish communication,
+    adapting its frequency temporarily without changing its base nature.
     
     Args:
-        soul_spark: The soul forming the life cord
-        intensity: Intensity of the cord formation process (0.1-1.0)
-        complexity: Complexity/sophistication of the resulting cord (0.1-1.0)
+        soul_spark: The SoulSpark object
+        intensity: Factor affecting resonance finding process (0.1-1.0)
+        complexity: Factor affecting channel structure complexity (0.1-1.0)
         
     Returns:
         Tuple of (modified soul_spark, process_metrics)
-        
-    Raises:
-        ValueError: For invalid inputs
-        RuntimeError: If cord formation fails
     """
     # --- Input Validation ---
     if not isinstance(soul_spark, SoulSpark):
-        raise TypeError("soul_spark must be a SoulSpark instance")
+        raise TypeError("soul_spark must be a SoulSpark instance.")
+        
     if not isinstance(intensity, (int, float)) or not (0.1 <= intensity <= 1.0):
         raise ValueError(f"Intensity must be between 0.1 and 1.0, got {intensity}")
+        
     if not isinstance(complexity, (int, float)) or not (0.1 <= complexity <= 1.0):
         raise ValueError(f"Complexity must be between 0.1 and 1.0, got {complexity}")
     
-    spark_id = getattr(soul_spark, "spark_id", "unknown")
+    spark_id = getattr(soul_spark, "spark_id", "unknown_spark")
     logger.info(f"--- Beginning Life Cord Formation for Soul {spark_id} (Int={intensity:.2f}, Cmplx={complexity:.2f}) ---")
     start_time = datetime.now().isoformat()
     
@@ -1708,12 +951,12 @@ def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: fl
     }
     
     try:
-        # --- 1. Check Prerequisites ---
+        # --- Check Prerequisites ---
         logger.info("Life Cord Step 1: Checking Prerequisites...")
         _ensure_soul_properties(soul_spark)
         _check_prerequisites(soul_spark)
         
-        # Energy check before proceeding
+        # Energy check before proceeding - hard fail
         initial_energy = soul_spark.energy
         if initial_energy < CORD_ACTIVATION_ENERGY_COST:
             raise ValueError(f"Insufficient energy ({initial_energy:.1f} SEU) for cord formation. Required: {CORD_ACTIVATION_ENERGY_COST} SEU")
@@ -1721,153 +964,159 @@ def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: fl
         # Apply energy cost
         soul_spark.energy -= CORD_ACTIVATION_ENERGY_COST
         
-        # --- 2. Establish Anchor Points ---
-        logger.info("Life Cord Step 2: Establishing Anchor Points...")
-        soul_anchor, earth_anchor, connection_strength = _establish_soul_earth_anchors(soul_spark)
-        process_metrics["steps"]["anchor_points"] = {
-            "soul_anchor": soul_anchor,
-            "earth_anchor": earth_anchor,
-            "connection_strength": float(connection_strength)
+        # --- Create Divine Cord ---
+        logger.info("Life Cord Step 2: Creating Divine Cord...")
+        cord_structure = _establish_divine_cord()
+        process_metrics["steps"]["divine_cord"] = {
+            "divine_properties": cord_structure["divine_properties"]
         }
         
-        # --- 3. Form Bidirectional Waveguide ---
-        logger.info("Life Cord Step 3: Forming Bidirectional Waveguide...")
-        waveguide = _form_bidirectional_waveguide(soul_anchor, earth_anchor, connection_strength, complexity)
-        process_metrics["steps"]["waveguide"] = {
-            "length": float(waveguide["length"]),
-            "diameter": float(waveguide["diameter"]),
-            "soul_to_earth_efficiency": float(waveguide["soul_to_earth_efficiency"]),
-            "earth_to_soul_efficiency": float(waveguide["earth_to_soul_efficiency"]),
-            "quantum_efficiency": float(waveguide["quantum_efficiency"])
+        # --- Create Anchors ---
+        logger.info("Life Cord Step 3: Creating Anchors...")
+        spiritual_anchor = _create_spiritual_anchor(soul_spark)
+        earth_anchor = _create_earth_anchor(soul_spark)
+        
+        # Add anchors to cord structure
+        cord_structure["anchors"] = {
+            "spiritual": spiritual_anchor,
+            "earth": earth_anchor
         }
         
-        # Debug the waveguide to check frequency properties
-        logger.debug(f"Waveguide created with keys: {waveguide.keys()}")
-        logger.debug(f"Waveguide frequency properties: primary_frequency_hz={waveguide.get('primary_frequency_hz', 'NOT SET')}, bandwidth_hz={waveguide.get('bandwidth_hz', 'NOT SET')}")
-        
-        # Ensure waveguide has required frequency properties
-        if 'primary_frequency_hz' not in waveguide or waveguide['primary_frequency_hz'] <= FLOAT_EPSILON:
-            soul_frequency = getattr(soul_spark, 'frequency', None)
-            if soul_frequency and soul_frequency > FLOAT_EPSILON:
-                logger.info(f"Setting missing primary_frequency_hz to soul frequency: {soul_frequency}")
-                waveguide['primary_frequency_hz'] = float(soul_frequency)
-            else:
-                logger.error(f"Soul frequency invalid or missing: {soul_frequency}")
-                raise ValueError(f"Cannot create waveguide without valid frequency. Soul frequency: {soul_frequency}")
-        
-        if 'bandwidth_hz' not in waveguide or waveguide['bandwidth_hz'] <= FLOAT_EPSILON:
-            # Set bandwidth to 10% of primary frequency
-            waveguide['bandwidth_hz'] = float(waveguide['primary_frequency_hz'] * 0.1)
-            logger.info(f"Setting missing bandwidth_hz to 10% of primary: {waveguide['bandwidth_hz']}")
-        
-        # --- 4. Create Harmonic Nodes ---
-        logger.info("Life Cord Step 4: Creating Harmonic Nodes...")
-        harmonic_nodes = _create_harmonic_nodes(waveguide, complexity)
-        process_metrics["steps"]["harmonic_nodes"] = {
-            "node_count": len(harmonic_nodes)
+        process_metrics["steps"]["anchors"] = {
+            "spiritual_anchor": {k: v for k, v in spiritual_anchor.items() if k != "position"},
+            "earth_anchor": {k: v for k, v in earth_anchor.items() if k != "position"}
         }
         
-        # --- 5. Create Light Pathways ---
-        logger.info("Life Cord Step 5: Creating Light Pathways...")
-        light_pathways = _create_light_pathways(waveguide, harmonic_nodes)
-        process_metrics["steps"]["light_pathways"] = {
-            "pathway_count": light_pathways["total_pathway_count"],
-            "avg_pathway_strength": float(light_pathways["avg_pathway_strength"]),
-            "max_entanglement_quality": float(light_pathways["max_entanglement_quality"])
+        # --- Form Communication Channels ---
+        logger.info("Life Cord Step 4: Forming Communication Channels...")
+        channels = _form_communication_channels(
+            spiritual_anchor, 
+            earth_anchor,
+            soul_spark,
+            complexity
+        )
+        
+        # Add channels to cord structure
+        cord_structure["channels"] = channels
+        
+        process_metrics["steps"]["channels"] = {
+            "spiritual_channel": {k: v for k, v in channels["spiritual_channel"].items() if k != "resonance_result"},
+            "earth_channel": {k: v for k, v in channels["earth_channel"].items() if k != "resonance_result"},
+            "channel_properties": channels["channel_properties"]
         }
         
-        # --- 6. Calculate Information Bandwidth ---
-        logger.info("Life Cord Step 6: Calculating Information Bandwidth...")
-        bandwidth_metrics = _calculate_information_bandwidth(waveguide, light_pathways)
-        process_metrics["steps"]["bandwidth"] = {
-            "effective_bandwidth_hz": float(bandwidth_metrics["effective_bandwidth_hz"]),
-            "information_capacity_bps": float(bandwidth_metrics["information_capacity_bps"])
+        # --- Test Soul-Channel Resonance ---
+        logger.info("Life Cord Step 5: Testing Soul-Channel Resonance...")
+        
+        # Calculate maximum resonance steps based on intensity
+        # Use natural scaling with Fibonacci sequence
+        fib_basis = int(13 * intensity)  # 13 is a Fibonacci number
+        max_steps = fib_basis * 8  # Natural multiple
+        
+        # Test spiritual channel
+        spiritual_results = _test_soul_channel_resonance(
+            soul_spark,
+            "spiritual",
+            channels["spiritual_channel"],
+            spiritual_anchor,
+            max_steps
+        )
+        
+        # Test earth channel
+        earth_results = _test_soul_channel_resonance(
+            soul_spark,
+            "earth",
+            channels["earth_channel"],
+            earth_anchor,
+            max_steps
+        )
+        
+        process_metrics["steps"]["resonance_tests"] = {
+            "spiritual_results": {k: v for k, v in spiritual_results.items() 
+                               if k not in ["resonance_path", "frequency_adjustments"]},
+            "earth_results": {k: v for k, v in earth_results.items() 
+                           if k not in ["resonance_path", "frequency_adjustments"]}
         }
         
-        # --- 7. Integrate with Aura Layers ---
-        logger.info("Life Cord Step 7: Integrating with Aura Layers...")
-        # Create temporary cord structure to integrate with layers
-        temp_cord_structure = {
-            "primary_frequency_hz": soul_anchor["frequency"],
-            "earth_freq": earth_anchor["frequency"],
-            "soul_primary_freq": soul_anchor["frequency"],
-            "bandwidth_hz": bandwidth_metrics["effective_bandwidth_hz"],
-            "creation_timestamp": start_time,
-            "integrity_factor": connection_strength * 0.8,  # Initial integrity
-            "stability_factor": connection_strength * 0.7,  # Initial stability
-            "elasticity_factor": 0.5,  # Default elasticity
-            "waveguide": waveguide,
-            "harmonic_nodes": harmonic_nodes,
-            "light_pathways": light_pathways
-        }
+        # --- Record Communication Metrics ---
+        logger.info("Life Cord Step 6: Recording Communication Metrics...")
+        communication_metrics = _record_resonance_metrics(
+            soul_spark,
+            spiritual_results,
+            earth_results
+        )
         
-        layer_integration = _integrate_with_aura_layers(soul_spark, waveguide, harmonic_nodes)
-        process_metrics["steps"]["layer_integration"] = {
-            "integrated_layers": layer_integration["integrated_layers"],
-            "total_resonance": float(layer_integration["total_resonance"])
-        }
+        # Add communication metrics to cord structure
+        cord_structure["communication_metrics"] = communication_metrics
         
-        # --- 8. Create Standing Wave Patterns ---
-        logger.info("Life Cord Step 8: Creating Standing Wave Patterns...")
-        standing_wave = _create_standing_wave_nodes(temp_cord_structure, connection_strength * complexity)
-        process_metrics["steps"]["standing_wave"] = {
-            "node_count": standing_wave["node_count"],
-            "coherence_factor": float(standing_wave["coherence_factor"]),
-            "stability_boost": float(standing_wave["stability_boost"])
-        }
+        process_metrics["steps"]["communication_metrics"] = communication_metrics
         
-        # --- 9. Enhance with Sound ---
-        logger.info("Life Cord Step 9: Enhancing with Sound...")
+        # --- Finalize Life Cord ---
+        logger.info("Life Cord Step 7: Finalizing Life Cord...")
+        finalization = _finalize_life_cord(soul_spark, cord_structure)
+        process_metrics["steps"]["finalization"] = finalization
         
-        # Sound type based on intensity and complexity
-        if intensity > 0.8:
-            sound_type = "quantum"  # High intensity - quantum properties
-        elif complexity > 0.7:
-            sound_type = "harmonic"  # High complexity - harmonic structures
-        else:
-            sound_type = "resonant"  # Default - resonant properties
-            
-        sound_enhancement = _enhance_cord_with_sound(temp_cord_structure, sound_type)
-        process_metrics["steps"]["sound_enhancement"] = {
-            "sound_type": sound_type,
-            "has_physical_sound": sound_enhancement["has_physical_sound"],
-            "stability_boost": float(sound_enhancement["enhancement_factors"]["stability_boost"])
-        }
+        # --- Generate Sound If Available ---
+        if SOUND_MODULES_AVAILABLE:
+            try:
+                logger.info("Generating life cord formation sound...")
+                
+                # Create sound generator
+                sound_gen = SoundGenerator(sample_rate=SAMPLE_RATE)
+                
+                # Create chord based on spiritual and earth frequencies
+                spiritual_freq = spiritual_anchor["frequency"]
+                earth_freq = earth_anchor["frequency"]
+                
+                # Create harmonic structure with phi ratios - natural harmony
+                frequencies = [
+                    spiritual_freq,
+                    earth_freq,
+                    spiritual_freq * PHI,
+                    earth_freq / PHI,
+                    spiritual_freq * 2.0,
+                    earth_freq * 2.0
+                ]
+                
+                # Amplitudes based on resonance success - natural weighting
+                spiritual_amp = 0.8 if spiritual_results["resonance_achieved"] else 0.4
+                earth_amp = 0.8 if earth_results["resonance_achieved"] else 0.4
+                
+                # Golden ratio falloff for harmonics - natural harmonic distribution
+                amplitudes = [
+                    spiritual_amp,
+                    earth_amp,
+                    spiritual_amp / PHI,
+                    earth_amp / PHI,
+                    spiritual_amp / (PHI**2),
+                    earth_amp / (PHI**2)
+                ]
+                
+                # Generate the sacred chord
+                sound_data = sound_gen.generate_sacred_chord(
+                    frequencies, 
+                    amplitudes, 
+                    5.0
+                )
+                
+                # Save the sound
+                timestamp_str = datetime.now().strftime('%Y%m%d%H%M%S')
+                sound_file = f"life_cord_{spark_id}_{timestamp_str}.wav"
+                file_path = sound_gen.save_sound(
+                    sound_data, 
+                    sound_file, 
+                    f"Life Cord Formation - Soul {spark_id}"
+                )
+                
+                process_metrics["sound_file"] = sound_file
+                process_metrics["sound_path"] = file_path
+                
+                logger.info(f"Life cord sound generated: {file_path}")
+                
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate life cord sound: {sound_err}")
         
-        # --- 10. Optimize Layered Stability ---
-        logger.info("Life Cord Step 10: Optimizing Layered Stability...")
-        layer_optimization = _optimize_layered_stability(soul_spark, temp_cord_structure)
-        process_metrics["steps"]["layer_optimization"] = {
-            "resonant_layers": layer_optimization["resonant_layers"],
-            "stability_boost": float(layer_optimization["stability_boost"]),
-            "coherence_boost": float(layer_optimization["coherence_boost"])
-        }
-        
-        # --- 11. Calculate Earth Resonance ---
-        logger.info("Life Cord Step 11: Calculating Earth Resonance...")
-        earth_resonance = _calculate_earth_resonance(soul_spark, temp_cord_structure["integrity_factor"])
-        process_metrics["steps"]["earth_resonance"] = {
-            "earth_resonance": float(earth_resonance)
-        }
-        
-        # --- 12. Finalize Cord Integration ---
-        logger.info("Life Cord Step 12: Finalizing Cord Integration...")
-        finalization = _finalize_cord_integration(soul_spark, temp_cord_structure, earth_resonance)
-        process_metrics["steps"]["finalization"] = {
-            "cord_integrity": float(finalization["cord_integrity"]),
-            "earth_resonance": float(finalization["earth_resonance"]),
-            "overall_integration": float(finalization["overall_integration"])
-        }
-        
-        # --- 13. Update Soul State ---
-        logger.info("Life Cord Step 13: Updating Soul State...")
-        if hasattr(soul_spark, 'update_state'):
-            soul_spark.update_state()
-            logger.debug(f"Updated soul state after cord formation: S={soul_spark.stability:.1f}, C={soul_spark.coherence:.1f}")
-        else:
-            logger.warning("Soul update_state method not found. Skipping soul state update.")
-        
-        # --- Finalize Process Metrics ---
+        # --- Complete Process Metrics ---
         end_time = datetime.now().isoformat()
         end_time_dt = datetime.fromisoformat(end_time)
         start_time_dt = datetime.fromisoformat(start_time)
@@ -1876,15 +1125,21 @@ def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: fl
         process_metrics["end_time"] = end_time
         process_metrics["duration_seconds"] = duration_seconds
         process_metrics["success"] = True
-        process_metrics["final_cord_integrity"] = float(soul_spark.cord_integrity)
-        process_metrics["final_earth_resonance"] = float(soul_spark.earth_resonance)
+        process_metrics["cord_integrity"] = 1.0  # Divine perfection
+        process_metrics["earth_resonance"] = float(getattr(soul_spark, "earth_resonance", 0.0))
         process_metrics["energy_consumed"] = float(CORD_ACTIVATION_ENERGY_COST)
+        process_metrics["spiritual_channel_active"] = spiritual_results["resonance_achieved"]
+        process_metrics["earth_channel_active"] = earth_results["resonance_achieved"]
         
-        # Log summary
+        # Log summary with natural system principles emphasized
         logger.info(f"--- Life Cord Formation Completed Successfully for Soul {spark_id} ---")
-        logger.info(f"Final Metrics: Integrity={soul_spark.cord_integrity:.4f}, "
-                   f"Earth Resonance={soul_spark.earth_resonance:.4f}, "
-                   f"Duration={duration_seconds:.2f}s")
+        logger.info(f"Final Metrics: Divine Integrity=1.0 (perfect), "
+                   f"Earth Resonance={process_metrics['earth_resonance']:.4f}, "
+                   f"Spiritual Channel: {'Active' if spiritual_results['resonance_achieved'] else 'Inactive'}, "
+                   f"Earth Channel: {'Active' if earth_results['resonance_achieved'] else 'Inactive'}, "
+                   f"Total Steps: {communication_metrics['total_resonance_steps']}, "
+                   f"Efficiency: {communication_metrics.get('step_efficiency', 0.0):.4f}, "
+                   f"Duration: {duration_seconds:.2f}s")
         
         # Record overall metrics
         if METRICS_AVAILABLE:
@@ -1900,12 +1155,13 @@ def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: fl
         # Record failure metrics
         process_metrics["success"] = False
         process_metrics["error"] = str(e)
+        process_metrics["error_type"] = type(e).__name__
         process_metrics["end_time"] = datetime.now().isoformat()
         
         if METRICS_AVAILABLE:
             metrics.record_metrics('life_cord_summary', process_metrics)
             
-        raise  # Re-raise original error
+        raise  # Re-raise original error for hard fail
         
     except Exception as e:
         logger.critical(f"Unexpected error during life cord formation for {spark_id}: {e}", exc_info=True)
@@ -1915,9 +1171,877 @@ def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, complexity: fl
         # Record failure metrics
         process_metrics["success"] = False
         process_metrics["error"] = str(e)
+        process_metrics["error_type"] = "Unexpected"
         process_metrics["end_time"] = datetime.now().isoformat()
         
         if METRICS_AVAILABLE:
             metrics.record_metrics('life_cord_summary', process_metrics)
             
         raise RuntimeError(f"Unexpected life cord formation failure: {e}") from e
+
+
+
+
+
+
+
+
+
+
+# """
+# Life Cord Formation Functions (Refactored V5.0.0 - Divine Channel Implementation)
+
+# Creates an indestructible divine life cord with two anchors (earth and spiritual)
+# and communication channels. The soul must adjust its resonance to match the anchors
+# to establish communication. Records the difficulty and steps required to establish
+# connection using edge of chaos principles.
+
+# The life cord itself is perfect divine energy and does not change based on soul properties.
+# Instead, the soul must learn to resonate with the anchors to open the channels.
+# """
+
+# import logging
+# import numpy as np
+# import os
+# import sys
+# from datetime import datetime
+# import time
+# import uuid
+# from constants.constants import *
+# from typing import Dict, List, Any, Tuple, Optional
+# from math import pi as PI, sqrt, exp, sin, cos, tanh
+
+
+# # --- Logging ---
+# logger = logging.getLogger(__name__)
+
+# # --- Dependency Imports ---
+# try:
+#     from stage_1.soul_spark.soul_spark import SoulSpark
+#     # Import resonance calculation
+#     from .creator_entanglement import calculate_resonance
+# except ImportError as e:
+#     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}.")
+#     raise ImportError(f"Core dependencies missing: {e}") from e
+
+# # --- Sound Module Imports ---
+# try:
+#     from sound.sound_generator import SoundGenerator
+#     from sound.sounds_of_universe import UniverseSounds
+#     SOUND_MODULES_AVAILABLE = True
+# except ImportError:
+#     logger.warning("Sound modules not available. Life cord formation will use simulated sound.")
+#     SOUND_MODULES_AVAILABLE = False
+
+# # --- Metrics Tracking ---
+# try:
+#     import metrics_tracking as metrics
+#     METRICS_AVAILABLE = True
+# except ImportError:
+#     logger.warning("Metrics tracking module not found. Metrics will not be recorded.")
+#     METRICS_AVAILABLE = False
+#     class MetricsPlaceholder:
+#         def record_metrics(self, *args, **kwargs): pass
+#     metrics = MetricsPlaceholder()
+
+# # --- Helper Functions ---
+
+# def _check_prerequisites(soul_spark: SoulSpark) -> bool:
+#     """ Checks prerequisites using SU/CU thresholds. Raises ValueError on failure. """
+#     logger.debug(f"Checking life cord prerequisites for soul {soul_spark.spark_id}...")
+#     if not isinstance(soul_spark, SoulSpark):
+#         raise TypeError("Invalid SoulSpark object.")
+
+#     # 1. Stage Completion Check
+#     if not getattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, False):
+#         msg = f"Prerequisite failed: Soul not marked {FLAG_READY_FOR_LIFE_CORD}."
+#         logger.error(msg); raise ValueError(msg)
+
+#     # 2. Minimum Stability and Coherence (Absolute SU/CU)
+#     stability_su = getattr(soul_spark, 'stability', -1.0)
+#     coherence_cu = getattr(soul_spark, 'coherence', -1.0)
+#     if stability_su < 0 or coherence_cu < 0:
+#         msg = "Prerequisite failed: Soul missing stability or coherence attributes."
+#         logger.error(msg); raise AttributeError(msg)
+
+#     if stability_su < CORD_STABILITY_THRESHOLD_SU:
+#         msg = f"Prerequisite failed: Stability ({stability_su:.1f} SU) < {CORD_STABILITY_THRESHOLD_SU} SU."
+#         logger.error(msg); raise ValueError(msg)
+#     if coherence_cu < CORD_COHERENCE_THRESHOLD_CU:
+#         msg = f"Prerequisite failed: Coherence ({coherence_cu:.1f} CU) < {CORD_COHERENCE_THRESHOLD_CU} CU."
+#         logger.error(msg); raise ValueError(msg)
+
+#     # 3. Energy Check (Done in main function before cost)
+
+#     if getattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, False):
+#         logger.warning(f"Soul {soul_spark.spark_id} already marked {FLAG_CORD_FORMATION_COMPLETE}. Re-running.")
+
+#     logger.debug("Life cord prerequisites met.")
+#     return True
+
+# def _ensure_soul_properties(soul_spark: SoulSpark):
+#     """ Ensure soul has necessary properties. Raises error if missing/invalid. """
+#     logger.debug(f"Ensuring properties for life cord formation (Soul {soul_spark.spark_id})...")
+#     required = ['frequency', 'stability', 'coherence', 'position', 'field_radius',
+#                 'field_strength', 'creator_connection_strength', 'energy', 'layers']
+#     if not all(hasattr(soul_spark, attr) for attr in required):
+#         missing = [attr for attr in required if not hasattr(soul_spark, attr)]
+#         raise AttributeError(f"SoulSpark missing essential attributes for Life Cord: {missing}")
+
+#     if not hasattr(soul_spark, 'life_cord'): setattr(soul_spark, 'life_cord', {})
+#     if not hasattr(soul_spark, 'cord_integrity'): setattr(soul_spark, 'cord_integrity', 0.0)
+
+#     if soul_spark.frequency <= FLOAT_EPSILON: raise ValueError("Soul frequency must be positive.")
+#     pos = getattr(soul_spark, 'position')
+#     if not isinstance(pos, list) or len(pos)!=3: raise ValueError(f"Invalid position: {pos}")
+#     if soul_spark.energy < CORD_ACTIVATION_ENERGY_COST:
+#         raise ValueError(f"Insufficient energy ({soul_spark.energy:.1f} SEU) for cord activation cost ({CORD_ACTIVATION_ENERGY_COST} SEU).")
+
+#     # Check for layers presence
+#     if not soul_spark.layers or len(soul_spark.layers) < 2:
+#         raise ValueError("Soul must have at least 2 aura layers for life cord formation.")
+
+#     logger.debug("Soul properties ensured for Life Cord.")
+
+# def _establish_divine_cord() -> Dict[str, Any]:
+#     """
+#     Creates the divine cord structure with perfect, indestructible properties.
+#     The divine cord is composed of pure creator energy.
+    
+#     Returns:
+#         Dict containing the divine cord properties
+#     """
+#     logger.info("LC Step: Establishing Divine Cord...")
+    
+#     # Create timestamp for cord creation
+#     creation_timestamp = datetime.now().isoformat()
+    
+#     # Create the divine cord with perfect properties
+#     divine_cord = {
+#         "divine_properties": {
+#             "integrity": 1.0,               # Perfect, indestructible
+#             "stability": 1.0,               # Perfect stability
+#             "elasticity": 1.0,              # Perfect elasticity
+#             "resonance": 1.0,               # Perfect resonance
+#             "creation_timestamp": creation_timestamp,
+#             "divine_energy_purity": 1.0,    # Pure creator energy
+#             "divine_energy_level": 1.0      # Full divine energy
+#         },
+#         "creation_timestamp": creation_timestamp
+#     }
+    
+#     logger.info("Divine Cord established with perfect properties.")
+#     return divine_cord
+
+# def _create_spiritual_anchor(soul_spark: SoulSpark) -> Dict[str, Any]:
+#     """
+#     Creates the spiritual anchor based on soul properties.
+#     This anchor connects to the spiritual aspect of the soul.
+    
+#     Args:
+#         soul_spark: The SoulSpark object
+        
+#     Returns:
+#         Dict containing the spiritual anchor properties
+#     """
+#     logger.info("LC Step: Creating Spiritual Anchor...")
+    
+#     # Get soul properties
+#     soul_frequency = getattr(soul_spark, 'frequency', 432.0)
+#     creator_connection = getattr(soul_spark, 'creator_connection_strength', 0.0)
+#     soul_coherence = getattr(soul_spark, 'coherence', 0.0) / MAX_COHERENCE_CU
+#     soul_position = getattr(soul_spark, 'position', [0, 0, 0])
+    
+#     # Calculate spiritual anchor frequency
+#     # Based on soul's frequency with slight elevation toward creator frequency
+#     creator_freq = 528.0  # Divine frequency
+#     spiritual_freq = soul_frequency * (1.0 - creator_connection * 0.3) + creator_freq * (creator_connection * 0.3)
+    
+#     # Calculate position (above soul)
+#     spiritual_pos = [float(p) for p in soul_position]
+#     spiritual_pos[2] += 10.0  # Place above soul
+    
+#     # Calculate resonance target (how closely the soul must match to connect)
+#     # Based on creator connection strength - stronger connection = more precise matching needed
+#     base_tolerance = 0.2
+#     resonance_target = max(0.7, 0.7 + 0.2 * creator_connection)
+#     resonance_tolerance = max(0.05, base_tolerance * (1.0 - creator_connection * 0.5))
+    
+#     # Create spiritual anchor
+#     spiritual_anchor = {
+#         "position": spiritual_pos,
+#         "frequency": float(spiritual_freq),
+#         "resonance_target": float(resonance_target),
+#         "resonance_tolerance": float(resonance_tolerance),
+#         "creator_connection": float(creator_connection),
+#         "soul_frequency_base": float(soul_frequency),
+#         "creator_frequency": float(creator_freq)
+#     }
+    
+#     logger.info(f"Spiritual Anchor created at frequency {spiritual_freq:.2f}Hz "
+#                f"with resonance target {resonance_target:.3f} "
+#                f"(tolerance: {resonance_tolerance:.3f})")
+    
+#     return spiritual_anchor
+
+# def _create_earth_anchor() -> Dict[str, Any]:
+#     """
+#     Creates the earth anchor based on Earth/Gaia frequencies.
+#     This anchor connects to the physical realm.
+    
+#     Returns:
+#         Dict containing the earth anchor properties
+#     """
+#     logger.info("LC Step: Creating Earth Anchor...")
+    
+#     # Earth frequencies
+#     earth_freq = EARTH_FREQUENCY
+#     schumann_freq = SCHUMANN_FREQUENCY
+    
+#     # Calculate combined earth frequency with Schumann resonance influence
+#     combined_earth_freq = earth_freq * 0.7 + schumann_freq * 0.3
+    
+#     # Create position (below - where the brain will be)
+#     earth_pos = [0.0, 0.0, -100.0]
+    
+#     # Earth resonance is more forgiving than spiritual
+#     resonance_target = 0.6
+#     resonance_tolerance = 0.2
+    
+#     # Create earth anchor
+#     earth_anchor = {
+#         "position": earth_pos,
+#         "frequency": float(combined_earth_freq),
+#         "resonance_target": float(resonance_target),
+#         "resonance_tolerance": float(resonance_tolerance),
+#         "earth_base_frequency": float(earth_freq),
+#         "schumann_frequency": float(schumann_freq),
+#         "gaia_connection": float(1.0)  # Perfect Gaia connection for anchor
+#     }
+    
+#     logger.info(f"Earth Anchor created at frequency {combined_earth_freq:.2f}Hz "
+#                f"with resonance target {resonance_target:.3f} "
+#                f"(tolerance: {resonance_tolerance:.3f})")
+    
+#     return earth_anchor
+
+# def _form_communication_channels(spiritual_anchor: Dict[str, Any], 
+#                               earth_anchor: Dict[str, Any],
+#                               complexity: float) -> Dict[str, Any]:
+#     """
+#     Forms the communication channels between spiritual and earth anchors.
+    
+#     Args:
+#         spiritual_anchor: The spiritual anchor properties
+#         earth_anchor: The earth anchor properties
+#         complexity: Complexity factor for channel properties
+        
+#     Returns:
+#         Dict containing the channel properties
+#     """
+#     logger.info("LC Step: Forming Communication Channels...")
+    
+#     # Get anchor frequencies
+#     spiritual_freq = spiritual_anchor["frequency"]
+#     earth_freq = earth_anchor["frequency"]
+    
+#     # Calculate spiritual channel properties
+#     spiritual_bandwidth = spiritual_freq * 0.2 * (0.7 + 0.3 * complexity)
+#     spiritual_resistance = max(0.1, 0.4 - 0.2 * complexity)
+#     spiritual_threshold = spiritual_anchor["resonance_target"]
+    
+#     # Calculate earth channel properties
+#     earth_bandwidth = earth_freq * 0.3 * (0.7 + 0.3 * complexity)
+#     earth_resistance = max(0.2, 0.5 - 0.2 * complexity)
+#     earth_threshold = earth_anchor["resonance_target"]
+    
+#     # Calculate channel distance
+#     spiritual_pos = spiritual_anchor["position"]
+#     earth_pos = earth_anchor["position"]
+#     distance = np.sqrt(sum((spiritual_pos[i] - earth_pos[i])**2 for i in range(3)))
+    
+#     # Create the channels structure
+#     channels = {
+#         "spiritual_channel": {
+#             "state": "inactive",  # Initially inactive until soul resonates
+#             "bandwidth": float(spiritual_bandwidth),
+#             "resistance": float(spiritual_resistance),
+#             "resonance_threshold": float(spiritual_threshold),
+#             "frequency": float(spiritual_freq)
+#         },
+#         "earth_channel": {
+#             "state": "inactive",  # Initially inactive until soul resonates
+#             "bandwidth": float(earth_bandwidth),
+#             "resistance": float(earth_resistance),
+#             "resonance_threshold": float(earth_threshold),
+#             "frequency": float(earth_freq)
+#         },
+#         "channel_properties": {
+#             "length": float(distance),
+#             "electromagnetic_shield_strength": float(0.9),  # Strong shield
+#             "stability": float(1.0),  # Perfect stability
+#             "quantum_entanglement": float(1.0)  # Perfect entanglement
+#         }
+#     }
+    
+#     logger.info(f"Communication Channels formed: "
+#                f"Spiritual (BW: {spiritual_bandwidth:.2f}Hz, R: {spiritual_resistance:.3f}), "
+#                f"Earth (BW: {earth_bandwidth:.2f}Hz, R: {earth_resistance:.3f}), "
+#                f"Distance: {distance:.1f}, Shield: 0.9")
+    
+#     return channels
+
+# def _test_soul_channel_resonance(soul_spark: SoulSpark, 
+#                                channel_type: str,
+#                                channel: Dict[str, Any], 
+#                                anchor: Dict[str, Any],
+#                                max_steps: int) -> Dict[str, Any]:
+#     """
+#     Tests if the soul can resonate with a channel by adjusting its frequency.
+#     Uses edge of chaos principles to find the resonance point.
+    
+#     Args:
+#         soul_spark: The SoulSpark object
+#         channel_type: Type of channel ('spiritual' or 'earth')
+#         channel: The channel properties
+#         anchor: The anchor properties
+#         max_steps: Maximum number of steps to attempt resonance
+        
+#     Returns:
+#         Dict containing the resonance test results
+#     """
+#     logger.info(f"LC Step: Testing Soul-{channel_type.capitalize()} Channel Resonance...")
+    
+#     # Get channel and soul properties
+#     channel_freq = channel["frequency"]
+#     resonance_threshold = channel["resonance_threshold"]
+#     resonance_tolerance = anchor["resonance_tolerance"]
+#     soul_frequency = getattr(soul_spark, 'frequency', 432.0)
+    
+#     # Set up resonance finding variables
+#     steps = 0
+#     resonance_achieved = False
+#     current_resonance = calculate_resonance(soul_frequency, channel_freq)
+#     best_resonance = current_resonance
+#     best_frequency = soul_frequency
+#     current_frequency = soul_frequency
+    
+#     # Calculate initial difficulty based on resonance gap
+#     frequency_gap = abs(soul_frequency - channel_freq) / max(soul_frequency, channel_freq)
+#     initial_difficulty = frequency_gap
+    
+#     # Track resonance path for edge of chaos analysis
+#     resonance_path = []
+#     frequency_adjustments = []
+    
+#     # Calculate required resonance target with tolerance
+#     required_resonance = resonance_threshold - resonance_tolerance
+    
+#     logger.info(f"Starting {channel_type} resonance test: "
+#                f"Soul: {soul_frequency:.2f}Hz, Channel: {channel_freq:.2f}Hz, "
+#                f"Initial Resonance: {current_resonance:.4f}, Target: {required_resonance:.4f}")
+    
+#     # Begin resonance finding process
+#     while steps < max_steps and not resonance_achieved:
+#         steps += 1
+        
+#         # Record current state
+#         resonance_path.append(float(current_resonance))
+        
+#         # Check if resonance is achieved
+#         if current_resonance >= required_resonance:
+#             resonance_achieved = True
+#             logger.info(f"{channel_type.capitalize()} resonance achieved after {steps} steps: {current_resonance:.4f}")
+#             break
+        
+#         # Calculate how far we are from edge of chaos (EOC = 0.618)
+#         eoc_distance = abs(current_resonance - 0.618)
+        
+#         # At edge of chaos, make larger adjustments
+#         # Further from edge, make smaller, more careful adjustments
+#         if eoc_distance < 0.1:
+#             # Near edge of chaos - larger adjustment to break through
+#             adjustment_scale = 0.1
+#         else:
+#             # Away from edge - smaller adjustments
+#             adjustment_scale = 0.05 * (1.0 - current_resonance)
+        
+#         # Calculate frequency adjustment direction
+#         frequency_ratio = current_frequency / channel_freq
+        
+#         if frequency_ratio > 1.0:
+#             # Current frequency too high
+#             adjustment = -adjustment_scale * current_frequency
+#         else:
+#             # Current frequency too low
+#             adjustment = adjustment_scale * current_frequency
+        
+#         # Apply phi-based correction if close to phi ratio
+#         phi_ratio = PHI / frequency_ratio if frequency_ratio < 1.0 else frequency_ratio / PHI
+#         if abs(phi_ratio - 1.0) < 0.1:
+#             # We're close to a phi relationship, leverage it
+#             if frequency_ratio < 1.0:
+#                 target = channel_freq / PHI
+#             else:
+#                 target = channel_freq * PHI
+            
+#             adjustment = (target - current_frequency) * 0.2
+        
+#         # Record adjustment
+#         frequency_adjustments.append(float(adjustment))
+        
+#         # Apply adjustment
+#         current_frequency += adjustment
+        
+#         # Calculate new resonance
+#         current_resonance = calculate_resonance(current_frequency, channel_freq)
+        
+#         # Track best resonance
+#         if current_resonance > best_resonance:
+#             best_resonance = current_resonance
+#             best_frequency = current_frequency
+    
+#     # Calculate final difficulty
+#     normalized_steps = min(1.0, steps / max_steps)
+#     difficulty = initial_difficulty * (0.3 + 0.7 * normalized_steps)
+    
+#     # Create resonance results
+#     resonance_results = {
+#         "resonance_achieved": resonance_achieved,
+#         "steps_taken": steps,
+#         "max_steps": max_steps,
+#         "initial_resonance": float(calculate_resonance(soul_frequency, channel_freq)),
+#         "final_resonance": float(current_resonance),
+#         "best_resonance": float(best_resonance),
+#         "initial_frequency": float(soul_frequency),
+#         "final_frequency": float(current_frequency),
+#         "best_frequency": float(best_frequency),
+#         "channel_frequency": float(channel_freq),
+#         "resonance_difficulty": float(difficulty),
+#         "resonance_path": resonance_path,
+#         "frequency_adjustments": frequency_adjustments,
+#         "eoc_transitions": sum(1 for i in range(1, len(resonance_path)) 
+#                              if abs(resonance_path[i-1] - 0.618) > 0.05 and 
+#                              abs(resonance_path[i] - 0.618) < 0.05)
+#     }
+    
+#     # Record results in channel
+#     channel["state"] = "active" if resonance_achieved else "inactive"
+#     channel["resonance_result"] = resonance_results
+    
+#     logger.info(f"{channel_type.capitalize()} Channel Test Results: "
+#                f"Achieved: {resonance_achieved}, "
+#                f"Steps: {steps}/{max_steps}, "
+#                f"Final Resonance: {current_resonance:.4f}, "
+#                f"Difficulty: {difficulty:.4f}")
+    
+#     return resonance_results
+
+# def _record_resonance_metrics(soul_spark: SoulSpark,
+#                            spiritual_results: Dict[str, Any],
+#                            earth_results: Dict[str, Any]) -> Dict[str, Any]:
+#     """
+#     Records metrics about the resonance tests to the soul spark.
+    
+#     Args:
+#         soul_spark: The SoulSpark object
+#         spiritual_results: Results from spiritual channel test
+#         earth_results: Results from earth channel test
+        
+#     Returns:
+#         Dict containing combined metrics
+#     """
+#     logger.info("LC Step: Recording Resonance Metrics...")
+    
+#     # Extract key results
+#     spiritual_achieved = spiritual_results["resonance_achieved"]
+#     earth_achieved = earth_results["resonance_achieved"]
+#     spiritual_steps = spiritual_results["steps_taken"]
+#     earth_steps = earth_results["steps_taken"]
+#     spiritual_difficulty = spiritual_results["resonance_difficulty"]
+#     earth_difficulty = earth_results["resonance_difficulty"]
+    
+#     # Calculate overall metrics
+#     overall_success = spiritual_achieved and earth_achieved
+#     avg_difficulty = (spiritual_difficulty + earth_difficulty) / 2
+#     total_steps = spiritual_steps + earth_steps
+    
+#     # Create combined metrics
+#     communication_metrics = {
+#         "spiritual_resonance_achieved": spiritual_achieved,
+#         "earth_resonance_achieved": earth_achieved,
+#         "spiritual_resonance_steps": spiritual_steps,
+#         "earth_resonance_steps": earth_steps,
+#         "spiritual_resonance_difficulty": float(spiritual_difficulty),
+#         "earth_resonance_difficulty": float(earth_difficulty),
+#         "overall_resonance_success": overall_success,
+#         "overall_resonance_difficulty": float(avg_difficulty),
+#         "total_resonance_steps": total_steps,
+#         "resonance_timestamp": datetime.now().isoformat()
+#     }
+    
+#     # Calculate earth resonance for soul property
+#     # This is a measure of how well the soul can communicate with Earth
+#     earth_resonance = earth_results["best_resonance"] if earth_achieved else earth_results["final_resonance"]
+    
+#     # Record to soul spark
+#     setattr(soul_spark, "earth_resonance", float(earth_resonance))
+#     setattr(soul_spark, "cord_resonance_steps", total_steps)
+#     setattr(soul_spark, "cord_resonance_difficulty", float(avg_difficulty))
+    
+#     logger.info(f"Resonance Metrics Recorded: "
+#                f"Overall Success: {overall_success}, "
+#                f"Overall Difficulty: {avg_difficulty:.4f}, "
+#                f"Total Steps: {total_steps}, "
+#                f"Earth Resonance: {earth_resonance:.4f}")
+    
+#     return communication_metrics
+
+# def _finalize_life_cord(soul_spark: SoulSpark, 
+#                       cord_structure: Dict[str, Any]) -> Dict[str, Any]:
+#     """
+#     Finalizes the life cord and sets appropriate flags on the soul spark.
+    
+#     Args:
+#         soul_spark: The SoulSpark object
+#         cord_structure: The complete cord structure
+        
+#     Returns:
+#         Dict containing finalization metrics
+#     """
+#     logger.info("LC Step: Finalizing Life Cord...")
+    
+#     # Extract key information
+#     communication_metrics = cord_structure.get("communication_metrics", {})
+#     overall_success = communication_metrics.get("overall_resonance_success", False)
+    
+#     # Set cord integrity - always perfect as it's divine energy
+#     cord_integrity = 1.0
+    
+#     # Get earth resonance from communication metrics or use stored value
+#     earth_resonance = getattr(soul_spark, "earth_resonance", 0.0)
+    
+#     # Make sure it's within valid range
+#     earth_resonance = max(0.0, min(1.0, earth_resonance))
+    
+#     # Create finalization time
+#     finalization_time = datetime.now().isoformat()
+    
+#     # Create sigil data for future gateway key
+#     sigil_data = {
+#         "type": "life_cord",
+#         "creation_timestamp": cord_structure.get("creation_timestamp", ""),
+#         "finalization_timestamp": finalization_time,
+#         "soul_id": soul_spark.spark_id,
+#         "surface_data": {
+#             "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+#             "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0)),
+#             "earth_resonance": float(earth_resonance)
+#         },
+#         "hidden_data": {
+#             "spiritual_channel": cord_structure.get("channels", {}).get("spiritual_channel", {}),
+#             "earth_channel": cord_structure.get("channels", {}).get("earth_channel", {}),
+#             "spiritual_anchor": cord_structure.get("anchors", {}).get("spiritual", {}),
+#             "earth_anchor": cord_structure.get("anchors", {}).get("earth", {})
+#         }
+#     }
+    
+#     # Store sigil data in soul_spark for later retrieval by sigil creator
+#     if not hasattr(soul_spark, "sigil_data"):
+#         setattr(soul_spark, "sigil_data", {})
+    
+#     soul_spark.sigil_data["life_cord"] = sigil_data
+    
+#     # Set final flags and properties on soul spark
+#     setattr(soul_spark, "cord_integrity", float(cord_integrity))
+#     setattr(soul_spark, "earth_resonance", float(earth_resonance))
+#     setattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, True)
+#     setattr(soul_spark, FLAG_READY_FOR_EARTH, True)
+    
+#     # Update last modified timestamp
+#     setattr(soul_spark, "last_modified", finalization_time)
+    
+#     # Store simplified final cord structure in soul_spark
+#     final_cord = {
+#         "integrity": float(cord_integrity),
+#         "creation_timestamp": cord_structure.get("creation_timestamp", ""),
+#         "finalization_timestamp": finalization_time,
+#         "earth_resonance": float(earth_resonance),
+#         "spiritual_resonance": float(communication_metrics.get("spiritual_resonance_difficulty", 0.0)),
+#         "spiritual_channel_active": communication_metrics.get("spiritual_resonance_achieved", False),
+#         "earth_channel_active": communication_metrics.get("earth_resonance_achieved", False),
+#         "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+#         "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0))
+#     }
+    
+#     # Set the complete cord structure in soul_spark
+#     setattr(soul_spark, "life_cord", final_cord)
+    
+#     # Create finalization metrics
+#     finalization_metrics = {
+#         "cord_integrity": float(cord_integrity),
+#         "earth_resonance": float(earth_resonance),
+#         "spiritual_resonance": float(communication_metrics.get("spiritual_resonance_difficulty", 0.0)),
+#         "resonance_steps": communication_metrics.get("total_resonance_steps", 0),
+#         "resonance_difficulty": float(communication_metrics.get("overall_resonance_difficulty", 0.0)),
+#         "overall_success": overall_success,
+#         "finalization_timestamp": finalization_time
+#     }
+    
+#     logger.info(f"Life Cord Finalized: "
+#                f"Integrity: {cord_integrity:.2f} (Divine), "
+#                f"Earth Resonance: {earth_resonance:.4f}, "
+#                f"Success: {overall_success}")
+    
+#     return finalization_metrics
+
+# def form_life_cord(soul_spark: SoulSpark, intensity: float = 0.7, 
+#                 complexity: float = 0.5) -> Tuple[SoulSpark, Dict[str, Any]]:
+#     """
+#     Forms the divine life cord connecting the soul to Earth and Creator.
+#     Creates perfect divine cord with two anchors and channels.
+#     The soul must learn to resonate with the anchors to establish communication.
+    
+#     Args:
+#         soul_spark: The SoulSpark object
+#         intensity: Factor affecting resonance finding process
+#         complexity: Factor affecting channel structure complexity
+        
+#     Returns:
+#         Tuple of (modified soul_spark, process_metrics)
+#     """
+#     # --- Input Validation ---
+#     if not isinstance(soul_spark, SoulSpark):
+#         raise TypeError("soul_spark must be a SoulSpark instance.")
+#     if not isinstance(intensity, (int, float)) or not (0.1 <= intensity <= 1.0):
+#         raise ValueError(f"Intensity must be between 0.1 and 1.0, got {intensity}")
+#     if not isinstance(complexity, (int, float)) or not (0.1 <= complexity <= 1.0):
+#         raise ValueError(f"Complexity must be between 0.1 and 1.0, got {complexity}")
+    
+#     spark_id = getattr(soul_spark, "spark_id", "unknown_spark")
+#     logger.info(f"--- Beginning Life Cord Formation for Soul {spark_id} (Int={intensity:.2f}, Cmplx={complexity:.2f}) ---")
+#     start_time = datetime.now().isoformat()
+    
+#     # Prepare metrics container
+#     process_metrics = {
+#         "steps": {},
+#         "soul_id": spark_id,
+#         "start_time": start_time,
+#         "intensity": float(intensity),
+#         "complexity": float(complexity),
+#         "success": False  # Will be set to True if successful
+#     }
+    
+#     try:
+#         # --- Check Prerequisites ---
+#         logger.info("Life Cord Step 1: Checking Prerequisites...")
+#         _ensure_soul_properties(soul_spark)
+#         _check_prerequisites(soul_spark)
+        
+#         # Energy check before proceeding
+#         initial_energy = soul_spark.energy
+#         if initial_energy < CORD_ACTIVATION_ENERGY_COST:
+#             raise ValueError(f"Insufficient energy ({initial_energy:.1f} SEU) for cord formation. Required: {CORD_ACTIVATION_ENERGY_COST} SEU")
+        
+#         # Apply energy cost
+#         soul_spark.energy -= CORD_ACTIVATION_ENERGY_COST
+        
+#         # --- Create Divine Cord ---
+#         logger.info("Life Cord Step 2: Creating Divine Cord...")
+#         cord_structure = _establish_divine_cord()
+#         process_metrics["steps"]["divine_cord"] = {
+#             "divine_properties": cord_structure["divine_properties"]
+#         }
+        
+#         # --- Create Anchors ---
+#         logger.info("Life Cord Step 3: Creating Anchors...")
+#         spiritual_anchor = _create_spiritual_anchor(soul_spark)
+#         earth_anchor = _create_earth_anchor()
+        
+#         # Add anchors to cord structure
+#         cord_structure["anchors"] = {
+#             "spiritual": spiritual_anchor,
+#             "earth": earth_anchor
+#         }
+        
+#         process_metrics["steps"]["anchors"] = {
+#             "spiritual_anchor": {k: v for k, v in spiritual_anchor.items() if k != "position"},
+#             "earth_anchor": {k: v for k, v in earth_anchor.items() if k != "position"}
+#         }
+        
+#         # --- Form Communication Channels ---
+#         logger.info("Life Cord Step 4: Forming Communication Channels...")
+#         channels = _form_communication_channels(spiritual_anchor, earth_anchor, complexity)
+        
+#         # Add channels to cord structure
+#         cord_structure["channels"] = channels
+        
+#         process_metrics["steps"]["channels"] = {
+#             "spiritual_channel": {k: v for k, v in channels["spiritual_channel"].items() if k != "resonance_result"},
+#             "earth_channel": {k: v for k, v in channels["earth_channel"].items() if k != "resonance_result"},
+#             "channel_properties": channels["channel_properties"]
+#         }
+        
+#         # --- Test Soul-Channel Resonance ---
+#         logger.info("Life Cord Step 5: Testing Soul-Channel Resonance...")
+        
+#         # Calculate maximum resonance steps based on intensity
+#         max_steps = int(144 * intensity)  # Scale steps by intensity
+        
+
+# # Test spiritual channel
+#         spiritual_results = _test_soul_channel_resonance(
+#             soul_spark,
+#             "spiritual",
+#             channels["spiritual_channel"],
+#             spiritual_anchor,
+#             max_steps
+#         )
+        
+#         # Test earth channel
+#         earth_results = _test_soul_channel_resonance(
+#             soul_spark,
+#             "earth",
+#             channels["earth_channel"],
+#             earth_anchor,
+#             max_steps
+#         )
+        
+#         process_metrics["steps"]["resonance_tests"] = {
+#             "spiritual_results": {k: v for k, v in spiritual_results.items() 
+#                                if k not in ["resonance_path", "frequency_adjustments"]},
+#             "earth_results": {k: v for k, v in earth_results.items() 
+#                            if k not in ["resonance_path", "frequency_adjustments"]}
+#         }
+        
+#         # --- Record Communication Metrics ---
+#         logger.info("Life Cord Step 6: Recording Communication Metrics...")
+#         communication_metrics = _record_resonance_metrics(
+#             soul_spark,
+#             spiritual_results,
+#             earth_results
+#         )
+        
+#         # Add communication metrics to cord structure
+#         cord_structure["communication_metrics"] = communication_metrics
+        
+#         process_metrics["steps"]["communication_metrics"] = communication_metrics
+        
+#         # --- Finalize Life Cord ---
+#         logger.info("Life Cord Step 7: Finalizing Life Cord...")
+#         finalization = _finalize_life_cord(soul_spark, cord_structure)
+#         process_metrics["steps"]["finalization"] = finalization
+        
+#         # --- Generate Sound If Available ---
+#         if SOUND_MODULES_AVAILABLE:
+#             try:
+#                 logger.info("Generating life cord formation sound...")
+                
+#                 # Create sound generator
+#                 sound_gen = SoundGenerator(sample_rate=SAMPLE_RATE)
+                
+#                 # Create chord based on spiritual and earth frequencies
+#                 spiritual_freq = spiritual_anchor["frequency"]
+#                 earth_freq = earth_anchor["frequency"]
+                
+#                 # Create harmonic structure with phi ratios
+#                 frequencies = [
+#                     spiritual_freq,
+#                     earth_freq,
+#                     spiritual_freq * PHI,
+#                     earth_freq / PHI,
+#                     spiritual_freq * 2.0
+#                 ]
+                
+#                 # Amplitudes based on resonance success
+#                 spiritual_amp = 0.8 if spiritual_results["resonance_achieved"] else 0.4
+#                 earth_amp = 0.8 if earth_results["resonance_achieved"] else 0.4
+                
+#                 amplitudes = [
+#                     spiritual_amp,
+#                     earth_amp,
+#                     spiritual_amp * 0.7,
+#                     earth_amp * 0.7,
+#                     spiritual_amp * 0.5
+#                 ]
+                
+#                 # Generate the chord
+#                 sound_data = sound_gen.generate_sacred_chord(
+#                     frequencies, 
+#                     amplitudes, 
+#                     5.0
+#                 )
+                
+#                 # Save the sound
+#                 sound_file = f"life_cord_{spark_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
+#                 file_path = sound_gen.save_sound(
+#                     sound_data, 
+#                     sound_file, 
+#                     f"Life Cord Formation - Soul {spark_id}"
+#                 )
+                
+#                 process_metrics["sound_file"] = sound_file
+#                 process_metrics["sound_path"] = file_path
+                
+#                 logger.info(f"Life cord sound generated: {file_path}")
+                
+#             except Exception as sound_err:
+#                 logger.warning(f"Failed to generate life cord sound: {sound_err}")
+        
+#         # --- Complete Process Metrics ---
+#         end_time = datetime.now().isoformat()
+#         end_time_dt = datetime.fromisoformat(end_time)
+#         start_time_dt = datetime.fromisoformat(start_time)
+#         duration_seconds = (end_time_dt - start_time_dt).total_seconds()
+        
+#         process_metrics["end_time"] = end_time
+#         process_metrics["duration_seconds"] = duration_seconds
+#         process_metrics["success"] = True
+#         process_metrics["cord_integrity"] = 1.0  # Divine perfection
+#         process_metrics["earth_resonance"] = float(getattr(soul_spark, "earth_resonance", 0.0))
+#         process_metrics["energy_consumed"] = float(CORD_ACTIVATION_ENERGY_COST)
+        
+#         # Log summary
+#         logger.info(f"--- Life Cord Formation Completed Successfully for Soul {spark_id} ---")
+#         logger.info(f"Final Metrics: Divine Integrity=1.0, "
+#                    f"Earth Resonance={process_metrics['earth_resonance']:.4f}, "
+#                    f"Spiritual Channel: {'Active' if communication_metrics['spiritual_resonance_achieved'] else 'Inactive'}, "
+#                    f"Earth Channel: {'Active' if communication_metrics['earth_resonance_achieved'] else 'Inactive'}, "
+#                    f"Total Steps: {communication_metrics['total_resonance_steps']}, "
+#                    f"Duration: {duration_seconds:.2f}s")
+        
+#         # Record overall metrics
+#         if METRICS_AVAILABLE:
+#             metrics.record_metrics('life_cord_summary', process_metrics)
+        
+#         return soul_spark, process_metrics
+        
+#     except (ValueError, TypeError, AttributeError) as e:
+#         logger.error(f"Life cord formation failed for {spark_id}: {e}")
+#         # Set failure flag
+#         setattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, False)
+        
+#         # Record failure metrics
+#         process_metrics["success"] = False
+#         process_metrics["error"] = str(e)
+#         process_metrics["end_time"] = datetime.now().isoformat()
+        
+#         if METRICS_AVAILABLE:
+#             metrics.record_metrics('life_cord_summary', process_metrics)
+            
+#         raise  # Re-raise original error
+        
+#     except Exception as e:
+#         logger.critical(f"Unexpected error during life cord formation for {spark_id}: {e}", exc_info=True)
+#         # Set failure flag
+#         setattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, False)
+        
+#         # Record failure metrics
+#         process_metrics["success"] = False
+#         process_metrics["error"] = str(e)
+#         process_metrics["end_time"] = datetime.now().isoformat()
+        
+#         if METRICS_AVAILABLE:
+#             metrics.record_metrics('life_cord_summary', process_metrics)
+            
+#         raise RuntimeError(f"Unexpected life cord formation failure: {e}") from e

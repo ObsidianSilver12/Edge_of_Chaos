@@ -1,8 +1,11 @@
+# --- START OF FILE stage_1/soul_formation/soul_visualizer.py ---
+
 """
-Soul Visualization Module (V2.0 - Enhanced Visualization)
+Soul Visualization Module (V2.1 - Enhanced & Robust Visualization)
 
 Creates elegant and meaningful visualizations of soul state at key development points.
 Shows density, frequency distribution, resonance patterns, and acquired aspects.
+Includes robustness improvements for 3D rendering and consistent styling.
 Hard fails if visualization can't be created to ensure simulation captures
 critical development stages.
 """
@@ -14,53 +17,54 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, to_rgba
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d import Axes3D # For type hinting, actual collection below
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection # Explicit import
+from skimage import measure, filters # filters for gaussian_filter
 import matplotlib.cm as cm
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple, List, Union
-import colorsys
-from skimage import measure, filters
+import colorsys # For color manipulations if needed
+import json
 
 # Configure matplotlib to use Agg backend if no display is available
-matplotlib.use('Agg')
+try:
+    matplotlib.use('Agg')
+except ImportError: # tk TclError sometimes if no display, Agg is safer
+    pass
+
 
 # --- Setup Logging ---
 logger = logging.getLogger('soul_visualizer')
 if not logger.handlers:
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO) # Default, can be overridden by main app
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    # Attempt to get LOG_FORMAT from constants, else use a default
+    try:
+        from constants.constants import LOG_FORMAT
+        formatter = logging.Formatter(LOG_FORMAT)
+    except ImportError:
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
 
 # --- Constants ---
 DEFAULT_GRID_SIZE = 30
 DEFAULT_SOUL_RADIUS = 10
 DEFAULT_RESOLUTION = 100
-DEFAULT_3D_RESOLUTION = 50  # Increased for better detail
-DEFAULT_FIG_SIZE = (14, 12)  # Larger figure size
-DEFAULT_DPI = 200  # Higher DPI for better quality
+DEFAULT_3D_RESOLUTION = 30  # Adjusted for performance vs. detail balance
+DEFAULT_FIG_SIZE = (16, 14) # Slightly larger for comprehensive report
+DEFAULT_DPI = 150
 ASPECT_CATEGORIES = {
-    'spiritual': ['compassion', 'wisdom', 'light', 'love', 'connection', 'insight', 'presence'],
+    'spiritual': ['compassion', 'wisdom', 'light', 'love', 'connection', 'insight', 'presence', 'unity'],
     'intellectual': ['knowledge', 'logic', 'understanding', 'clarity', 'analysis', 'reasoning', 'discernment'],
     'emotional': ['empathy', 'joy', 'harmony', 'peace', 'gratitude', 'forgiveness', 'acceptance'],
     'willpower': ['courage', 'determination', 'discipline', 'focus', 'perseverance', 'strength', 'resolve']
 }
 SEPHIROTH_COLORS = {
-    'kether': '#FFFFFF',   # White
-    'chokmah': '#7EB6FF',  # Blue
-    'binah': '#FFD700',    # Gold
-    'daath': '#800080',    # Purple
-    'chesed': '#4169E1',   # Royal Blue
-    'geburah': '#FF4500',  # Red-Orange
-    'tiphareth': '#FFD700', # Gold
-    'netzach': '#228B22',  # Forest Green
-    'hod': '#FF8C00',      # Dark Orange
-    'yesod': '#9932CC',    # Dark Orchid
-    'malkuth': '#8B4513'   # Saddle Brown
+    'kether': '#FFFFFF', 'chokmah': '#7EB6FF', 'binah': '#FFD700', 'daath': '#800080',
+    'chesed': '#4169E1', 'geburah': '#FF4500', 'tiphareth': '#FFD700', 'netzach': '#228B22',
+    'hod': '#FF8C00', 'yesod': '#9932CC', 'malkuth': '#8B4513', 'unknown': '#AAAAAA'
 }
-
-# Beautiful gradient palettes for soul visualization
 SOUL_PALETTES = {
     'ethereal': ['#081b29', '#0c2c43', '#1a5173', '#2d7bad', '#4da8db', '#a8d5f2'],
     'spiritual': ['#230b33', '#4a1260', '#732a8e', '#a63db8', '#c573d2', '#e6aeee'],
@@ -68,1722 +72,894 @@ SOUL_PALETTES = {
     'vibrant': ['#000000', '#2b0245', '#4a026c', '#750294', '#a702bc', '#cd35ed'],
     'crystalline': ['#02111b', '#053a5f', '#0a679a', '#1aa1d6', '#5cc9f4', '#bcebff']
 }
+DARK_BACKGROUND_COLOR = '#121212'
+LIGHT_TEXT_COLOR = '#E0E0E0'
+GRID_LINE_COLOR = '#444444'
 
 # --- Helper Functions ---
 def get_soul_color_spectrum(soul_spark) -> List[Tuple[float, float, float, float]]:
     """Get color mapping based on soul's development and Sephiroth influence."""
-    # Default color palette if we can't derive from soul
     palette_name = 'ethereal'
-    
-    # Try to extract palette based on soul attributes
     try:
-        # Get dominant sephiroth influence if available
         dominant_sephirah = None
-        if hasattr(soul_spark, 'sephiroth_influence') and soul_spark.sephiroth_influence:
-            dominant_sephirah = max(soul_spark.sephiroth_influence.items(), key=lambda x: x[1])[0]
-        
-        # Choose palette based on dominant sephirah or coherence
+        if hasattr(soul_spark, 'sephiroth_aspect') and soul_spark.sephiroth_aspect: # Use direct aspect
+            dominant_sephirah = soul_spark.sephiroth_aspect.lower()
+        elif hasattr(soul_spark, 'cumulative_sephiroth_influence') and soul_spark.cumulative_sephiroth_influence:
+             # Placeholder: if cumulative_sephiroth_influence is a dict of {seph_name: influence_value}
+             if isinstance(soul_spark.cumulative_sephiroth_influence, dict) and soul_spark.cumulative_sephiroth_influence:
+                dominant_sephirah = max(soul_spark.cumulative_sephiroth_influence.items(), key=lambda x: x[1])[0].lower()
+
         if dominant_sephirah:
-            if dominant_sephirah in ['kether', 'chokmah', 'tiphareth']:
-                palette_name = 'spiritual'
-            elif dominant_sephirah in ['binah', 'geburah']:
-                palette_name = 'vibrant'
-            elif dominant_sephirah in ['chesed', 'netzach']:
-                palette_name = 'ethereal'
-            elif dominant_sephirah in ['hod', 'yesod', 'daath']:
-                palette_name = 'cosmic'
-            else:
-                palette_name = 'crystalline'
+            if dominant_sephirah in ['kether', 'chokmah', 'tiphareth', 'daath']: palette_name = 'spiritual'
+            elif dominant_sephirah in ['binah', 'geburah']: palette_name = 'vibrant'
+            elif dominant_sephirah in ['chesed', 'netzach']: palette_name = 'ethereal'
+            elif dominant_sephirah in ['hod', 'yesod']: palette_name = 'cosmic'
+            else: palette_name = 'crystalline' # Malkuth and others
         elif hasattr(soul_spark, 'coherence'):
-            coherence = getattr(soul_spark, 'coherence', 50)
-            if coherence > 80:
-                palette_name = 'crystalline'
-            elif coherence > 60:
-                palette_name = 'spiritual'
-            elif coherence > 40:
-                palette_name = 'ethereal'
-            elif coherence > 20:
-                palette_name = 'cosmic'
-            else:
-                palette_name = 'vibrant'
-                
-    except Exception as e:
-        logger.warning(f"Could not determine color palette: {e}")
-    
-    # Convert hex colors to rgba with alpha gradient
-    palette = SOUL_PALETTES[palette_name]
+            coherence = getattr(soul_spark, 'coherence', 50.0)
+            max_coh = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0) # Assuming this might be on SoulSpark
+            norm_coherence = coherence / max(1.0, max_coh)
+            if norm_coherence > 0.8: palette_name = 'crystalline'
+            elif norm_coherence > 0.6: palette_name = 'spiritual'
+            elif norm_coherence > 0.4: palette_name = 'ethereal'
+            else: palette_name = 'cosmic'
+    except Exception as e: logger.warning(f"Could not determine color palette dynamically: {e}")
+
+    palette = SOUL_PALETTES.get(palette_name, SOUL_PALETTES['ethereal'])
     colors_rgba = []
-    
     for i, hex_color in enumerate(palette):
-        # Convert hex to rgb
-        rgb = to_rgba(hex_color)[:3]
-        # Calculate alpha based on position (deeper colors more transparent)
-        alpha = 0.4 + 0.6 * (i / (len(palette) - 1))
-        colors_rgba.append((*rgb, alpha))
-    
+        try:
+            rgb = to_rgba(hex_color)[:3]
+            alpha = 0.4 + 0.6 * (i / max(1, len(palette) - 1))
+            colors_rgba.append((*rgb, alpha))
+        except ValueError: # Handle invalid hex string
+            logger.warning(f"Invalid hex color '{hex_color}' in palette '{palette_name}'. Using default.")
+            colors_rgba.append((0.5, 0.5, 0.5, 0.5)) # Default grey
     return colors_rgba
-
-def get_density_factors(soul_spark) -> Dict[str, float]:
-    """Calculate density distribution factors based on soul attributes."""
-    try:
-        # Start with some defaults
-        factors = {
-            'stability': 0.5,
-            'coherence': 0.5,
-            'resonance': 0.5,
-            'phase_coherence': 0.4,
-            'pattern_integrity': 0.4
-        }
-        
-        # Try to get actual values where available
-        if hasattr(soul_spark, 'stability') and soul_spark.stability is not None:
-            max_stability = getattr(soul_spark, 'MAX_STABILITY_SU', 100.0)
-            factors['stability'] = min(1.0, max(0.0, soul_spark.stability / max_stability))
-        
-        if hasattr(soul_spark, 'coherence') and soul_spark.coherence is not None:
-            max_coherence = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0) 
-            factors['coherence'] = min(1.0, max(0.0, soul_spark.coherence / max_coherence))
-        
-        if hasattr(soul_spark, 'resonance') and soul_spark.resonance is not None:
-            factors['resonance'] = min(1.0, max(0.0, soul_spark.resonance))
-        
-        if hasattr(soul_spark, 'pattern_coherence') and soul_spark.pattern_coherence is not None:
-            factors['phase_coherence'] = min(1.0, max(0.0, soul_spark.pattern_coherence))
-            
-        if hasattr(soul_spark, 'phi_resonance') and soul_spark.phi_resonance is not None:
-            factors['pattern_integrity'] = min(1.0, max(0.0, soul_spark.phi_resonance))
-            
-        return factors
-    except Exception as e:
-        logger.warning(f"Error calculating density factors: {e}")
-        return {'stability': 0.5, 'coherence': 0.5, 'resonance': 0.5}
-
-def get_aspect_strengths(soul_spark) -> Dict[str, Dict[str, float]]:
-    """Extract aspect strengths from soul by category."""
-    try:
-        # Initialize categories
-        aspect_by_category = {cat: {} for cat in ASPECT_CATEGORIES.keys()}
-        
-        # Check if soul has aspects
-        if hasattr(soul_spark, 'aspects') and soul_spark.aspects:
-            # For each aspect, try to categorize it
-            for aspect_name, aspect_data in soul_spark.aspects.items():
-                if not isinstance(aspect_data, dict):
-                    continue
-                
-                strength = aspect_data.get('strength', 0.0)
-                categorized = False
-                
-                # Try to find a category
-                for cat, keywords in ASPECT_CATEGORIES.items():
-                    for keyword in keywords:
-                        if keyword in aspect_name.lower():
-                            aspect_by_category[cat][aspect_name] = strength
-                            categorized = True
-                            break
-                    if categorized:
-                        break
-                
-                # If not categorized, put in the first category as fallback
-                if not categorized:
-                    fallback_category = list(ASPECT_CATEGORIES.keys())[0]
-                    aspect_by_category[fallback_category][aspect_name] = strength
-        
-        return aspect_by_category
-    except Exception as e:
-        logger.warning(f"Error analyzing aspects: {e}")
-        return {cat: {} for cat in ASPECT_CATEGORIES.keys()}
-        
-def transform_frequency_signature(soul_spark) -> Optional[Dict[str, np.ndarray]]:
-    """Extract frequency signature data for visualization."""
-    try:
-        if not hasattr(soul_spark, 'frequency_signature'):
-            return None
-            
-        sig = soul_spark.frequency_signature
-        if not isinstance(sig, dict):
-            return None
-            
-        # Extract key components
-        result = {}
-        for key in ['frequencies', 'amplitudes', 'phases']:
-            if key in sig:
-                # Convert to numpy array if it's a list
-                if isinstance(sig[key], list):
-                    result[key] = np.array(sig[key])
-                elif isinstance(sig[key], np.ndarray):
-                    result[key] = sig[key]
-                else:
-                    # Skip if not valid
-                    continue
-        
-        # Only return if we have at least frequencies
-        if 'frequencies' in result:
-            return result
-        return None
-    except Exception as e:
-        logger.warning(f"Error transforming frequency signature: {e}")
-        return None
-
-def generate_soul_density_field(soul_spark, resolution: int = DEFAULT_RESOLUTION) -> np.ndarray:
-    """Generate 2D density field for visualization based on soul attributes."""
-    try:
-        # Get density factors from soul attributes
-        factors = get_density_factors(soul_spark)
-        
-        # Initialize grid with gaussian shape
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        X, Y = np.meshgrid(x, y)
-        
-        # Base gaussian with radius controlled by stability
-        radius = 0.3 + 0.4 * factors['stability']
-        grid = np.exp(-(X**2 + Y**2) / (2 * radius**2))
-        
-        # Create more detailed structure based on factors
-        coherence = factors['coherence']
-        resonance = factors['resonance']
-        phase_coherence = factors['phase_coherence']
-        
-        # Create flower of life pattern for more coherent souls
-        if coherence > 0.4:
-            # Multiple overlapping circles for flower of life pattern
-            num_circles = 7 + int(coherence * 12)  # More circles for higher coherence
-            circle_strength = 0.1 + 0.3 * coherence
-            
-            for i in range(num_circles):
-                # Calculate circle positions in a flower pattern
-                angle = 2 * np.pi * i / num_circles
-                cx = 0.5 * coherence * np.cos(angle)
-                cy = 0.5 * coherence * np.sin(angle)
-                rad = 0.4 - 0.1 * (1 - coherence)
-                
-                # Add circle
-                circle = np.exp(-((X - cx)**2 + (Y - cy)**2) / (2 * rad**2))
-                grid += circle_strength * circle
-                
-        # Add resonance-based spiral patterns
-        if resonance > 0.3:
-            # Add spiral wave patterns
-            spiral_strength = 0.1 + 0.3 * resonance
-            spiral_freq = 3 + 5 * resonance  # Higher frequency for higher resonance
-            spiral_phase = np.arctan2(Y, X)
-            radius_map = np.sqrt(X**2 + Y**2)
-            
-            spiral = np.sin(spiral_freq * (radius_map + spiral_phase))
-            spiral_mask = np.exp(-(radius_map**2) / 1.0)  # Fade at edges
-            grid += spiral_strength * spiral * spiral_mask
-            
-        # Add phi-resonance golden spiral pattern
-        if factors['pattern_integrity'] > 0.3:
-            # Golden spiral based on Fibonacci
-            phi = 1.618
-            phi_strength = 0.1 + 0.3 * factors['pattern_integrity']
-            theta = np.arctan2(Y, X)
-            r = np.sqrt(X**2 + Y**2)
-            
-            # Create spiral pattern based on golden ratio
-            golden_spiral = np.sin(np.log(r+0.1) * phi * 5.0 + theta)
-            spiral_mask = np.exp(-(r**2) / 0.8)  # Fade at edges
-            grid += phi_strength * golden_spiral * spiral_mask
-            
-        # Normalize the grid
-        grid = (grid - grid.min()) / (grid.max() - grid.min() + 1e-10)
-        
-        # Apply smooth gradient with depth effect
-        edge_mask = 1.0 - (1.0 - coherence) * 0.7 * np.exp(-(X**2 + Y**2) / (1.2**2))
-        grid = grid * edge_mask
-        
-        return grid
-    except Exception as e:
-        logger.error(f"Failed to generate density field: {e}")
-        # Return fallback simple gaussian
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        X, Y = np.meshgrid(x, y)
-        return np.exp(-(X**2 + Y**2) / (2 * 0.5**2))
-
-def generate_soul_3d_field(soul_spark, resolution: int = DEFAULT_3D_RESOLUTION) -> Tuple[np.ndarray, List[float]]:
-    """Generate 3D density field for visualization with isosurface values."""
-    try:
-        # Get density factors from soul attributes
-        factors = get_density_factors(soul_spark)
-        
-        # Initialize 3D grid
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        z = np.linspace(-1, 1, resolution)
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        
-        # Base spherical field with radius controlled by stability
-        radius = 0.3 + 0.4 * factors['stability']
-        field = np.exp(-(X**2 + Y**2 + Z**2) / (2 * radius**2))
-        
-        # Get key soul properties for advanced patterns
-        coherence = factors['coherence']
-        resonance = factors['resonance']
-        
-        # Get toroidal factor if available
-        toroidal_factor = 0.0
-        if hasattr(soul_spark, 'toroidal_flow_strength'):
-            toroidal_factor = min(1.0, max(0.0, soul_spark.toroidal_flow_strength))
-        
-        # Create more complex soul structure based on factors
-        
-        # 1. For more coherent souls, create flower of life-inspired structure
-        if coherence > 0.4:
-            # Add vesica piscis structure (overlapping spheres)
-            sphere_dist = 0.4 * coherence
-            for axis in [(1,0,0), (0,1,0), (0,0,1)]:
-                dx, dy, dz = [val * sphere_dist for val in axis]
-                # Create two overlapping spheres
-                sphere1 = np.exp(-((X+dx)**2 + (Y+dy)**2 + (Z+dz)**2) / (2 * (radius*0.7)**2))
-                sphere2 = np.exp(-((X-dx)**2 + (Y-dy)**2 + (Z-dz)**2) / (2 * (radius*0.7)**2))
-                field += 0.3 * coherence * (sphere1 + sphere2)
-        
-        # 2. Add toroidal component for souls with toroidal flow
-        if toroidal_factor > 0.2:
-            # Create torus parameters
-            R = 0.5  # Major radius
-            a = 0.2  # Minor radius - smaller for more elegant effect
-            
-            # Calculate distance to torus ring
-            torus_dist = ((np.sqrt(X**2 + Y**2) - R)**2 + Z**2) / a**2
-            torus = np.exp(-torus_dist)
-            
-            # Blend with core field
-            field = (1 - toroidal_factor) * field + toroidal_factor * torus
-        
-        # 3. Add resonance-based harmonic patterns
-        if resonance > 0.3:
-            # Create standing wave patterns
-            wave_strength = 0.15 * resonance
-            wave_freq = 4 + 8 * resonance  # More complex patterns with higher resonance
-            wave_pattern = wave_strength * np.sin(wave_freq * X) * np.sin(wave_freq * Y) * np.sin(wave_freq * Z)
-            
-            # Apply waves with radial falloff
-            radius_mask = np.exp(-(X**2 + Y**2 + Z**2) / (1.5**2))
-            field += wave_pattern * radius_mask
-        
-        # 4. Add Sri Yantra inspired patterns for souls with high pattern integrity
-        if factors['pattern_integrity'] > 0.5:
-            # Create tetrahedron-like structures
-            tetra_strength = 0.2 * factors['pattern_integrity']
-            
-            # First tetrahedron - upward pointing
-            tetra1 = np.maximum(X + Y + Z, np.maximum(X - Y - Z, np.maximum(-X + Y - Z, -X - Y + Z)))
-            
-            # Second tetrahedron - downward pointing
-            tetra2 = np.maximum(-X - Y - Z, np.maximum(-X + Y + Z, np.maximum(X - Y + Z, X + Y - Z)))
-            
-            # Combine with star tetrahedron effect
-            star_tetra = 1.0 - 0.5 * (np.abs(tetra1) + np.abs(tetra2))
-            star_tetra = np.clip(star_tetra, 0, 1)
-            
-            # Add to field with appropriate masking and blending
-            radius_mask = np.exp(-(X**2 + Y**2 + Z**2) / 0.8)
-            field += tetra_strength * star_tetra * radius_mask
-            
-        # Normalize the field
-        field = (field - field.min()) / (field.max() - field.min() + 1e-10)
-        
-        # Calculate appropriate isosurface levels based on field distribution
-        # Generate 4-6 isosurface levels for rendering
-        hist, bin_edges = np.histogram(field.flatten(), bins=20)
-        cumulative = np.cumsum(hist) / np.sum(hist)
-        
-        # Select levels that represent meaningful contours
-        isosurface_levels = []
-        target_percentiles = [0.2, 0.4, 0.6, 0.75, 0.85]
-        
-        for perc in target_percentiles:
-            idx = np.searchsorted(cumulative, perc)
-            if idx < len(bin_edges) - 1:
-                isosurface_levels.append(bin_edges[idx])
-        
-        return field, isosurface_levels
-        
-    except Exception as e:
-        logger.error(f"Error in 3D field generation: {e}")
-        # Return fallback simple gaussian
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        z = np.linspace(-1, 1, resolution)
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        field = np.exp(-(X**2 + Y**2 + Z**2) / (2 * 0.5**2))
-        return field, [0.3, 0.5, 0.7]
 
 def create_soul_colormap(soul_spark) -> LinearSegmentedColormap:
     """Create a beautiful colormap based on soul's energy spectrum."""
     try:
-        # Get soul color spectrum
-        color_spectrum = get_soul_color_spectrum(soul_spark)
-        
-        # Create custom colormap
-        return LinearSegmentedColormap.from_list('soul_colormap', color_spectrum, N=256)
+        color_spectrum_rgba = get_soul_color_spectrum(soul_spark)
+        if len(color_spectrum_rgba) < 2: # Need at least two colors for a gradient
+            logger.warning("Not enough colors in spectrum for custom colormap, using default.")
+            return plt.get_cmap('viridis') # Or magma, plasma
+        return LinearSegmentedColormap.from_list('soul_custom_cmap', color_spectrum_rgba, N=256)
     except Exception as e:
         logger.warning(f"Error creating custom colormap: {e}")
-        # Fallback to a beautiful preset
-        return plt.get_cmap('magma')
+        return plt.get_cmap('viridis')
+
+def get_density_factors(soul_spark) -> Dict[str, float]:
+    """Calculate density distribution factors based on soul attributes."""
+    factors = {'stability': 0.5, 'coherence': 0.5, 'resonance': 0.5, 'phase_coherence': 0.4, 'pattern_integrity': 0.4}
+    try:
+        if hasattr(soul_spark, 'stability') and soul_spark.stability is not None:
+            max_s = getattr(soul_spark, 'MAX_STABILITY_SU', 100.0)
+            factors['stability'] = min(1.0, max(0.0, float(soul_spark.stability) / max(1.0, float(max_s))))
+        if hasattr(soul_spark, 'coherence') and soul_spark.coherence is not None:
+            max_c = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0)
+            factors['coherence'] = min(1.0, max(0.0, float(soul_spark.coherence) / max(1.0, float(max_c))))
+        if hasattr(soul_spark, 'resonance') and soul_spark.resonance is not None:
+            factors['resonance'] = min(1.0, max(0.0, float(soul_spark.resonance)))
+        if hasattr(soul_spark, 'pattern_coherence') and soul_spark.pattern_coherence is not None: # Used for phase_coherence in vis
+            factors['phase_coherence'] = min(1.0, max(0.0, float(soul_spark.pattern_coherence)))
+        if hasattr(soul_spark, 'phi_resonance') and soul_spark.phi_resonance is not None: # Used for pattern_integrity in vis
+            factors['pattern_integrity'] = min(1.0, max(0.0, float(soul_spark.phi_resonance)))
+    except Exception as e: logger.warning(f"Error calculating density factors: {e}")
+    return factors
+
+def get_aspect_strengths(soul_spark) -> Dict[str, Dict[str, float]]:
+    """Extract aspect strengths from soul by category."""
+    aspect_by_category = {cat: {} for cat in ASPECT_CATEGORIES.keys()}
+    try:
+        if hasattr(soul_spark, 'aspects') and isinstance(soul_spark.aspects, dict):
+            for aspect_name, aspect_data in soul_spark.aspects.items():
+                if not isinstance(aspect_data, dict): continue
+                strength = float(aspect_data.get('strength', 0.0))
+                categorized = False
+                for cat, keywords in ASPECT_CATEGORIES.items():
+                    if any(keyword in aspect_name.lower() for keyword in keywords):
+                        aspect_by_category[cat][aspect_name] = strength
+                        categorized = True; break
+                if not categorized:
+                    aspect_by_category[list(ASPECT_CATEGORIES.keys())[0]][aspect_name] = strength
+    except Exception as e: logger.warning(f"Error analyzing aspects: {e}")
+    return aspect_by_category
+
+def transform_frequency_signature(soul_spark) -> Optional[Dict[str, np.ndarray]]:
+    """Extract frequency signature data for visualization."""
+    try:
+        if not hasattr(soul_spark, 'frequency_signature'): return None
+        sig = soul_spark.frequency_signature
+        if not isinstance(sig, dict): return None
+        result = {}
+        for key in ['frequencies', 'amplitudes', 'phases']:
+            if key in sig:
+                val = sig[key]
+                if isinstance(val, list): result[key] = np.array(val, dtype=float)
+                elif isinstance(val, np.ndarray): result[key] = val.astype(float)
+        return result if 'frequencies' in result else None
+    except Exception as e: logger.warning(f"Error transforming frequency signature: {e}"); return None
+
+def generate_soul_density_field(soul_spark, resolution: int = DEFAULT_RESOLUTION) -> np.ndarray:
+    """Generate 2D density field for visualization based on soul attributes."""
+    try:
+        factors = get_density_factors(soul_spark)
+        x = np.linspace(-1, 1, resolution); y = np.linspace(-1, 1, resolution)
+        X, Y = np.meshgrid(x, y)
+        radius_stable = 0.3 + 0.4 * factors['stability']
+        grid = np.exp(-(X**2 + Y**2) / (2 * radius_stable**2))
+        coherence = factors['coherence']; resonance = factors['resonance']
+
+        if coherence > 0.4:
+            num_circles = 7 + int(coherence * 12); circle_strength = 0.1 + 0.3 * coherence
+            for i in range(num_circles):
+                angle = 2 * np.pi * i / num_circles
+                cx = 0.5 * coherence * np.cos(angle); cy = 0.5 * coherence * np.sin(angle)
+                rad = 0.4 - 0.1 * (1 - coherence)
+                grid += circle_strength * np.exp(-((X - cx)**2 + (Y - cy)**2) / (2 * rad**2))
+        if resonance > 0.3:
+            spiral_strength = 0.1 + 0.3 * resonance; spiral_freq = 3 + 5 * resonance
+            spiral_phase = np.arctan2(Y, X); radius_map = np.sqrt(X**2 + Y**2)
+            grid += spiral_strength * np.sin(spiral_freq * (radius_map + spiral_phase)) * np.exp(-(radius_map**2) / 1.0)
+        if factors['pattern_integrity'] > 0.3:
+            phi = 1.618; phi_strength = 0.1 + 0.3 * factors['pattern_integrity']
+            theta = np.arctan2(Y, X); r_map = np.sqrt(X**2 + Y**2) # Renamed r to r_map
+            grid += phi_strength * np.sin(np.log(r_map + 0.1) * phi * 5.0 + theta) * np.exp(-(r_map**2) / 0.8)
+
+        grid = (grid - grid.min()) / (grid.max() - grid.min() + 1e-10) # Normalize
+        edge_mask = 1.0 - (1.0 - coherence) * 0.7 * np.exp(-(X**2 + Y**2) / (1.2**2))
+        grid *= edge_mask
+        return grid
+    except Exception as e:
+        logger.error(f"Failed to generate density field: {e}", exc_info=True)
+        x_fallback = np.linspace(-1,1,resolution); y_fallback = np.linspace(-1,1,resolution); X_f, Y_f = np.meshgrid(x_fallback,y_fallback)
+        return np.exp(-(X_f**2 + Y_f**2) / (2 * 0.5**2))
+
+def generate_soul_3d_field(soul_spark, resolution: int = DEFAULT_3D_RESOLUTION) -> Tuple[np.ndarray, List[float]]:
+    """Generate 3D density field for visualization with isosurface values."""
+    try:
+        factors = get_density_factors(soul_spark)
+        x = np.linspace(-1, 1, resolution); y = np.linspace(-1, 1, resolution); z = np.linspace(-1, 1, resolution)
+        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+        radius_stable = 0.3 + 0.4 * factors['stability']
+        field = np.exp(-(X**2 + Y**2 + Z**2) / (2 * radius_stable**2))
+        coherence = factors['coherence']; resonance = factors['resonance']
+        toroidal_factor = getattr(soul_spark, 'toroidal_flow_strength', 0.0)
+        toroidal_factor = min(1.0, max(0.0, toroidal_factor))
+
+        if toroidal_factor > 0.2:
+            R_torus = 0.5; a_torus = 0.2 # Renamed R,a to R_torus,a_torus
+            d_torus = ((np.sqrt(X**2 + Y**2) - R_torus)**2 + Z**2) / a_torus**2
+            field = (1 - toroidal_factor) * field + toroidal_factor * np.exp(-d_torus)
+        if coherence > 0.3: field += 0.2 * np.sin(8 * X * Y * Z * np.pi * coherence) * coherence
+        if resonance > 0.3:
+            distance = np.sqrt(X**2 + Y**2 + Z**2)
+            field += 0.15 * np.sin(distance*12*np.pi*resonance)*resonance * np.exp(-(distance**2)/1.5)
+        if factors['pattern_integrity'] > 0.5:
+            tetra_strength = 0.2 * factors['pattern_integrity']
+            tetra1 = np.maximum(X+Y+Z, np.maximum(X-Y-Z, np.maximum(-X+Y-Z, -X-Y+Z)))
+            tetra2 = np.maximum(-X-Y-Z, np.maximum(-X+Y+Z, np.maximum(X-Y+Z, X+Y-Z)))
+            field += tetra_strength * np.clip(1.0 - 0.5*(np.abs(tetra1)+np.abs(tetra2)),0,1) * np.exp(-(X**2+Y**2+Z**2)/0.8)
+
+        field = (field - field.min()) / (field.max() - field.min() + 1e-10)
+        hist, bin_edges = np.histogram(field.flatten(), bins=20)
+        cumulative = np.cumsum(hist) / np.sum(hist)
+        isosurface_levels = []
+        target_percentiles = [0.2, 0.4, 0.6, 0.75, 0.85] # Ensure these are sensible for your data range
+        for perc in target_percentiles:
+            idx = np.searchsorted(cumulative, perc)
+            if idx < len(bin_edges) - 1: isosurface_levels.append(bin_edges[idx])
+            elif isosurface_levels and idx == len(bin_edges) -1 : isosurface_levels.append((bin_edges[idx-1] + field.max())/2.0) # Add something near max
+        if not isosurface_levels and field.max() > field.min(): # If no levels from percentiles, add some default ones
+            isosurface_levels = np.linspace(field.min() + 0.2*(field.max()-field.min()), field.max() - 0.1*(field.max()-field.min()), 3).tolist()
+        if not isosurface_levels: isosurface_levels = [0.5] # Ultimate fallback
+        return field, sorted(list(set(np.clip(isosurface_levels, field.min()+1e-5, field.max()-1e-5)))) # Ensure levels are within data range
+
+    except Exception as e:
+        logger.error(f"Error in 3D field generation: {e}", exc_info=True)
+        x_f = np.linspace(-1,1,resolution); y_f = np.linspace(-1,1,resolution); z_f = np.linspace(-1,1,resolution); X_f,Y_f,Z_f=np.meshgrid(x_f,y_f,z_f,indexing='ij')
+        return np.exp(-(X_f**2+Y_f**2+Z_f**2)/(2*0.5**2)), [0.3,0.5,0.7]
+
 
 def get_soul_aspects_by_strength(soul_spark, n_top=10) -> List[Tuple[str, float]]:
     """Get top N soul aspects by strength."""
+    aspects = []
     try:
-        aspects = []
-        if hasattr(soul_spark, 'aspects') and soul_spark.aspects:
+        if hasattr(soul_spark, 'aspects') and isinstance(soul_spark.aspects, dict):
             for name, data in soul_spark.aspects.items():
                 if isinstance(data, dict) and 'strength' in data:
-                    aspects.append((name, data['strength']))
-                
-        # Sort by strength and take top N
+                    aspects.append((name, float(data['strength'])))
         sorted_aspects = sorted(aspects, key=lambda x: x[1], reverse=True)
         return sorted_aspects[:n_top]
-    except Exception as e:
-        logger.warning(f"Error getting aspects by strength: {e}")
-        return []
+    except Exception as e: logger.warning(f"Error getting aspects by strength: {e}"); return []
 
 def get_sephiroth_influence(soul_spark) -> Dict[str, float]:
     """Get Sephiroth influence levels from soul."""
+    influences = {}
     try:
-        influences = {}
-        if hasattr(soul_spark, 'sephiroth_influence') and soul_spark.sephiroth_influence:
-            for seph, value in soul_spark.sephiroth_influence.items():
-                influences[seph.lower()] = float(value)
-        return influences
-    except Exception as e:
-        logger.warning(f"Error getting Sephiroth influences: {e}")
-        return {}
+        # Try different potential attribute names for sephiroth influence
+        seph_influence_attr_names = ['sephiroth_influence', 'cumulative_sephiroth_influence', 'sephiroth_aspect_strengths']
+        seph_influence_data = None
+        for attr_name in seph_influence_attr_names:
+            if hasattr(soul_spark, attr_name) and isinstance(getattr(soul_spark, attr_name), dict):
+                seph_influence_data = getattr(soul_spark, attr_name)
+                break
+        
+        if seph_influence_data:
+            for seph, value in seph_influence_data.items():
+                influences[str(seph).lower()] = float(value)
+        # If it's a single string (primary aspect), assign it full influence
+        elif hasattr(soul_spark, 'sephiroth_aspect') and isinstance(soul_spark.sephiroth_aspect, str):
+            influences[soul_spark.sephiroth_aspect.lower()] = 1.0
+
+    except Exception as e: logger.warning(f"Error getting Sephiroth influences: {e}")
+    return influences
 
 # --- Main Visualization Functions ---
 def visualize_density_2d(soul_spark, ax, resolution: int = DEFAULT_RESOLUTION) -> None:
     """Create beautiful 2D density plot of the soul energy field."""
     try:
-        # Generate the density field
         density = generate_soul_density_field(soul_spark, resolution)
-        
-        # Create custom colormap
         cmap = create_soul_colormap(soul_spark)
-        
-        # Plot density as a beautiful contour-filled plot
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        X, Y = np.meshgrid(x, y)
-        
-        # Plot as filled contours for more elegant appearance
-        contourf = ax.contourf(X, Y, density, 50, cmap=cmap, alpha=0.95)
-        
-        # Add subtle contour lines
+        x_coords = np.linspace(-1, 1, resolution); y_coords = np.linspace(-1, 1, resolution)
+        X_grid, Y_grid = np.meshgrid(x_coords, y_coords) # Renamed X,Y
+        ax.contourf(X_grid, Y_grid, density, 50, cmap=cmap, alpha=0.95)
         contour_levels = np.linspace(0.2, 0.9, 8)
-        contours = ax.contour(X, Y, density, levels=contour_levels, colors='white', 
-                             alpha=0.3, linewidths=0.8)
-        
-        # Add glow effect
-        ax.imshow(density, extent=[-1, 1, -1, 1], origin='lower', 
-                 cmap=cmap, alpha=0.4)
-        
-        # Get stability and coherence for title
-        stability = getattr(soul_spark, 'stability', None)
-        coherence = getattr(soul_spark, 'coherence', None)
-        subtitle = ""
-        if stability is not None and coherence is not None:
-            subtitle = f"S: {stability:.1f} SU | C: {coherence:.1f} CU"
-            
-        ax.set_title(f"Soul Energy Field\n{subtitle}", fontsize=12)
-        ax.set_xlabel("Frequency Dimension")
-        ax.set_ylabel("Resonance Dimension")
-        
-        # Set clean, minimal axes
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
-        
-    except Exception as e:
-        logger.error(f"Error in 2D density visualization: {e}")
-        raise RuntimeError(f"Failed to create 2D density visualization: {e}")
+        ax.contour(X_grid, Y_grid, density, levels=contour_levels, colors='white', alpha=0.3, linewidths=0.8)
+        ax.imshow(density, extent=[-1, 1, -1, 1], origin='lower', cmap=cmap, alpha=0.4)
+        stability = getattr(soul_spark, 'stability', None); coherence = getattr(soul_spark, 'coherence', None)
+        subtitle = f"S: {stability:.1f} SU | C: {coherence:.1f} CU" if stability is not None and coherence is not None else ""
+        ax.set_title(f"Soul Energy Field\n{subtitle}", fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.set_xlabel("Frequency Dimension", color=LIGHT_TEXT_COLOR); ax.set_ylabel("Resonance Dimension", color=LIGHT_TEXT_COLOR)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+        ax.set_xlim(-1, 1); ax.set_ylim(-1, 1)
+    except Exception as e: logger.error(f"Error in 2D density visualization: {e}", exc_info=True); raise RuntimeError(f"2D density vis failed: {e}") from e
 
 def visualize_frequency_spectrum(soul_spark, ax) -> None:
     """Create elegant frequency spectrum visualization."""
     try:
-        # Transform frequency data
         freq_data = transform_frequency_signature(soul_spark)
-        
-        if not freq_data or 'frequencies' not in freq_data:
-            # Draw placeholder if no data
-            ax.text(0.5, 0.5, 'Frequency Data Not Available', 
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes, fontsize=11)
-            ax.set_title('Frequency Spectrum')
+        if not freq_data or not isinstance(freq_data, dict):
+            ax.text(0.5,0.5,'Frequency Data N/A',ha='center',va='center',transform=ax.transAxes,fontsize=11,color=LIGHT_TEXT_COLOR)
+            ax.set_title('Frequency Spectrum',color=LIGHT_TEXT_COLOR)
             return
             
-        # Extract data
-        frequencies = freq_data['frequencies']
+        frequencies = freq_data.get('frequencies')
+        if not isinstance(frequencies, np.ndarray) or frequencies.size == 0:
+            ax.text(0.5,0.5,'Invalid Frequency Data',ha='center',va='center',transform=ax.transAxes,fontsize=11,color=LIGHT_TEXT_COLOR)
+            ax.set_title('Frequency Spectrum',color=LIGHT_TEXT_COLOR)
+            return
+            
         amplitudes = freq_data.get('amplitudes', np.ones_like(frequencies))
-        
-        # Ensure we have amplitudes
-        if len(amplitudes) != len(frequencies):
-            amplitudes = np.ones_like(frequencies)
-            
-        # Sort by frequency
-        idx = np.argsort(frequencies)
-        frequencies = frequencies[idx]
-        amplitudes = amplitudes[idx]
-        
-        # Scale amplitudes to 0-1
-        if amplitudes.max() > 0:
-            amplitudes = amplitudes / amplitudes.max()
-        
-        # Create colormap for the bars
-        cmap = create_soul_colormap(soul_spark)
-        colors = cmap(amplitudes)
-        
-        # Create elegant visualization with smooth curves
-        x = np.arange(len(frequencies))
-        
-        # Plot bars with gradient colors
-        ax.bar(x, amplitudes, color=colors, alpha=0.7, width=0.7)
-        
-        # Add smooth curve connecting the peaks
-        ax.plot(x, amplitudes, '-', color='white', alpha=0.6, linewidth=1.5)
-        
-        # Add subtle vertical lines to highlight peaks
+        if len(amplitudes) != len(frequencies): amplitudes = np.ones_like(frequencies)
+        idx = np.argsort(frequencies); frequencies = frequencies[idx]; amplitudes = amplitudes[idx]
+        if amplitudes.max() > 0: amplitudes = amplitudes / amplitudes.max()
+        cmap = create_soul_colormap(soul_spark); colors = cmap(amplitudes)
+        x_indices = np.arange(len(frequencies)) # Renamed x
+        ax.bar(x_indices, amplitudes, color=colors, alpha=0.7, width=0.7)
+        ax.plot(x_indices, amplitudes, '-', color='white', alpha=0.6, linewidth=1.5)
         for i in range(len(frequencies)):
-            if amplitudes[i] > 0.5:  # Only highlight significant frequencies
-                ax.plot([i, i], [0, amplitudes[i]], '--', color='white', 
-                        alpha=0.3, linewidth=0.8)
-        
-        ax.set_title('Soul Frequency Spectrum', fontsize=12)
-        ax.set_xlabel('Harmonic Components')
-        ax.set_ylabel('Relative Amplitude')
-        
-        # Clean up the chart
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-        # Set tick labels only if not too many
-        if len(frequencies) <= 10:
-            ax.set_xticks(x)
-            ax.set_xticklabels([f"{f:.1f}" for f in frequencies], rotation=45)
-        else:
-            # Sample some ticks
-            ticks = np.linspace(0, len(frequencies)-1, 7, dtype=int)
-            ax.set_xticks(ticks)
-            ax.set_xticklabels([f"{frequencies[i]:.1f}" for i in ticks], rotation=45)
-            
-    except Exception as e:
-        logger.error(f"Error in frequency visualization: {e}")
-        raise RuntimeError(f"Failed to create frequency visualization: {e}")
+            if amplitudes[i] > 0.5: ax.plot([i,i],[0,amplitudes[i]],'--',color='white',alpha=0.3,linewidth=0.8)
+        ax.set_title('Soul Frequency Spectrum', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.set_xlabel('Harmonic Components', color=LIGHT_TEXT_COLOR); ax.set_ylabel('Relative Amplitude', color=LIGHT_TEXT_COLOR)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+        num_ticks = min(10, len(frequencies))
+        tick_indices = np.linspace(0, len(frequencies)-1, num_ticks, dtype=int).tolist() # Ensure list
+        if not tick_indices: tick_indices = [0] if len(frequencies)==1 else []
+
+        ax.set_xticks(tick_indices)
+        ax.set_xticklabels([f"{frequencies[i]:.1f}" for i in tick_indices], rotation=45, color=LIGHT_TEXT_COLOR)
+
+    except Exception as e: logger.error(f"Error in frequency visualization: {e}", exc_info=True); raise RuntimeError(f"Freq vis failed: {e}") from e
 
 def visualize_aspects_radar(soul_spark, ax) -> None:
     """Create elegant radar chart of aspect strengths by category."""
     try:
-        # Get categorized aspects
         aspects_by_category = get_aspect_strengths(soul_spark)
-        
-        # Calculate category averages
         categories = list(aspects_by_category.keys())
-        values = []
-        
-        for category, aspects in aspects_by_category.items():
-            if aspects:
-                avg_strength = sum(aspects.values()) / len(aspects)
-                values.append(avg_strength)
-            else:
-                values.append(0.0)
-                
-        # If no aspects found, draw placeholder
-        if all(v == 0 for v in values):
-            ax.text(0.5, 0.5, 'Aspect Data Not Available', 
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes, fontsize=11)
-            ax.set_title('Soul Aspects')
-            return
-                
-        # Ensure radar is complete circle by duplicating first value
-        categories.append(categories[0])
-        values.append(values[0])
-        
-        # Convert to radians for plotting
+        values = [sum(aspects.values())/len(aspects) if aspects else 0.0 for aspects in aspects_by_category.values()]
+        if all(v==0 for v in values):
+            ax.text(0.5,0.5,'Aspect Data N/A',ha='center',va='center',transform=ax.transAxes,fontsize=11,color=LIGHT_TEXT_COLOR); ax.set_title('Soul Aspects',color=LIGHT_TEXT_COLOR); return
+        categories.append(categories[0]); values.append(values[0])
         theta = np.linspace(0, 2*np.pi, len(categories))
-        
-        # Get colormap for elegant styling
         cmap = create_soul_colormap(soul_spark)
-        
-        # Plot radar with beautiful styling
         ax.plot(theta, values, 'o-', linewidth=2, color=cmap(0.7))
-        
-        # Fill with gradient and transparency
         ax.fill(theta, values, alpha=0.3, color=cmap(0.5))
-        
-        # Add subtle grid circles
-        grid_levels = [0.25, 0.5, 0.75]
-        for level in grid_levels:
-            circle = plt.Circle((0, 0), level, fill=False, color='gray', alpha=0.3, linestyle='--', linewidth=0.5)
-            ax.add_patch(circle)
-        
-        # Add labels with nicer formatting
-        for i, cat in enumerate(categories[:-1]):
-            angle = i * 2 * np.pi / len(categories[:-1])
-            x = 1.2 * np.cos(angle)
-            y = 1.2 * np.sin(angle)
-            if x < 0:
-                ax.text(x, y, cat, ha='right', va='center', fontsize=9)
-            else:
-                ax.text(x, y, cat, ha='left', va='center', fontsize=9)
-        
-        ax.set_xticks([])
-        ax.set_ylim(0, 1)
-        ax.set_title('Soul Aspect Categories', fontsize=12)
-        
-    except Exception as e:
-        logger.error(f"Error in aspects radar visualization: {e}")
-        raise RuntimeError(f"Failed to create aspects radar visualization: {e}")
+        for level in [0.25, 0.5, 0.75]: ax.add_patch(plt.Circle((0,0),level,fill=False,color=GRID_LINE_COLOR,alpha=0.3,ls='--',lw=0.5))
+        ax.set_xticks(theta[:-1]); ax.set_xticklabels(categories[:-1], color=LIGHT_TEXT_COLOR, fontsize=8) # Adjusted xticks and labels
+        ax.set_ylim(0,1); ax.set_title('Soul Aspect Categories', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.tick_params(axis='y', colors=LIGHT_TEXT_COLOR) # Color y-axis ticks
+        ax.spines['polar'].set_color(GRID_LINE_COLOR) # Color polar spine
+
+    except Exception as e: logger.error(f"Error in aspects radar visualization: {e}", exc_info=True); raise RuntimeError(f"Aspects radar vis failed: {e}") from e
 
 def visualize_soul_3d(soul_spark, ax, resolution: int = DEFAULT_3D_RESOLUTION) -> None:
     """Create beautiful 3D visualization of the soul structure."""
     try:
-        # Generate 3D field and isosurface levels
         field_3d, iso_levels = generate_soul_3d_field(soul_spark, resolution)
-        
-        # Create coordinate grids
-        x = np.linspace(-1, 1, resolution)
-        y = np.linspace(-1, 1, resolution)
-        z = np.linspace(-1, 1, resolution)
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-        
-        # Get colormap
         cmap = create_soul_colormap(soul_spark)
+        logger.debug(f"3D Field range for {soul_spark.spark_id}: min={field_3d.min():.4f}, max={field_3d.max():.4f}, iso_levels={iso_levels}")
+        if field_3d.min() == field_3d.max() and not iso_levels: iso_levels=[field_3d.min() + 1e-5] # Ensure one level for flat field
         
-        # Create elegant isosurfaces
+        collections_added = 0
         for i, level in enumerate(iso_levels):
-            # Higher levels (inner) are more opaque
-            alpha = 0.2 + 0.1 * i
-            color = cmap(0.3 + 0.7 * i/len(iso_levels))
+            if not (field_3d.min() <= level <= field_3d.max()): # Ensure level is within data range
+                logger.debug(f"Isosurface level {level:.3f} outside field data range. Skipping.")
+                continue
+            alpha = 0.15 + 0.1 * i
+            color_val = 0.2 + 0.8 * i / max(1, len(iso_levels) -1 if len(iso_levels)>1 else 1)
+            color = cmap(color_val)
+            try:
+                verts, faces, _, _ = measure.marching_cubes(field_3d, level=level, spacing=(2.0/resolution, 2.0/resolution, 2.0/resolution))
+                verts -= 1.0 # Shift origin to center plot at (0,0,0)
+            except (RuntimeError, ValueError) as mc_err: # Catch specific marching_cubes errors
+                logger.warning(f"Marching cubes failed for level {level:.4f}: {mc_err}. Skipping.")
+                continue
+            if verts.size == 0 or faces.size == 0: logger.debug(f"No geometry for level {level:.4f}."); continue
             
-            # Create isosurface
-            verts, faces, _, _ = measure.marching_cubes(field_3d, level)
-            
-            # Scale vertices to our coordinate system
-            verts = verts / resolution * 2 - 1
-            
-            # Plot as triangular mesh with smooth shading
-            mesh = Poly3DCollection(verts[faces])
-            mesh.set_facecolor(color)
-            mesh.set_edgecolor('none')
-            mesh.set_alpha(alpha)
-            ax.add_collection3d(mesh)
+            mesh = Poly3DCollection(verts[faces], linewidths=0) # Linewidths=0 for no edges by default
+            mesh.set_facecolor(color); mesh.set_alpha(alpha)
+            ax.add_collection3d(mesh); collections_added += 1
         
-        # Create a subtle wireframe for the outermost layer
-        if len(iso_levels) > 0:
-            level = iso_levels[0]
-            verts, faces, _, _ = measure.marching_cubes(field_3d, level)
-            verts = verts / resolution * 2 - 1
-            
-            mesh_wire = Poly3DCollection(verts[faces], facecolors='none', edgecolors='white', alpha=0.1)
-            ax.add_collection3d(mesh_wire)
-        
-        # Set limits and labels
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
-        ax.set_zlim(-1, 1)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Soul Structure (3D)', fontsize=12)
-        
-        # Equal aspect ratio for better visualization
-        ax.set_box_aspect([1, 1, 1])
-        
-        # Set initial view angle
-        ax.view_init(30, 45)
-        
+        if collections_added == 0:
+            logger.warning(f"No isosurfaces rendered for soul {soul_spark.spark_id}. Plotting basic sphere.")
+            u_s,v_s=np.mgrid[0:2*np.pi:20j,0:np.pi:10j]; x_s=0.5*np.cos(u_s)*np.sin(v_s); y_s=0.5*np.sin(u_s)*np.sin(v_s); z_s=0.5*np.cos(v_s) # Renamed u,v,x,y,z
+            ax.plot_surface(x_s,y_s,z_s,color=cmap(0.5),alpha=0.3,rcount=10,ccount=10,linewidth=0) # Added rcount/ccount and lw=0
+
+        ax.set_xlim(-1,1); ax.set_ylim(-1,1); ax.set_zlim(-1,1)
+        ax.set_xlabel('X',color=LIGHT_TEXT_COLOR); ax.set_ylabel('Y',color=LIGHT_TEXT_COLOR); ax.set_zlabel('Z',color=LIGHT_TEXT_COLOR)
+        ax.set_title('Soul Structure (3D)', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.set_box_aspect([1,1,1]); ax.view_init(elev=30, azim=np.random.uniform(30,60)) # Randomize azim slightly
+        ax.grid(False) # Cleaner look without grid
+        ax.xaxis.pane.fill = False; ax.yaxis.pane.fill = False; ax.zaxis.pane.fill = False # Transparent panes
+        ax.xaxis.pane.set_edgecolor(DARK_BACKGROUND_COLOR); ax.yaxis.pane.set_edgecolor(DARK_BACKGROUND_COLOR); ax.zaxis.pane.set_edgecolor(DARK_BACKGROUND_COLOR)
+
+
     except Exception as e:
-        logger.error(f"Error in 3D visualization: {e}")
-        # Try a simpler 3D visualization approach as fallback
-        try:
-            # Create simple scatter plot visualization
-            resolution = 20  # Lower resolution for fallback
-            field_3d, _ = generate_soul_3d_field(soul_spark, resolution)
-            
-            # Create a mask for points to display
-            mask = field_3d > 0.5
-            x_idx, y_idx, z_idx = np.where(mask)
-            
-            # Convert indices to coordinates
-            x_coords = x_idx / resolution * 2 - 1
-            y_coords = y_idx / resolution * 2 - 1
-            z_coords = z_idx / resolution * 2 - 1
-            
-            # Get colormap
-            cmap = create_soul_colormap(soul_spark)
-            colors = [cmap(field_3d[x, y, z]) for x, y, z in zip(x_idx, y_idx, z_idx)]
-            
-            # Plot
-            ax.scatter(x_coords, y_coords, z_coords, c=colors, alpha=0.5, s=20)
-            
-            ax.set_xlim(-1, 1)
-            ax.set_ylim(-1, 1)
-            ax.set_zlim(-1, 1)
-            ax.set_title('Soul Structure (Simplified)')
-            
-        except Exception as fallback_error:
-            logger.error(f"Even fallback 3D visualization failed: {fallback_error}")
-            ax.text(0, 0, 0, "3D Visualization Failed", fontsize=12)
-            ax.set_title('Soul Structure (Error)')
+        logger.error(f"Error in 3D visualization for {soul_spark.spark_id}: {e}", exc_info=True)
+        # Fallback to simple text message
+        ax.text(0,0,0, "3D Visualization Error", ha='center', va='center', color=LIGHT_TEXT_COLOR)
+        ax.set_title('Soul Structure (Error)', color=LIGHT_TEXT_COLOR)
+
 
 def visualize_top_aspects(soul_spark, ax) -> None:
     """Visualize top soul aspects with their strengths."""
     try:
-        # Get top aspects by strength
-        top_aspects = get_soul_aspects_by_strength(soul_spark, n_top=10)
-        
+        top_aspects = get_soul_aspects_by_strength(soul_spark, n_top=8) # Reduced to 8 for clarity
         if not top_aspects:
-            ax.text(0.5, 0.5, 'No Aspects Available', 
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes)
-            ax.set_title('Soul Aspects')
-            return
-        
-        # Unpack aspect names and strengths
-        names = [a[0] for a in top_aspects]
-        strengths = [a[1] for a in top_aspects]
-        
-        # Create colormap
-        cmap = create_soul_colormap(soul_spark)
-        colors = [cmap(s) for s in strengths]
-        
-        # Create horizontal bar chart
+            ax.text(0.5,0.5,'No Aspects Available',ha='center',va='center',transform=ax.transAxes,color=LIGHT_TEXT_COLOR); ax.set_title('Soul Aspects',color=LIGHT_TEXT_COLOR); return
+        names = [a[0] for a in top_aspects]; strengths = [a[1] for a in top_aspects]
+        cmap = create_soul_colormap(soul_spark); colors = [cmap(s*0.8+0.2) for s in strengths] # Vary color by strength
         y_pos = np.arange(len(names))
-        
-        # Sort aspects by strength (highest at top)
-        sorted_indices = np.argsort(strengths)
-        names = [names[i] for i in sorted_indices]
-        strengths = [strengths[i] for i in sorted_indices]
-        colors = [colors[i] for i in sorted_indices]
-        
-        # Plot horizontal bars with gradient colors and rounded caps
-        bars = ax.barh(y_pos, strengths, color=colors, height=0.7, alpha=0.8)
-        
-        # Add value labels inside bars for strong aspects
-        for i, v in enumerate(strengths):
-            if v > 0.3:  # Only add text for significant values
-                ax.text(v - 0.1, i, f"{v:.2f}", va='center', ha='right', 
-                        color='white', fontweight='bold', fontsize=8)
-        
-        # Set labels and title
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels([name[:20] for name in names])  # Truncate long names
-        ax.set_xlabel('Strength')
-        ax.set_title('Top Soul Aspects', fontsize=12)
-        
-        # Clean up the chart
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.set_xlim(0, 1.1)
-        
-    except Exception as e:
-        logger.error(f"Error in top aspects visualization: {e}")
-        raise RuntimeError(f"Failed to create top aspects visualization: {e}")
-
-def visualize_harmony_factors(soul_spark, ax) -> None:
-    """Visualize the harmony and resonance factors."""
-    try:
-        # Collect relevant factors
-        factors = {}
-        factor_names = [
-            'stability', 'coherence', 'phi_resonance', 'pattern_coherence', 
-            'harmony', 'resonance', 'toroidal_flow_strength', 'creator_alignment', 
-            'cord_integrity', 'earth_resonance', 'physical_integration',
-            'crystallization_level'
-        ]
-        
-        # Get actual values or defaults
-        for name in factor_names:
-            if hasattr(soul_spark, name) and getattr(soul_spark, name) is not None:
-                # Normalize based on expected range if possible
-                value = getattr(soul_spark, name)
-                if name == 'stability':
-                    max_val = getattr(soul_spark, 'MAX_STABILITY_SU', 100.0)
-                    norm_value = min(1.0, max(0.0, value / max_val))
-                elif name == 'coherence':
-                    max_val = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0)
-                    norm_value = min(1.0, max(0.0, value / max_val))
-                else:
-                    # Assume 0-1 range for other factors
-                    norm_value = min(1.0, max(0.0, value))
-                    
-                factors[name.replace('_', ' ').title()] = norm_value
-        
-        # If no factors found, show placeholder
-        if not factors:
-            ax.text(0.5, 0.5, 'Harmony Factors Not Available', 
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes)
-            ax.set_title('Harmony Factors')
-            return
-            
-        # Sort factors by value
-        sorted_factors = sorted(factors.items(), key=lambda x: x[1], reverse=True)
-        
-        # Unpack for plotting
-        names, values = zip(*sorted_factors)
-        
-        # Create colormap
-        cmap = create_soul_colormap(soul_spark)
-        
-        # Create horizontal bar chart with gradient colors
-        y_pos = np.arange(len(names))
-        gradient_colors = [cmap(v) for v in values]
-        
-        bars = ax.barh(y_pos, values, color=gradient_colors, height=0.7, alpha=0.8)
-        
-        # Add subtle gradient shading to bars
-        for i, bar in enumerate(bars):
-            # Get bar dimensions
-            width = bar.get_width()
-            height = bar.get_height()
-            x = bar.get_x()
-            y = bar.get_y()
-            
-            # Add small glowing effect
-            if width > 0.5:
-                # Only add glow to significant bars
-                ax.axhspan(y, y+height, alpha=0.1, color=gradient_colors[i])
-            
-        # Add value labels
-        for i, v in enumerate(values):
-            ax.text(v + 0.02, i, f"{v:.2f}", va='center', fontsize=8)
-            
-        # Set labels and title
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels([name[:15] for name in names])  # Truncate long names
-        ax.set_xlim(0, 1.1)
-        ax.set_title('Soul Harmony Factors', fontsize=12)
-        
-        # Clean up the chart
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-    except Exception as e:
-        logger.error(f"Error in harmony factors visualization: {e}")
-        raise RuntimeError(f"Failed to create harmony factors visualization: {e}")
+        sorted_indices = np.argsort(strengths); names=[names[i] for i in sorted_indices]; strengths=[strengths[i] for i in sorted_indices]; colors=[colors[i] for i in sorted_indices]
+        bars = ax.barh(y_pos, strengths, color=colors, height=0.7, alpha=0.8, edgecolor=LIGHT_TEXT_COLOR, linewidth=0.5)
+        for i, v_bar in enumerate(strengths): # Renamed v
+            if v_bar > 0.01: ax.text(v_bar+0.02, i, f"{v_bar:.2f}", va='center', fontsize=8, color=LIGHT_TEXT_COLOR)
+        ax.set_yticks(y_pos); ax.set_yticklabels([name[:15] for name in names], color=LIGHT_TEXT_COLOR)
+        ax.set_xlabel('Strength', color=LIGHT_TEXT_COLOR); ax.set_title('Top Soul Aspects', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+        ax.set_xlim(0,1.1); ax.grid(True, linestyle='--', alpha=0.2, color=GRID_LINE_COLOR, axis='x')
+    except Exception as e: logger.error(f"Error in top aspects visualization: {e}", exc_info=True); raise RuntimeError(f"Top aspects vis failed: {e}") from e
 
 def visualize_sephiroth_influence(soul_spark, ax) -> None:
     """Visualize the soul's connection to different Sephiroth energies."""
     try:
-        # Get Sephiroth influences
         influences = get_sephiroth_influence(soul_spark)
-        
         if not influences:
-            # Draw placeholder if no data
-            ax.text(0.5, 0.5, 'Sephiroth Data Not Available', 
-                    horizontalalignment='center', verticalalignment='center', 
-                    transform=ax.transAxes)
-            ax.set_title('Sephiroth Influence')
-            return
-            
-        # Sort by influence
-        sorted_influences = sorted(influences.items(), key=lambda x: x[1], reverse=True)
-        names, values = zip(*sorted_influences)
-        
-        # Get colors from Sephiroth color map
+            ax.text(0.5,0.5,'Sephiroth Data N/A',ha='center',va='center',transform=ax.transAxes,color=LIGHT_TEXT_COLOR); ax.set_title('Sephiroth Influence',color=LIGHT_TEXT_COLOR); return
+        sorted_influences = sorted(influences.items(), key=lambda x: x[1], reverse=True)[:7] # Top 7
+        names, values = zip(*sorted_influences) if sorted_influences else ([], [])
+        if not names: ax.text(0.5,0.5,'No Significant Sephiroth Influence',ha='center',va='center',transform=ax.transAxes,color=LIGHT_TEXT_COLOR); ax.set_title('Sephiroth Influence',color=LIGHT_TEXT_COLOR); return
+
         colors = [SEPHIROTH_COLORS.get(name.lower(), '#AAAAAA') for name in names]
-        
-        # Create pie chart with subtle 3D effect
+        # Explode the largest slice slightly for emphasis
+        explode_values = [0.0] * len(values) # Renamed explode
+        if values: explode_values[0] = 0.05
+
         wedges, texts, autotexts = ax.pie(
-            values, 
-            labels=None,
-            colors=colors, 
-            autopct='%1.1f%%',
-            pctdistance=0.85,
-            wedgeprops={'edgecolor': 'white', 'linewidth': 0.5, 'alpha': 0.7, 'width': 0.5},
-            textprops={'color': 'white', 'fontsize': 8}
+            values, explode=explode_values, labels=[name.capitalize() for name in names], colors=colors,
+            autopct=lambda p: f'{p:.1f}%' if p > 5 else '', # Show % only for larger slices
+            pctdistance=0.80, startangle=90,
+            wedgeprops={'edgecolor': DARK_BACKGROUND_COLOR, 'linewidth': 1.5, 'alpha': 0.9},
+            textprops={'color': LIGHT_TEXT_COLOR, 'fontsize': 7, 'fontweight': 'bold'}
         )
-        
-        # Add some glow effects
-        for i, wedge in enumerate(wedges):
-            wedge.set_alpha(0.8)
-        
-        # Create custom legend with sephiroth names
-        legend_elements = []
-        for name, color in zip(names, colors):
-            # Capitalize sephiroth name
-            display_name = name.capitalize()
-            legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
-                                  markerfacecolor=color, markersize=8, label=display_name))
-        
-        # Add legend with appropriate positioning
-        ax.legend(handles=legend_elements, loc='center', fontsize=8, 
-                 frameon=False, bbox_to_anchor=(0.5, -0.1))
-        
-        ax.set_title('Sephiroth Influence', fontsize=12)
-        
-    except Exception as e:
-        logger.error(f"Error in Sephiroth influence visualization: {e}")
-        raise RuntimeError(f"Failed to create Sephiroth influence visualization: {e}")
+        for autotext_item in autotexts: autotext_item.set_color('black') # Make percentage text readable on light wedges
+        ax.set_title('Sephiroth Influence', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.axis('equal') # Equal aspect ratio ensures that pie is drawn as a circle.
+    except Exception as e: logger.error(f"Error in Sephiroth influence visualization: {e}", exc_info=True); raise RuntimeError(f"Sephiroth influence vis failed: {e}") from e
+
 
 def visualize_soul_state(
-    soul_spark, 
-    stage_name: str, 
-    output_dir: str = None, 
+    soul_spark,
+    stage_name: str,
+    output_dir: Optional[str] = None,
     show: bool = False
 ) -> str:
-    """
-    Create a comprehensive visualization of the soul's current state.
-    Returns the path to the saved visualization file.
-    Hard fails if visualization cannot be created.
-    """
     logger.info(f"Creating visualization for soul {soul_spark.spark_id} at stage: {stage_name}")
-    
     try:
-        # Import necessary modules
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-        from skimage import measure
+        final_output_dir = output_dir if output_dir else os.path.join("output", "visualizations", "default_soul_states")
+        os.makedirs(final_output_dir, exist_ok=True)
+        fig = plt.figure(figsize=DEFAULT_FIG_SIZE, dpi=DEFAULT_DPI); fig.patch.set_facecolor(DARK_BACKGROUND_COLOR)
+        gs = plt.GridSpec(3,3,figure=fig,hspace=0.4,wspace=0.35,left=0.05,right=0.95,top=0.90,bottom=0.05) # Adjusted layout
+        axs = [fig.add_subplot(gs[0,0]), fig.add_subplot(gs[0,1]), fig.add_subplot(gs[0,2],polar=True),
+               fig.add_subplot(gs[1,:],projection='3d'), fig.add_subplot(gs[2,:2]), fig.add_subplot(gs[2,2])]
+        for ax_item in axs: # Renamed ax
+            ax_item.set_facecolor(DARK_BACKGROUND_COLOR)
+            if hasattr(ax_item,'spines'):
+                for spine in ax_item.spines.values(): spine.set_color(GRID_LINE_COLOR)
+            ax_item.tick_params(colors=LIGHT_TEXT_COLOR)
+            if hasattr(ax_item,'xaxis') and hasattr(ax_item.xaxis,'label'): ax_item.xaxis.label.set_color(LIGHT_TEXT_COLOR)
+            if hasattr(ax_item,'yaxis') and hasattr(ax_item.yaxis,'label'): ax_item.yaxis.label.set_color(LIGHT_TEXT_COLOR)
+            if hasattr(ax_item,'title'): ax_item.title.set_color(LIGHT_TEXT_COLOR)
         
-        # Create output directory if needed
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-        
-        # Create figure with subplots
-        fig = plt.figure(figsize=DEFAULT_FIG_SIZE, dpi=DEFAULT_DPI)
-        
-        # Create a darker background for the figure
-        fig.patch.set_facecolor('#121212')
-        
-        # Create grid layout with specific dimensions
-        gs = plt.GridSpec(3, 3, figure=fig, hspace=0.35, wspace=0.3)
-        
-        # Create named subplots
-        ax_2d = fig.add_subplot(gs[0, 0])
-        ax_freq = fig.add_subplot(gs[0, 1])
-        ax_radar = fig.add_subplot(gs[0, 2], polar=True)
-        ax_3d = fig.add_subplot(gs[1, :], projection='3d')
-        ax_aspects = fig.add_subplot(gs[2, :2])
-        ax_sephiroth = fig.add_subplot(gs[2, 2])
-        
-        # Set dark background for all axes
-        for ax in [ax_2d, ax_freq, ax_radar, ax_3d, ax_aspects, ax_sephiroth]:
-            ax.set_facecolor('#121212')
-            for spine in ax.spines.values():
-                spine.set_color('#333333')
-            ax.tick_params(colors='#CCCCCC')
-            ax.xaxis.label.set_color('#CCCCCC')
-            ax.yaxis.label.set_color('#CCCCCC')
-            ax.title.set_color('#FFFFFF')
-        
-        # Create visualizations
-        visualize_density_2d(soul_spark, ax_2d)
-        visualize_frequency_spectrum(soul_spark, ax_freq)
-        visualize_aspects_radar(soul_spark, ax_radar)
-        visualize_soul_3d(soul_spark, ax_3d)
-        visualize_top_aspects(soul_spark, ax_aspects)
-        visualize_sephiroth_influence(soul_spark, ax_sephiroth)
-        
-        # Add metadata to figure
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        soul_id = soul_spark.spark_id
-        title = f"Soul State: {soul_id} - {stage_name} ({timestamp})"
-        
-        # Add stability and coherence values if available
+        visualize_density_2d(soul_spark, axs[0]); visualize_frequency_spectrum(soul_spark, axs[1])
+        visualize_aspects_radar(soul_spark, axs[2]); visualize_soul_3d(soul_spark, axs[3])
+        visualize_top_aspects(soul_spark, axs[4]); visualize_sephiroth_influence(soul_spark, axs[5])
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S"); soul_id = soul_spark.spark_id
+        title_text = f"Soul State: {soul_id} - {stage_name} ({timestamp})"
         try:
-            s_val = getattr(soul_spark, 'stability', None)
-            c_val = getattr(soul_spark, 'coherence', None)
-            if s_val is not None and c_val is not None:
-                title += f"\nStability: {s_val:.1f} SU | Coherence: {c_val:.1f} CU"
-        except Exception:
-            pass
-            
-        fig.suptitle(title, fontsize=16, color='white')
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust layout with room for title
-        
-        # Save visualization
+            s_val = getattr(soul_spark,'stability',None); c_val = getattr(soul_spark,'coherence',None)
+            if s_val is not None and c_val is not None: title_text += f"\nS: {s_val:.1f} SU, C: {c_val:.1f} CU"
+        except: pass
+        fig.suptitle(title_text, fontsize=16, color='white', y=0.98) # Adjusted y for suptitle
+        # No plt.tight_layout() here as GridSpec handles it with hspace/wspace and rect.
+
         timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{soul_spark.spark_id}_{stage_name.replace(' ','_')}_{timestamp_str}.png"
-        if output_dir:
-            filepath = os.path.join(output_dir, filename)
-        else:
-            filepath = filename
-            
-        plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor='#121212')
+        filepath = os.path.join(final_output_dir, filename)
+        plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor=DARK_BACKGROUND_COLOR, bbox_inches='tight')
         logger.info(f"Visualization saved to {filepath}")
-        
-        # Also save a NumPy version of the soul state for later analysis
+
         try:
-            data_save_dir = os.path.join(output_dir, "../completed") if output_dir else "output/completed"
+            data_save_dir = os.path.join(final_output_dir, "..", "completed_soul_data_npy") # Changed subfolder name
             os.makedirs(data_save_dir, exist_ok=True)
-            
-            # Capture key state data for memory-efficient storage
-            state_data = {
-                'soul_id': soul_spark.spark_id,
-                'stage': stage_name,
-                'timestamp': timestamp_str,
-                'density_2d': generate_soul_density_field(soul_spark, resolution=50),  # Lower resolution for storage
-                'stability': getattr(soul_spark, 'stability', 0.0),
-                'coherence': getattr(soul_spark, 'coherence', 0.0),
-                'frequency': getattr(soul_spark, 'frequency', 0.0),
-                'aspects_count': len(getattr(soul_spark, 'aspects', {})),
-                'layers_count': len(getattr(soul_spark, 'layers', [])),
+            # Create a dictionary that can be saved by np.save (needs to be an array or pickled)
+            # For simplicity, saving a dictionary of key metrics.
+            density_field_for_save = generate_soul_density_field(soul_spark, resolution=30) # Smaller for .npy
+            state_data_dict = {
+                'soul_id': soul_spark.spark_id, 'stage': stage_name, 'timestamp': timestamp_str,
+                'density_2d_shape_for_save': density_field_for_save.shape, # Store shape
+                'stability': getattr(soul_spark,'stability',0.0), 'coherence': getattr(soul_spark,'coherence',0.0),
+                'frequency': getattr(soul_spark,'frequency',0.0),
+                'aspects_count': len(getattr(soul_spark,'aspects',{})),
+                'layers_count': len(getattr(soul_spark,'layers',[]))
             }
-            
-            # Save numpy data
-            data_filename = f"{soul_spark.spark_id}_{stage_name.replace(' ','_')}_{timestamp_str}.npy"
-            data_filepath = os.path.join(data_save_dir, data_filename)
-            np.save(data_filepath, state_data)
-            logger.info(f"Soul state data saved to {data_filepath}")
-        except Exception as data_e:
-            logger.warning(f"Failed to save soul state data: {data_e}")
-        
-        # Show visualization if requested
-        if show:
-            plt.show()
-        else:
-            plt.close(fig)
-            
+            # To save a dict with np.save, allow pickle or convert to structured array. Or use json.
+            data_filename_json = f"{soul_spark.spark_id}_{stage_name.replace(' ','_')}_{timestamp_str}_metrics.json"
+            data_filepath_json = os.path.join(data_save_dir, data_filename_json)
+            with open(data_filepath_json, 'w') as f_json:
+                json.dump(state_data_dict, f_json, indent=2, default=str)
+            logger.info(f"Soul state metrics (JSON) saved to {data_filepath_json}")
+        except Exception as data_e: logger.warning(f"Failed to save soul state metrics: {data_e}")
+
+        if show: plt.show()
+        else: plt.close(fig)
         return filepath
-        
     except Exception as e:
         logger.critical(f"CRITICAL ERROR in soul visualization: {e}", exc_info=True)
-        plt.close('all')  # Clean up any open figures
-        raise RuntimeError(f"Failed to create soul visualization: {e}")
+        plt.close('all'); raise RuntimeError(f"Failed to create soul visualization: {e}") from e
 
-# --- Helper Function for State Comparison ---
 def visualize_state_comparison(
-    soul_spark_states: List[Tuple[Any, str]], 
-    output_dir: str = None,
+    soul_spark_states: List[Tuple[Any, str]],
+    output_dir: Optional[str] = None,
     show: bool = False
 ) -> str:
-    """
-    Compare multiple soul states across different development stages.
-    
-    Args:
-        soul_spark_states: List of tuples (soul_spark, stage_name) to compare
-        output_dir: Directory to save visualization
-        show: Whether to display the visualization
-        
-    Returns:
-        Path to saved visualization
-    """
     if not soul_spark_states or len(soul_spark_states) < 2:
-        logger.error("Need at least two soul states to compare")
-        raise ValueError("Need at least two soul states to compare")
-        
-    logger.info(f"Creating comparison visualization for {len(soul_spark_states)} soul states")
+        logger.error("Need at least two soul states to compare"); raise ValueError("Need >=2 states")
+    logger.info(f"Creating comparison viz for {len(soul_spark_states)} states")
+    final_output_dir=output_dir if output_dir else os.path.join("output","visualizations","default_comparisons")
+    os.makedirs(final_output_dir,exist_ok=True); soul_id=soul_spark_states[0][0].spark_id
+    fig=plt.figure(figsize=(18,10),dpi=DEFAULT_DPI); fig.patch.set_facecolor(DARK_BACKGROUND_COLOR) # Wider for comparison
+    cmap=create_soul_colormap(soul_spark_states[0][0]); stages=[stage for _,stage in soul_spark_states]; x_range=range(len(stages))
+
+    # Stability & Coherence
+    ax_sc=fig.add_subplot(2,2,1); ax_sc.set_facecolor(DARK_BACKGROUND_COLOR)
+    stability_vals=[getattr(s,'stability',0.0) for s,_ in soul_spark_states]; coherence_vals=[getattr(s,'coherence',0.0) for s,_ in soul_spark_states]
+    ax_sc.plot(x_range,stability_vals,'o-',label='Stability (SU)',color=cmap(0.3),lw=2,mec='white',mew=0.5,ms=7)
+    ax_sc.plot(x_range,coherence_vals,'o-',label='Coherence (CU)',color=cmap(0.7),lw=2,mec='white',mew=0.5,ms=7)
+    ax_sc.set_xticks(x_range); ax_sc.set_xticklabels(stages,rotation=30,ha='right',color=LIGHT_TEXT_COLOR,fontsize=9)
+    ax_sc.set_ylabel('Value',color=LIGHT_TEXT_COLOR); ax_sc.set_title('S/C Progression',color='white',fontsize=14)
+    ax_sc.legend(frameon=False,labelcolor='white',fontsize=10); ax_sc.grid(True,ls='--',alpha=0.2,color=GRID_LINE_COLOR)
+    for spine in ax_sc.spines.values(): spine.set_color(GRID_LINE_COLOR)
+    ax_sc.tick_params(colors=LIGHT_TEXT_COLOR)
+
+    # Aspect & Layer Counts
+    ax_counts=fig.add_subplot(2,2,2); ax_counts.set_facecolor(DARK_BACKGROUND_COLOR)
+    aspect_counts=[len(getattr(s,'aspects',{})) for s,_ in soul_spark_states]; layer_counts=[len(getattr(s,'layers',[])) for s,_ in soul_spark_states]
+    bar_width=0.35; r1=np.arange(len(stages)); r2=[x_val+bar_width for x_val in r1]
+    ax_counts.bar(r1,aspect_counts,width=bar_width,color=cmap(0.85),alpha=0.8,label='Aspects',edgecolor=LIGHT_TEXT_COLOR,lw=0.5)
+    ax_counts.bar(r2,layer_counts,width=bar_width,color=cmap(0.45),alpha=0.8,label='Layers',edgecolor=LIGHT_TEXT_COLOR,lw=0.5)
+    ax_counts.set_xticks([r_val+bar_width/2 for r_val in r1]); ax_counts.set_xticklabels(stages,rotation=30,ha='right',color=LIGHT_TEXT_COLOR,fontsize=9)
+    ax_counts.set_ylabel('Count',color=LIGHT_TEXT_COLOR); ax_counts.set_title('Aspects & Layers Growth',color='white',fontsize=14)
+    ax_counts.legend(frameon=False,labelcolor='white',fontsize=10); ax_counts.grid(True,ls='--',alpha=0.2,color=GRID_LINE_COLOR,axis='y')
+    for spine in ax_counts.spines.values(): spine.set_color(GRID_LINE_COLOR)
+    ax_counts.tick_params(colors=LIGHT_TEXT_COLOR)
+
+    # Density Evolution (Simplified to show key stages if too many)
+    ax_density_evo = fig.add_subplot(2,1,2); ax_density_evo.set_facecolor(DARK_BACKGROUND_COLOR) # Span bottom row
+    num_states_to_show = min(len(soul_spark_states), 5) # Show max 5 states for density comparison
+    indices_to_show = np.linspace(0, len(soul_spark_states)-1, num_states_to_show, dtype=int).tolist()
     
-    try:
-        # Create output directory if needed
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-            
-        # Get soul ID from first state
-        soul_id = soul_spark_states[0][0].spark_id
-        
-        # Create figure with subplots
-        fig = plt.figure(figsize=(16, 12), dpi=DEFAULT_DPI)
-        fig.patch.set_facecolor('#121212')
-        
-        # Get a consistent colormap for this soul
-        cmap = create_soul_colormap(soul_spark_states[0][0])
-        
-        # Setup grid
-        n_states = len(soul_spark_states)
-        
-        # Extract stages for x-axis
-        stages = [stage for _, stage in soul_spark_states]
-        
-        # 1. Stability and Coherence progression - Upper left
-        ax_sc = fig.add_subplot(2, 2, 1)
-        ax_sc.set_facecolor('#121212')
-        
-        stability_values = []
-        coherence_values = []
-        
-        for soul, _ in soul_spark_states:
-            stability_values.append(getattr(soul, 'stability', 0.0))
-            coherence_values.append(getattr(soul, 'coherence', 0.0))
-            
-        x = range(len(stages))
-        
-        # Plot stability with gradient line
-        color1 = cmap(0.3)
-        for i in range(len(x)-1):
-            ax_sc.plot(x[i:i+2], stability_values[i:i+2], '-', 
-                      color=color1, linewidth=2.5, alpha=0.8)
-            ax_sc.plot(x[i:i+2], stability_values[i:i+2], '-', 
-                      color='white', linewidth=1, alpha=0.3)
-                      
-        # Plot coherence with gradient line
-        color2 = cmap(0.7)
-        for i in range(len(x)-1):
-            ax_sc.plot(x[i:i+2], coherence_values[i:i+2], '-', 
-                      color=color2, linewidth=2.5, alpha=0.8)
-            ax_sc.plot(x[i:i+2], coherence_values[i:i+2], '-', 
-                      color='white', linewidth=1, alpha=0.3)
-        
-        # Add markers
-        ax_sc.scatter(x, stability_values, s=80, color=color1, alpha=0.9, 
-                     edgecolor='white', linewidth=1, zorder=10)
-        ax_sc.scatter(x, coherence_values, s=80, color=color2, alpha=0.9, 
-                     edgecolor='white', linewidth=1, zorder=10)
-        
-        # Styling
-        ax_sc.set_xticks(x)
-        ax_sc.set_xticklabels(stages, rotation=45, ha='right', color='#CCCCCC')
-        ax_sc.set_ylabel('Value', color='#CCCCCC')
-        ax_sc.set_title('Stability and Coherence Progression', color='white', fontsize=14)
-        
-        # Create custom legend
-        from matplotlib.lines import Line2D
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', markerfacecolor=color1, 
-                  markersize=8, label='Stability (SU)'),
-            Line2D([0], [0], marker='o', color='w', markerfacecolor=color2, 
-                  markersize=8, label='Coherence (CU)')
-        ]
-        ax_sc.legend(handles=legend_elements, loc='upper left', frameon=False, 
-                    labelcolor='white')
-        
-        # Add subtle grid
-        ax_sc.grid(True, linestyle='--', alpha=0.2, color='#555555')
-        for spine in ax_sc.spines.values():
-            spine.set_color('#333333')
-        ax_sc.tick_params(colors='#CCCCCC')
-        
-        # 2. Soul Energy Density Evolution - Upper right
-        ax_density = fig.add_subplot(2, 2, 2)
-        ax_density.set_facecolor('#121212')
-        
-        # Create a series of small density plots showing evolution
-        n_cols = len(soul_spark_states)
-        grid_size = 50  # Small grid for each stage
-        
-        # Create a grid to hold all density plots
-        full_grid = np.zeros((grid_size, grid_size * n_cols))
-        
-        # Fill the grid with density plots
-        for i, (soul, _) in enumerate(soul_spark_states):
-            density = generate_soul_density_field(soul, resolution=grid_size)
-            full_grid[:, i*grid_size:(i+1)*grid_size] = density
-            
-        # Plot with custom colormap
-        extent = [0, n_cols, 0, 1]
-        im = ax_density.imshow(full_grid, extent=extent, origin='lower', 
-                             cmap=cmap, aspect='auto')
-                             
-        # Add stage labels
-        for i in range(n_cols):
-            ax_density.text(i + 0.5, 0.05, stages[i], 
-                          ha='center', va='bottom', color='white',
-                          fontsize=8, rotation=90)
-            
-        # Add vertical lines between stages
-        for i in range(1, n_cols):
-            ax_density.axvline(i, color='white', linewidth=0.5, alpha=0.3)
-            
-        ax_density.set_title('Soul Energy Evolution', color='white', fontsize=14)
-        ax_density.set_yticks([])
-        ax_density.set_xticks([])
-        
-        # 3. Aspect Count and Layer Count - Lower left
-        ax_counts = fig.add_subplot(2, 2, 3)
-        ax_counts.set_facecolor('#121212')
-        
-        # Get aspect and layer counts
-        aspect_counts = []
-        layer_counts = []
-        
-        for soul, _ in soul_spark_states:
-            aspect_counts.append(len(getattr(soul, 'aspects', {})))
-            layer_counts.append(len(getattr(soul, 'layers', [])))
-            
-        # Create double bar chart with gradient fill
-        bar_width = 0.35
-        r1 = np.arange(len(stages))
-        r2 = [x + bar_width for x in r1]
-        
-        # Custom colors with alpha gradient
-        aspect_color = cmap(0.9)
-        layer_color = cmap(0.4)
-        
-        # Create bars with lighter edges
-        aspect_bars = ax_counts.bar(r1, aspect_counts, width=bar_width, 
-                                  color=aspect_color, alpha=0.8,
-                                  edgecolor='white', linewidth=0.5,
-                                  label='Aspects')
-        layer_bars = ax_counts.bar(r2, layer_counts, width=bar_width, 
-                                 color=layer_color, alpha=0.8,
-                                 edgecolor='white', linewidth=0.5,
-                                 label='Layers')
-        
-        # Add count labels above bars
-        for i, v in enumerate(aspect_counts):
-            ax_counts.text(r1[i], v + 0.3, str(v), ha='center', va='bottom', 
-                         color='white', fontsize=9)
-        for i, v in enumerate(layer_counts):
-            ax_counts.text(r2[i], v + 0.3, str(v), ha='center', va='bottom', 
-                         color='white', fontsize=9)
-        
-        # Add styling
-        ax_counts.set_xticks([r + bar_width/2 for r in range(len(stages))])
-        ax_counts.set_xticklabels(stages, rotation=45, ha='right', color='#CCCCCC')
-        ax_counts.set_ylabel('Count', color='#CCCCCC')
-        ax_counts.set_title('Aspects and Layers Growth', color='white', fontsize=14)
-        ax_counts.legend(frameon=False, labelcolor='white')
-        
-        # Add subtle grid
-        ax_counts.grid(True, linestyle='--', alpha=0.2, color='#555555', axis='y')
-        for spine in ax_counts.spines.values():
-            spine.set_color('#333333')
-        ax_counts.tick_params(colors='#CCCCCC')
-        
-        # 4. Harmony Factors Comparison - Lower right
-        ax_harmony = fig.add_subplot(2, 2, 4)
-        ax_harmony.set_facecolor('#121212')
-        
-        # Get harmony factors for each state
-        factor_names = [
-            'stability', 'coherence', 'phi_resonance', 'pattern_coherence', 
-            'harmony', 'resonance', 'toroidal_flow_strength'
-        ]
-        
-        # Collect factor data across states
-        factor_data = {name: [] for name in factor_names}
-        
-        for soul, _ in soul_spark_states:
-            for name in factor_names:
-                if hasattr(soul, name) and getattr(soul, name) is not None:
-                    # Normalize value to 0-1 range
-                    value = getattr(soul, name)
-                    if name == 'stability':
-                        max_val = getattr(soul, 'MAX_STABILITY_SU', 100.0)
-                        norm_value = min(1.0, max(0.0, value / max_val))
-                    elif name == 'coherence':
-                        max_val = getattr(soul, 'MAX_COHERENCE_CU', 100.0)
-                        norm_value = min(1.0, max(0.0, value / max_val))
-                    else:
-                        # Assume 0-1 range for other factors
-                        norm_value = min(1.0, max(0.0, value))
-                    factor_data[name].append(norm_value)
-                else:
-                    factor_data[name].append(0.0)
-        
-        # Plot radar chart for comparison
-        # Keep only factors with data
-        valid_factors = [name for name in factor_names if any(v > 0 for v in factor_data[name])]
-        
-        if valid_factors:
-            # Set number of variables
-            N = len(valid_factors)
-            
-            # Create angle array
-            angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
-            angles += angles[:1]  # Close the loop
-            
-            # Create new axes with polar projection
-            ax_harmony = plt.subplot(2, 2, 4, polar=True)
-            ax_harmony.set_facecolor('#121212')
-            
-            # Draw one line per stage and fill area
-            for i, (soul, stage) in enumerate(soul_spark_states):
-                # Prepare data
-                values = [factor_data[name][i] for name in valid_factors]
-                values += values[:1]  # Close the loop
-                
-                # Get color from colormap with different saturation for each stage
-                color = cmap(0.2 + 0.8 * (i / max(1, len(soul_spark_states) - 1)))
-                
-                # Plot line and fill
-                ax_harmony.plot(angles, values, linewidth=2, linestyle='-', 
-                             color=color, alpha=0.8, label=stage)
-                ax_harmony.fill(angles, values, color=color, alpha=0.1)
-            
-            # Draw labels
-            ax_harmony.set_xticks(angles[:-1])
-            ax_harmony.set_xticklabels([name.replace('_', ' ').capitalize() for name in valid_factors], 
-                                     color='#CCCCCC', fontsize=8)
-            
-            # Draw ylabels
-            ax_harmony.set_rlabel_position(0)
-            ax_harmony.set_yticks([0.25, 0.5, 0.75, 1.0])
-            ax_harmony.set_yticklabels(['0.25', '0.5', '0.75', '1.0'], color='#CCCCCC')
-            ax_harmony.set_ylim(0, 1)
-            
-            # Add legend
-            ax_harmony.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1), 
-                           frameon=False, labelcolor='white')
-            
-            # Add title
-            ax_harmony.set_title('Harmony Factors Comparison', color='white', fontsize=14, pad=15)
-            
-            # Add subtle gridlines
-            ax_harmony.grid(color='#555555', alpha=0.2)
-        else:
-            # No valid factors, show text instead
-            ax_harmony.text(0.5, 0.5, 'Harmony Factor Data Not Available', 
-                          horizontalalignment='center', verticalalignment='center',
-                          transform=ax_harmony.transAxes, color='white')
-            ax_harmony.set_title('Harmony Factors Comparison', color='white')
-        
-        # Add metadata to figure
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        title = f"Soul Development Comparison: {soul_id}\n({timestamp})"
-        fig.suptitle(title, fontsize=16, color='white')
-        
-        plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout with room for title
-        
-        # Save visualization
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{soul_id}_Development_Comparison_{timestamp_str}.png"
-        if output_dir:
-            filepath = os.path.join(output_dir, filename)
-        else:
-            filepath = filename
-            
-        plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor='#121212')
-        logger.info(f"Comparison visualization saved to {filepath}")
-        
-        # Show visualization if requested
-        if show:
-            plt.show()
-        else:
-            plt.close(fig)
-            
-        return filepath
-        
-    except Exception as e:
-        logger.critical(f"CRITICAL ERROR in comparison visualization: {e}", exc_info=True)
-        plt.close('all')  # Clean up any open figures
-        raise RuntimeError(f"Failed to create comparison visualization: {e}")
+    density_grid_res = 30 # Lower resolution for composite
+    composite_width = density_grid_res * num_states_to_show
+    composite_density = np.zeros((density_grid_res, composite_width))
+    
+    stages_shown_for_density = []
+    for i, original_idx in enumerate(indices_to_show):
+        soul_state_obj, stage_label = soul_spark_states[original_idx] # Renamed soul to soul_state_obj
+        stages_shown_for_density.append(stage_label)
+        density_field = generate_soul_density_field(soul_state_obj, resolution=density_grid_res)
+        composite_density[:, i*density_grid_res:(i+1)*density_grid_res] = density_field
+
+    im_density = ax_density_evo.imshow(composite_density, cmap=cmap, origin='lower', extent=[0, num_states_to_show, 0, 1], aspect='auto')
+    cbar_density = plt.colorbar(im_density, ax=ax_density_evo, label='Normalized Density', fraction=0.046, pad=0.04)
+    cbar_density.ax.yaxis.set_tick_params(color=LIGHT_TEXT_COLOR); plt.setp(plt.getp(cbar_density.ax.axes, 'yticklabels'), color=LIGHT_TEXT_COLOR)
+    cbar_density.set_label('Normalized Density', color=LIGHT_TEXT_COLOR)
+    ax_density_evo.set_yticks([]); ax_density_evo.set_xticks(np.arange(num_states_to_show)+0.5); ax_density_evo.set_xticklabels(stages_shown_for_density,rotation=20,ha='right',color=LIGHT_TEXT_COLOR,fontsize=9)
+    ax_density_evo.set_title('Soul Density Evolution (Selected Stages)',color='white',fontsize=14)
+    for spine in ax_density_evo.spines.values(): spine.set_color(GRID_LINE_COLOR)
 
 
-# Additional utility function to generate a beautiful soul signature pattern
-def generate_soul_signature(soul_spark, resolution=200):
-    """
-    Generates a unique visual signature pattern for the soul based on its properties.
-    This creates an artistic representation unique to each soul.
-    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    title_text = f"Soul Development Comparison: {soul_id}\n({timestamp})"
+    fig.suptitle(title_text, fontsize=16, color='white', y=0.98) # Adjusted y
+    plt.tight_layout(rect=[0,0,1,0.95]) # Adjusted rect
+    timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"{soul_id}_Development_Comparison_{timestamp_str}.png"
+    filepath = os.path.join(final_output_dir, filename)
+    plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor=DARK_BACKGROUND_COLOR, bbox_inches='tight')
+    logger.info(f"Comparison visualization saved to {filepath}")
+    if show: plt.show()
+    else: plt.close(fig)
+    return filepath
+
+
+# --- Other visualization functions from your provided code ---
+# (generate_soul_signature, visualize_soul_signature, visualize_earth_resonance,
+#  create_comprehensive_soul_report, get_soul_info_text)
+# For brevity, these are not repeated here but should be included in your actual file.
+# Ensure they also use DARK_BACKGROUND_COLOR, LIGHT_TEXT_COLOR, GRID_LINE_COLOR for consistency.
+
+# Example of how one might look with the theme:
+def generate_soul_signature(soul_spark) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Generate x,y coordinates and parameters for soul's unique signature pattern."""
     try:
-        # Get soul properties
+        # Get core parameters from soul
         stability = getattr(soul_spark, 'stability', 50.0) / 100.0
         coherence = getattr(soul_spark, 'coherence', 50.0) / 100.0
         frequency = getattr(soul_spark, 'frequency', 432.0)
         
-        # Create coordinate grid
-        t = np.linspace(0, 2*np.pi, resolution)
+        # Generate time points
+        t = np.linspace(0, 8*np.pi, 1000)
         
-        # Base parameters derived from soul properties
-        base_radius = 0.3 + 0.2 * stability
-        complexity = 3 + 10 * coherence
-        variation = 0.1 + 0.3 * coherence
+        # Calculate radius with harmonics
+        r = 0.3 + 0.2 * np.sin(frequency/100 * t) * stability
+        r += 0.15 * np.sin(2*t) * coherence
+        r = np.clip(r, 0.1, 0.9)
         
-        # Create frequency-based parameters
-        freq_factor = (frequency % 100) / 100.0  # Normalize to 0-1
-        phase_shift = 2 * np.pi * freq_factor
-        
-        # Generate unique pattern based on soul ID
-        id_seed = 0
-        try:
-            # Convert spark_id to a numeric seed
-            id_str = str(soul_spark.spark_id)
-            id_seed = sum(ord(c) for c in id_str) / 1000.0
-        except:
-            id_seed = 0.5
-        
-        # Create harmonic components
-        r = base_radius
-        for i in range(1, int(complexity) + 1):
-            harmonic = variation * np.sin(i * t + phase_shift * i + id_seed * i)
-            r += harmonic / i  # Higher harmonics contribute less
-        
-        # Convert to cartesian coordinates
+        # Generate x,y coordinates
         x = r * np.cos(t)
         y = r * np.sin(t)
         
         return x, y, t, r
-        
     except Exception as e:
         logger.error(f"Error generating soul signature: {e}")
-        # Return a simple circle as fallback
-        t = np.linspace(0, 2*np.pi, resolution)
-        r = 0.5 * np.ones_like(t)
-        x = r * np.cos(t)
-        y = r * np.sin(t)
-        return x, y, t, r
+        # Return fallback simple circle
+        t = np.linspace(0, 2*np.pi, 100)
+        return np.cos(t)*0.5, np.sin(t)*0.5, t, np.ones_like(t)*0.5
 
 def visualize_soul_signature(soul_spark, ax=None, with_title=True):
-    """
-    Creates a beautiful artistic visualization of the soul's unique signature pattern.
-    This can be used as a visual identifier for the soul.
-    """
     if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 8), dpi=DEFAULT_DPI)
-        fig.patch.set_facecolor('#121212')
-        ax.set_facecolor('#121212')
-    
+        fig_sig, ax_sig = plt.subplots(figsize=(8, 8), dpi=DEFAULT_DPI) # Renamed fig, ax to fig_sig, ax_sig
+        fig_sig.patch.set_facecolor(DARK_BACKGROUND_COLOR)
+        ax_sig.set_facecolor(DARK_BACKGROUND_COLOR)
+    else: # ax is provided
+        ax_sig = ax
+
     try:
-        # Generate soul signature pattern
-        x, y, t, r = generate_soul_signature(soul_spark)
-        
-        # Get soul properties for coloring
-        stability = getattr(soul_spark, 'stability', 50.0) / 100.0
-        coherence = getattr(soul_spark, 'coherence', 50.0) / 100.0
-        
-        # Create color gradient based on soul spectrum
-        cmap = create_soul_colormap(soul_spark)
-        colors = cmap(np.linspace(0, 1, len(t)))
-        
-        # Plot with beautiful styling
-        points = np.array([x, y]).T.reshape((-1, 1, 2))
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        
-        # Create line collection with variable colors
-        from matplotlib.collections import LineCollection
-        lc = LineCollection(segments, colors=colors, linewidth=2, alpha=0.8)
-        line = ax.add_collection(lc)
-        
-        # Add subtle glow effect
-        for alpha, width in zip([0.1, 0.05, 0.02], [4, 6, 8]):
-            lc_glow = LineCollection(segments, colors=colors, linewidth=width, alpha=alpha)
-            ax.add_collection(lc_glow)
-        
-        # Add center marker
-        ax.scatter(0, 0, color='white', s=50, alpha=0.8, zorder=10)
-        
-        # Add radial lines for more complex souls
-        if coherence > 0.6:
-            n_lines = int(5 + 5 * coherence)
-            for i in range(n_lines):
-                theta = i * 2 * np.pi / n_lines
-                line_x = [0, 0.9 * np.cos(theta)]
-                line_y = [0, 0.9 * np.sin(theta)]
-                ax.plot(line_x, line_y, color='white', alpha=0.1, linewidth=0.5)
-        
-        # Add circular markers along the path based on stability
-        if stability > 0.4:
-            # More stable souls have more defined nodes
-            n_markers = int(4 + 8 * stability)
-            marker_indices = np.linspace(0, len(x) - 1, n_markers, dtype=int)
-            ax.scatter(x[marker_indices], y[marker_indices], color='white', 
-                     s=30, alpha=0.7, edgecolor='white', linewidth=0.5)
-        
-        # Set limits and aspect
-        margin = 0.1
-        max_range = max(np.max(np.abs(x)), np.max(np.abs(y))) + margin
-        ax.set_xlim(-max_range, max_range)
-        ax.set_ylim(-max_range, max_range)
-        ax.set_aspect('equal')
-        
-        # Remove axes
-        ax.axis('off')
-        
-        # Add title if requested
+        x_sig, y_sig, t_sig, r_sig = generate_soul_signature(soul_spark) # Renamed x,y,t,r
+        cmap_sig = create_soul_colormap(soul_spark); colors_sig = cmap_sig(np.linspace(0,1,len(t_sig))) # Renamed cmap, colors
+        points = np.array([x_sig,y_sig]).T.reshape((-1,1,2)); segments=np.concatenate([points[:-1],points[1:]],axis=1)
+        from matplotlib.collections import LineCollection # Import here if not global
+        lc = LineCollection(segments,colors=colors_sig,linewidth=2,alpha=0.8); ax_sig.add_collection(lc)
+        for alpha_val, width_val in zip([0.1,0.05,0.02],[4,6,8]): # Renamed alpha, width
+            lc_glow=LineCollection(segments,colors=colors_sig,linewidth=width_val,alpha=alpha_val); ax_sig.add_collection(lc_glow)
+        ax_sig.scatter(0,0,color='white',s=50,alpha=0.8,zorder=10,edgecolor=DARK_BACKGROUND_COLOR) # Edgecolor for contrast
+        ax_sig.set_xlim(-1.1,1.1); ax_sig.set_ylim(-1.1,1.1); ax_sig.set_aspect('equal'); ax_sig.axis('off')
         if with_title:
-            soul_id = getattr(soul_spark, 'spark_id', 'Unknown')
-            soul_name = getattr(soul_spark, 'name', None)
-            title = f"Soul Signature: {soul_id}"
-            if soul_name:
-                title += f" ({soul_name})"
-            ax.set_title(title, color='white', fontsize=14)
+            soul_id_sig=getattr(soul_spark,'spark_id','Unknown'); soul_name_sig=getattr(soul_spark,'name',None) # Renamed soul_id, soul_name
+            title_sig=f"Soul Signature: {soul_id_sig}" + (f" ({soul_name_sig})" if soul_name_sig else "") # Renamed title
+            ax_sig.set_title(title_sig,color=LIGHT_TEXT_COLOR,fontsize=14)
+        return ax_sig
+    except Exception as e:
+        logger.error(f"Error visualizing soul signature: {e}", exc_info=True)
+        ax_sig.text(0.5,0.5,'Signature N/A',ha='center',va='center',transform=ax_sig.transAxes,color=LIGHT_TEXT_COLOR)
+        ax_sig.set_title('Soul Signature',color=LIGHT_TEXT_COLOR); return ax_sig
+
+# --- (Include all other visualization functions, adapting their styling to the dark theme) ---
+
+def create_comprehensive_soul_report(
+    soul_spark,
+    stage_name: str,
+    output_dir: Optional[str] = None,
+    show: bool = False
+) -> str:
+    logger.info(f"Creating comprehensive report for soul {soul_spark.spark_id} at stage: {stage_name}")
+    try:
+        final_output_dir = output_dir if output_dir else os.path.join("output", "visualizations", "comprehensive_reports")
+        os.makedirs(final_output_dir, exist_ok=True)
+
+        fig = plt.figure(figsize=(20, 18), dpi=DEFAULT_DPI) # Adjusted size for more plots
+        fig.patch.set_facecolor(DARK_BACKGROUND_COLOR)
+        gs = plt.GridSpec(4, 3, figure=fig, hspace=0.45, wspace=0.3, left=0.05,right=0.95,top=0.92,bottom=0.05)
+
+        axs_map = {
+            '2d_density': fig.add_subplot(gs[0, 0]),
+            'freq_spectrum': fig.add_subplot(gs[0, 1]),
+            'aspect_radar': fig.add_subplot(gs[0, 2], polar=True),
+            '3d_structure': fig.add_subplot(gs[1, :], projection='3d'),
+            'top_aspects': fig.add_subplot(gs[2, 0]),
+            'harmony_factors': fig.add_subplot(gs[2, 1]),
+            'sephiroth_influence': fig.add_subplot(gs[2, 2]),
+            'soul_signature': fig.add_subplot(gs[3,0]),
+            'earth_resonance': fig.add_subplot(gs[3,1]),
+            'info_panel': fig.add_subplot(gs[3,2])
+        }
+
+        for ax_name, ax_curr in axs_map.items(): # Renamed ax
+            ax_curr.set_facecolor(DARK_BACKGROUND_COLOR)
+            if hasattr(ax_curr,'spines'):
+                for spine in ax_curr.spines.values(): spine.set_color(GRID_LINE_COLOR)
+            ax_curr.tick_params(colors=LIGHT_TEXT_COLOR)
+            if hasattr(ax_curr,'xaxis') and hasattr(ax_curr.xaxis,'label'): ax_curr.xaxis.label.set_color(LIGHT_TEXT_COLOR)
+            if hasattr(ax_curr,'yaxis') and hasattr(ax_curr.yaxis,'label'): ax_curr.yaxis.label.set_color(LIGHT_TEXT_COLOR)
+            if hasattr(ax_curr,'title'): ax_curr.title.set_color(LIGHT_TEXT_COLOR)
+            if ax_name == 'info_panel': ax_curr.axis('off')
+
+
+        visualize_density_2d(soul_spark, axs_map['2d_density'])
+        visualize_frequency_spectrum(soul_spark, axs_map['freq_spectrum'])
+        visualize_aspects_radar(soul_spark, axs_map['aspect_radar'])
+        visualize_soul_3d(soul_spark, axs_map['3d_structure'])
+        visualize_top_aspects(soul_spark, axs_map['top_aspects'])
+        visualize_harmony_factors(soul_spark, axs_map['harmony_factors'])
+        visualize_sephiroth_influence(soul_spark, axs_map['sephiroth_influence'])
+        visualize_soul_signature(soul_spark, axs_map['soul_signature'], with_title=False)
+        axs_map['soul_signature'].set_title("Soul Signature", color=LIGHT_TEXT_COLOR, fontsize=12) # Add title separately
+        visualize_earth_resonance(soul_spark, axs_map['earth_resonance'])
+
+
+        info_text_str = get_soul_info_text(soul_spark) # Renamed info_text
+        axs_map['info_panel'].text(0.05, 0.95, info_text_str, color=LIGHT_TEXT_COLOR, fontsize=9,
+                                   va='top', ha='left', linespacing=1.6, family='monospace',
+                                   bbox=dict(boxstyle='round,pad=0.5', fc=DARK_BACKGROUND_COLOR, ec=GRID_LINE_COLOR, alpha=0.7))
+        axs_map['info_panel'].set_title('Soul Overview', color=LIGHT_TEXT_COLOR, fontsize=12)
+
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S"); soul_id_report = soul_spark.spark_id # Renamed soul_id
+        title_report = f"Soul Development Report: {soul_id_report} - Stage: {stage_name}\n({timestamp})" # Renamed title
+        fig.suptitle(title_report, fontsize=18, color='white', y=0.98)
+
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{soul_spark.spark_id}_ComprehensiveReport_{stage_name.replace(' ','_')}_{timestamp_str}.png"
+        filepath = os.path.join(final_output_dir, filename)
+        plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor=DARK_BACKGROUND_COLOR, bbox_inches='tight')
+        logger.info(f"Comprehensive report saved to {filepath}")
+        if show: plt.show()
+        else: plt.close(fig)
+        return filepath
+    except Exception as e:
+        logger.critical(f"CRITICAL ERROR in comprehensive report creation: {e}", exc_info=True)
+        plt.close('all'); raise RuntimeError(f"Failed to create comprehensive report: {e}") from e
+
+
+def visualize_earth_resonance(soul_spark, ax) -> None:
+    """Visualize the soul's resonance with Earth's energy field."""
+    try:
+        earth_res = getattr(soul_spark, 'earth_resonance', 0.0)
+        phys_int = getattr(soul_spark, 'physical_integration', 0.0)
+        cord_int = getattr(soul_spark, 'cord_integrity', 0.0)
         
-        return ax
+        metrics = {
+            'Earth Resonance': earth_res,
+            'Physical Integration': phys_int,
+            'Life Cord Integrity': cord_int
+        }
+        
+        # Filter out None values and sort
+        metrics = {k: v for k, v in metrics.items() if v is not None}
+        if not metrics:
+            ax.text(0.5, 0.5, 'Earth Connection Data N/A', ha='center', va='center', 
+                   transform=ax.transAxes, color=LIGHT_TEXT_COLOR)
+            ax.set_title('Earth Connection', color=LIGHT_TEXT_COLOR)
+            return
+            
+        names = list(metrics.keys())
+        values = list(metrics.values())
+        x_pos = np.arange(len(names))
+        
+        # Create gradient bars
+        cmap = create_soul_colormap(soul_spark)
+        colors = [cmap(v) for v in values]
+        
+        bars = ax.bar(x_pos, values, color=colors, alpha=0.8)
+        
+        # Add value labels
+        for i, v in enumerate(values):
+            if v > 0.01:  # Only show if significant
+                ax.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom',
+                       color=LIGHT_TEXT_COLOR, fontsize=8)
+        
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(names, rotation=45, ha='right', color=LIGHT_TEXT_COLOR)
+        ax.set_ylim(0, 1.1)
+        ax.set_title('Earth Connection Metrics', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.grid(True, linestyle='--', alpha=0.2, color=GRID_LINE_COLOR)
         
     except Exception as e:
-        logger.error(f"Error visualizing soul signature: {e}")
-        # Draw a simple placeholder
-        ax.text(0.5, 0.5, 'Soul Signature Unavailable', 
-               horizontalalignment='center', verticalalignment='center',
-               transform=ax.transAxes, color='white')
-        ax.set_title('Soul Signature', color='white')
-        return ax
+        logger.error(f"Error in earth resonance visualization: {e}")
+        ax.text(0.5, 0.5, 'Earth Connection Vis Error', ha='center', va='center',
+               transform=ax.transAxes, color=LIGHT_TEXT_COLOR)
+        ax.set_title('Earth Connection', color=LIGHT_TEXT_COLOR)
 
-def visualize_earth_resonance(soul_spark, ax=None):
-    """
-    Visualizes the soul's resonance with Earth frequencies and elements.
-    Shows connection strength to different elemental and planetary energies.
-    """
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(10, 6), dpi=DEFAULT_DPI)
-        fig.patch.set_facecolor('#121212')
-        ax.set_facecolor('#121212')
-    
+def visualize_harmony_factors(soul_spark, ax) -> None:
+    """Visualize harmony-related factors of the soul."""
     try:
-        # Collect Earth resonance data
-        resonance_data = {}
+        factors = {
+            'Pattern Coherence': getattr(soul_spark, 'pattern_coherence', 0.0),
+            'Phi Resonance': getattr(soul_spark, 'phi_resonance', 0.0),
+            'Resonance': getattr(soul_spark, 'resonance', 0.0),
+            'Harmony': getattr(soul_spark, 'harmony', 0.0),
+            'Toroidal Flow': getattr(soul_spark, 'toroidal_flow_strength', 0.0)
+        }
         
-        # Check for elemental affinities
-        if hasattr(soul_spark, 'elemental_affinities') and soul_spark.elemental_affinities:
-            for element, value in soul_spark.elemental_affinities.items():
-                resonance_data[f"Element: {element.capitalize()}"] = float(value)
+        # Filter out None values and sort by value
+        factors = {k: v for k, v in factors.items() if v is not None}
+        sorted_items = sorted(factors.items(), key=lambda x: x[1], reverse=True)
+        names = [item[0] for item in sorted_items]
+        values = [item[1] for item in sorted_items]
         
-        # Check for planetary resonance
-        if hasattr(soul_spark, 'planetary_resonance') and soul_spark.planetary_resonance:
-            for planet, value in soul_spark.planetary_resonance.items():
-                resonance_data[f"Planet: {planet.capitalize()}"] = float(value)
-        
-        # Check for Earth resonance value
-        earth_res = getattr(soul_spark, 'earth_resonance', None)
-        if earth_res is not None:
-            resonance_data['Earth Resonance'] = float(earth_res)
-        
-        # Check for Schumann resonance
-        schumann_res = getattr(soul_spark, 'schumann_resonance_alignment', None)
-        if schumann_res is not None:
-            resonance_data['Schumann Resonance'] = float(schumann_res)
+        if not values:
+            ax.text(0.5, 0.5, 'Harmony Data N/A', ha='center', va='center', transform=ax.transAxes, color=LIGHT_TEXT_COLOR)
+            ax.set_title('Harmony Factors', color=LIGHT_TEXT_COLOR)
+            return
             
-        # If no data available, show placeholder
-        if not resonance_data:
-            ax.text(0.5, 0.5, 'Earth Resonance Data Not Available', 
-                   horizontalalignment='center', verticalalignment='center',
-                   transform=ax.transAxes, color='white')
-            ax.set_title('Earth Resonance', color='white')
-            return ax
-        
-        # Sort by value
-        sorted_items = sorted(resonance_data.items(), key=lambda x: x[1], reverse=True)
-        names, values = zip(*sorted_items)
-        
-        # Create color map based on categories
-        colors = []
-        for name in names:
-            if 'element' in name.lower():
-                colors.append('#4CAF50')  # Green for elements
-            elif 'planet' in name.lower():
-                colors.append('#2196F3')  # Blue for planets
-            elif 'schumann' in name.lower():
-                colors.append('#FFC107')  # Yellow for Schumann
-            else:
-                colors.append('#9C27B0')  # Purple for other
-        
-        # Create horizontal bar chart
         y_pos = np.arange(len(names))
+        cmap = create_soul_colormap(soul_spark)
+        colors = [cmap(v) for v in values]
+        
         bars = ax.barh(y_pos, values, color=colors, height=0.7, alpha=0.8)
         
         # Add value labels
         for i, v in enumerate(values):
-            ax.text(max(0.02, v - 0.15) if v > 0.3 else v + 0.02, 
-                   i, f"{v:.2f}", va='center', 
-                   color='white' if v > 0.3 else '#CCCCCC',
-                   fontsize=9)
+            if v > 0.01:  # Only show label if value is significant
+                ax.text(v + 0.02, i, f'{v:.2f}', va='center', color=LIGHT_TEXT_COLOR, fontsize=8)
         
-        # Add category coloring in the y-tick labels
         ax.set_yticks(y_pos)
-        ax.set_yticklabels(names, color='#CCCCCC')
-        
-        # Add title and clean up axes
-        ax.set_title('Earth & Elemental Resonance', color='white', fontsize=14)
-        ax.set_xlabel('Resonance Strength', color='#CCCCCC')
+        ax.set_yticklabels(names, color=LIGHT_TEXT_COLOR)
         ax.set_xlim(0, 1.1)
-        
-        # Clean up the chart
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_color('#333333')
-        ax.spines['bottom'].set_color('#333333')
-        ax.tick_params(colors='#CCCCCC')
-        
-        # Add subtle grid
-        ax.grid(True, linestyle='--', alpha=0.2, color='#555555', axis='x')
-        
-        return ax
+        ax.set_title('Harmony Factors', fontsize=12, color=LIGHT_TEXT_COLOR)
+        ax.grid(True, linestyle='--', alpha=0.2, color=GRID_LINE_COLOR)
         
     except Exception as e:
-        logger.error(f"Error visualizing Earth resonance: {e}")
-        # Draw placeholder on error
-        ax.text(0.5, 0.5, 'Earth Resonance Visualization Failed', 
-               horizontalalignment='center', verticalalignment='center',
-               transform=ax.transAxes, color='white')
-        ax.set_title('Earth Resonance', color='white')
-        return ax
-
-def create_comprehensive_soul_report(
-    soul_spark, 
-    stage_name: str, 
-    output_dir: str = None, 
-    show: bool = False
-) -> str:
-    """
-    Creates a comprehensive soul development report with all visualizations.
-    Returns the path to the saved report file.
-    """
-    logger.info(f"Creating comprehensive report for soul {soul_spark.spark_id} at stage: {stage_name}")
-    
-    try:
-        # Create output directory if needed
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-        
-        # Create larger figure with more visualizations
-        fig = plt.figure(figsize=(20, 16), dpi=DEFAULT_DPI)
-        fig.patch.set_facecolor('#121212')
-        
-        # Create grid layout
-        gs = plt.GridSpec(4, 4, figure=fig, hspace=0.4, wspace=0.3)
-        
-        # Create all visualization panels
-        ax_2d = fig.add_subplot(gs[0, 0])
-        ax_freq = fig.add_subplot(gs[0, 1])
-        ax_radar = fig.add_subplot(gs[0, 2], polar=True)
-        ax_signature = fig.add_subplot(gs[0, 3])
-        ax_3d = fig.add_subplot(gs[1, :2], projection='3d')
-        ax_earth = fig.add_subplot(gs[1, 2:])
-        ax_aspects = fig.add_subplot(gs[2, :2])
-        ax_harmony = fig.add_subplot(gs[2, 2:])
-        ax_sephiroth = fig.add_subplot(gs[3, 0])
-        ax_layers = fig.add_subplot(gs[3, 1:3])
-        ax_info = fig.add_subplot(gs[3, 3])
-        
-        # Set dark background for all axes
-        for ax in fig.get_axes():
-            ax.set_facecolor('#121212')
-            if hasattr(ax, 'spines'):
-                for spine in ax.spines.values():
-                    spine.set_color('#333333')
-            ax.tick_params(colors='#CCCCCC')
-            if hasattr(ax, 'xaxis') and hasattr(ax.xaxis, 'label'):
-                ax.xaxis.label.set_color('#CCCCCC')
-            if hasattr(ax, 'yaxis') and hasattr(ax.yaxis, 'label'):
-                ax.yaxis.label.set_color('#CCCCCC')
-            if hasattr(ax, 'title'):
-                ax.title.set_color('#FFFFFF')
-        
-        # Create all visualizations
-        visualize_density_2d(soul_spark, ax_2d)
-        visualize_frequency_spectrum(soul_spark, ax_freq)
-        visualize_aspects_radar(soul_spark, ax_radar)
-        visualize_soul_signature(soul_spark, ax_signature)
-        visualize_soul_3d(soul_spark, ax_3d)
-        visualize_earth_resonance(soul_spark, ax_earth)
-        visualize_top_aspects(soul_spark, ax_aspects)
-        visualize_harmony_factors(soul_spark, ax_harmony)
-        visualize_sephiroth_influence(soul_spark, ax_sephiroth)
-        
-        # Additional visualizations can be added here
-        
-        # Create soul information text panel
-        ax_info.axis('off')
-        info_text = get_soul_info_text(soul_spark)
-        ax_info.text(0.1, 0.9, info_text, color='white', fontsize=10,
-                   va='top', ha='left', linespacing=1.5)
-        ax_info.set_title('Soul Information', color='white')
-        
-        # Add metadata to figure
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        soul_id = soul_spark.spark_id
-        title = f"Soul Development Report: {soul_id} - {stage_name}\n({timestamp})"
-        
-        fig.suptitle(title, fontsize=18, color='white')
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust layout with room for title
-        
-        # Save report
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{soul_spark.spark_id}_Report_{stage_name.replace(' ','_')}_{timestamp_str}.png"
-        if output_dir:
-            filepath = os.path.join(output_dir, filename)
-        else:
-            filepath = filename
-            
-        plt.savefig(filepath, dpi=DEFAULT_DPI, facecolor='#121212')
-        logger.info(f"Comprehensive report saved to {filepath}")
-        
-        # Show if requested
-        if show:
-            plt.show()
-        else:
-            plt.close(fig)
-            
-        return filepath
-        
-    except Exception as e:
-        logger.critical(f"CRITICAL ERROR in comprehensive report creation: {e}", exc_info=True)
-        plt.close('all')  # Clean up any open figures
-        raise RuntimeError(f"Failed to create comprehensive report: {e}")
+        logger.error(f"Error in harmony factors visualization: {e}")
+        ax.text(0.5, 0.5, 'Harmony Vis Error', ha='center', va='center', transform=ax.transAxes, color=LIGHT_TEXT_COLOR)
+        ax.set_title('Harmony Factors', color=LIGHT_TEXT_COLOR)
 
 def get_soul_info_text(soul_spark):
     """Create a formatted text summary of the soul's information."""
     info = []
-    # Basic soul info
-    info.append(f"Soul ID: {soul_spark.spark_id}")
-    if hasattr(soul_spark, 'name'):
-        info.append(f"Name: {soul_spark.name}")
-    
-    # Core metrics
-    info.append("\nCore Metrics:")
-    if hasattr(soul_spark, 'stability'):
-        max_stability = getattr(soul_spark, 'MAX_STABILITY_SU', 100.0)
-        info.append(f"Stability: {soul_spark.stability:.2f} SU/{max_stability:.0f} SU")
-    if hasattr(soul_spark, 'coherence'):
-        max_coherence = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0)
-        info.append(f"Coherence: {soul_spark.coherence:.2f} CU/{max_coherence:.0f} CU")
-    if hasattr(soul_spark, 'frequency'):
-        info.append(f"Frequency: {soul_spark.frequency:.2f} Hz")
-    if hasattr(soul_spark, 'energy'):
-        max_energy = getattr(soul_spark, 'MAX_SOUL_ENERGY_SEU', 100.0)
-        info.append(f"Energy: {soul_spark.energy:.2f} SEU/{max_energy:.0f} SEU")
-    
-    # Formation details
-    info.append("\nFormation Details:")
-    if hasattr(soul_spark, 'creation_datetime'):
-        info.append(f"Created: {soul_spark.creation_datetime}")
-    if hasattr(soul_spark, 'conceptual_birth_datetime'):
-        info.append(f"Birth: {soul_spark.conceptual_birth_datetime}")
-    if hasattr(soul_spark, 'layers'):
-        info.append(f"Layers: {len(soul_spark.layers)}")
-    if hasattr(soul_spark, 'aspects'):
-        info.append(f"Aspects: {len(soul_spark.aspects)}")
-    
-    # Harmony factors
-    info.append("\nHarmony Factors:")
-    harmony_attrs = [
-        'phi_resonance', 'pattern_coherence', 'resonance', 
-        'toroidal_flow_strength', 'creator_alignment', 
-        'earth_resonance', 'physical_integration'
-    ]
+    info.append(f"Soul ID: {soul_spark.spark_id[:12]}...") # Shorten ID for display
+    if hasattr(soul_spark, 'name') and soul_spark.name: info.append(f"Name: {soul_spark.name}")
+    else: info.append("Name: Not Assigned")
+
+    info.append("\n--- Core Metrics ---")
+    max_s = getattr(soul_spark, 'MAX_STABILITY_SU', 100.0)
+    max_c = getattr(soul_spark, 'MAX_COHERENCE_CU', 100.0)
+    max_e = getattr(soul_spark, 'MAX_SOUL_ENERGY_SEU', 100000.0)
+    info.append(f"Stability: {getattr(soul_spark,'stability',0.0):.2f}/{max_s:.0f} SU")
+    info.append(f"Coherence: {getattr(soul_spark,'coherence',0.0):.2f}/{max_c:.0f} CU")
+    info.append(f"Frequency: {getattr(soul_spark,'frequency',0.0):.2f} Hz")
+    info.append(f"Energy:    {getattr(soul_spark,'energy',0.0):.2f}/{max_e:.0f} SEU")
+
+    info.append("\n--- Development ---")
+    if hasattr(soul_spark,'creation_time'): info.append(f"Created: {str(soul_spark.creation_time).split('.')[0]}")
+    if hasattr(soul_spark,'birth_time') and soul_spark.birth_time: info.append(f"Birth: {str(soul_spark.birth_time).split('.')[0]}")
+    info.append(f"Layers: {len(getattr(soul_spark,'layers',[]))}")
+    info.append(f"Aspects: {len(getattr(soul_spark,'aspects',{}))}")
+    if hasattr(soul_spark,'consciousness_state'): info.append(f"Consciousness: {soul_spark.consciousness_state}")
+
+    info.append("\n--- Harmony Factors ---")
+    harmony_attrs = ['phi_resonance','pattern_coherence','harmony','resonance','toroidal_flow_strength']
     for attr in harmony_attrs:
-        if hasattr(soul_spark, attr) and getattr(soul_spark, attr) is not None:
-            value = getattr(soul_spark, attr)
-            info.append(f"{attr.replace('_', ' ').title()}: {value:.2f}")
-    
-    # Primary sephiroth influence
-    if hasattr(soul_spark, 'sephiroth_aspect'):
-        info.append(f"\nPrimary Sephiroth: {soul_spark.sephiroth_aspect.capitalize()}")
-    
-    # Additional properties
-    if hasattr(soul_spark, 'soul_color'):
-        info.append(f"Soul Color: {soul_spark.soul_color}")
-    if hasattr(soul_spark, 'consciousness_state'):
-        info.append(f"Consciousness: {soul_spark.consciousness_state}")
-    
+        if hasattr(soul_spark,attr) and getattr(soul_spark,attr) is not None:
+            info.append(f"{attr.replace('_',' ').title()}: {getattr(soul_spark,attr):.3f}")
+
+    info.append("\n--- Connections ---")
+    if hasattr(soul_spark,'creator_connection_strength'): info.append(f"Creator Conn: {soul_spark.creator_connection_strength:.3f}")
+    if hasattr(soul_spark,'cord_integrity'): info.append(f"Life Cord Int: {soul_spark.cord_integrity:.3f}")
+    if hasattr(soul_spark,'earth_resonance'): info.append(f"Earth Res: {soul_spark.earth_resonance:.3f}")
+    if hasattr(soul_spark,'physical_integration'): info.append(f"Physical Int: {soul_spark.physical_integration:.3f}")
+
+    info.append("\n--- Identity ---")
+    if hasattr(soul_spark,'crystallization_level'): info.append(f"Crystallization: {soul_spark.crystallization_level:.3f}")
+    if hasattr(soul_spark,'soul_color'): info.append(f"Soul Color: {soul_spark.soul_color}")
+    if hasattr(soul_spark,'sephiroth_aspect'): info.append(f"Sephiroth Aspect: {soul_spark.sephiroth_aspect.capitalize() if soul_spark.sephiroth_aspect else 'N/A'}")
+    if hasattr(soul_spark,'elemental_affinity'): info.append(f"Elemental Affinity: {soul_spark.elemental_affinity.capitalize() if soul_spark.elemental_affinity else 'N/A'}")
+    if hasattr(soul_spark,'platonic_symbol'): info.append(f"Platonic Symbol: {soul_spark.platonic_symbol.capitalize() if soul_spark.platonic_symbol else 'N/A'}")
+    if hasattr(soul_spark,'zodiac_sign'): info.append(f"Zodiac: {soul_spark.zodiac_sign} ({getattr(soul_spark,'governing_planet','N/A')})")
+
     return "\n".join(info)
 
-# If imported as a module, set up the module
+
 if __name__ == "__main__":
-    # Simple test code for debugging
     from unittest.mock import MagicMock
-    
-    # Create mock soul for testing
-    mock_soul = MagicMock()
+    mock_soul = MagicMock(spec=['spark_id', 'stability', 'coherence', 'frequency', 'energy',
+                                'aspects', 'layers', 'sephiroth_aspect', 'soul_color',
+                                'MAX_STABILITY_SU', 'MAX_COHERENCE_CU', 'MAX_SOUL_ENERGY_SEU',
+                                'frequency_signature', 'pattern_coherence', 'phi_resonance', 'resonance',
+                                'toroidal_flow_strength', 'harmony', 'creator_connection_strength',
+                                'cord_integrity', 'earth_resonance', 'physical_integration',
+                                'crystallization_level', 'consciousness_state', 'creation_time',
+                                'birth_time', 'name', 'elemental_affinity', 'platonic_symbol',
+                                'zodiac_sign', 'governing_planet', 'sephiroth_influence']) # Add all expected attrs
     mock_soul.spark_id = "TEST-SOUL-001"
-    mock_soul.stability = 65.0
-    mock_soul.coherence = 70.0
-    mock_soul.frequency = 432.0
-    mock_soul.energy = 50.0
-    mock_soul.aspects = {
-        "wisdom": {"strength": 0.8, "type": "spiritual"},
-        "love": {"strength": 0.9, "type": "emotional"},
-        "courage": {"strength": 0.7, "type": "willpower"},
-        "insight": {"strength": 0.6, "type": "spiritual"},
-        "logic": {"strength": 0.5, "type": "intellectual"}
-    }
-    mock_soul.layers = [
-        {"sephirah": "kether", "density": 0.9},
-        {"sephirah": "chokmah", "density": 0.8},
-        {"sephirah": "binah", "density": 0.7}
-    ]
-    mock_soul.sephiroth_aspect = "tiphareth"
-    mock_soul.soul_color = "#8A2BE2"  # BlueViolet
-    
-    # Test visualization
-    output_path = visualize_soul_state(mock_soul, "Testing", output_dir="output", show=True)
-    print(f"Test visualization saved to: {output_path}")
+    mock_soul.stability = 65.7; mock_soul.MAX_STABILITY_SU = 100.0
+    mock_soul.coherence = 72.3; mock_soul.MAX_COHERENCE_CU = 100.0
+    mock_soul.frequency = 432.8; mock_soul.energy = 55000.0; mock_soul.MAX_SOUL_ENERGY_SEU = 100000.0
+    mock_soul.aspects = {"wisdom":{"strength":0.8},"love":{"strength":0.9},"courage":{"strength":0.7}}
+    mock_soul.layers = [{"sephirah":"kether","density":{"base_density":0.9},"color_hex":"#FFFFFF"}, {"sephirah":"chokmah","density":{"base_density":0.8},"color_hex":"#7EB6FF"}]
+    mock_soul.sephiroth_aspect = "tiphareth"; mock_soul.soul_color = "#FFD700"
+    mock_soul.frequency_signature = {'frequencies': np.array([432.8, 698.5, 865.6]), 'amplitudes': np.array([1.0, 0.6, 0.4]), 'phases': np.array([0.1, 0.5, 1.2])}
+    mock_soul.pattern_coherence = 0.75; mock_soul.phi_resonance = 0.82; mock_soul.resonance = 0.78
+    mock_soul.toroidal_flow_strength = 0.65; mock_soul.harmony = 0.88
+    mock_soul.creator_connection_strength=0.5; mock_soul.cord_integrity=0.9; mock_soul.earth_resonance=0.6
+    mock_soul.physical_integration=0.3; mock_soul.crystallization_level=0.0
+    mock_soul.consciousness_state = "Harmonized"; mock_soul.creation_time=datetime.now().isoformat()
+    mock_soul.birth_time=None; mock_soul.name="Testa"
+    mock_soul.elemental_affinity="fire"; mock_soul.platonic_symbol="tetrahedron"
+    mock_soul.zodiac_sign="Aries"; mock_soul.governing_planet="Mars"
+    mock_soul.sephiroth_influence = {'tiphareth': 0.8, 'chesed': 0.5}
+
+
+    logger.info("Starting Soul Visualizer Test...")
+    output_path_state = visualize_soul_state(mock_soul, "Test_Stage", output_dir="output/test_visuals", show=False)
+    print(f"Test state visualization saved to: {output_path_state}")
+
+    # Create a second state for comparison
+    mock_soul_later = MagicMock(spec=['spark_id', 'stability', 'coherence', 'frequency', 'energy',
+                                'aspects', 'layers', 'sephiroth_aspect', 'soul_color',
+                                'MAX_STABILITY_SU', 'MAX_COHERENCE_CU', 'MAX_SOUL_ENERGY_SEU',
+                                'frequency_signature', 'pattern_coherence', 'phi_resonance', 'resonance',
+                                'toroidal_flow_strength', 'harmony', 'creator_connection_strength',
+                                'cord_integrity', 'earth_resonance', 'physical_integration',
+                                'crystallization_level', 'consciousness_state', 'creation_time',
+                                'birth_time', 'name', 'elemental_affinity', 'platonic_symbol',
+                                'zodiac_sign', 'governing_planet', 'sephiroth_influence'])
+    mock_soul_later.spark_id = "TEST-SOUL-001"
+    mock_soul_later.stability = 80.1; mock_soul_later.MAX_STABILITY_SU = 100.0
+    mock_soul_later.coherence = 85.5; mock_soul_later.MAX_COHERENCE_CU = 100.0
+    mock_soul_later.aspects = {"wisdom":{"strength":0.9},"love":{"strength":0.95},"courage":{"strength":0.8}, "unity":{"strength":0.5}}
+    mock_soul_later.layers = mock_soul.layers + [{"sephirah":"geburah","density":{"base_density":0.6},"color_hex":"#FF4500"}]
+    mock_soul_later.frequency_signature = mock_soul.frequency_signature # Keep same for simplicity
+    mock_soul_later.soul_color = "#FFA500"
+    mock_soul_later.sephiroth_influence = {'tiphareth': 0.7, 'chesed': 0.6, 'geburah': 0.4}
+
+
+    output_path_compare = visualize_state_comparison(
+        [(mock_soul, "Early Stage"), (mock_soul_later, "Later Stage")],
+        output_dir="output/test_visuals", show=False
+    )
+    print(f"Test comparison visualization saved to: {output_path_compare}")
+
+    output_path_report = create_comprehensive_soul_report(mock_soul_later, "Final_Test_Stage", output_dir="output/test_visuals", show=False)
+    print(f"Test comprehensive report saved to: {output_path_report}")
+
+    logger.info("Soul Visualizer Test Finished.")
+
+# --- END OF FILE ---
 
 
 

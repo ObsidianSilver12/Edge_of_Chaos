@@ -11,7 +11,7 @@ import json
 # Import constants and brain structure references
 try:
     from constants.constants import *
-    from stage_1.soul_formation.region_definitions import *
+    from stage_1.evolve.core.region_definitions import *
 except ImportError as e:
     logging.critical(f"Failed to import required modules: {e}")
     raise ImportError(f"Mycelial network requires region_definitions.py and constants.py: {e}")

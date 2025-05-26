@@ -1098,6 +1098,59 @@ def generate_tree_of_life_resonance_frequencies() -> Dict[str, Dict[str, float]]
         'resonance': resonance
     }
 
+def get_base_glyph_elements(resolution_for_data: int = 100) -> Dict[str, Any]: # Added param
+    """
+    Returns lines and circles for a line art Tree of Life.
+    Uses the standalone generate_tree_of_life() to get data.
+    """
+    # Call your existing function to get the structured data
+    # The resolution here is for the internal grid of generate_tree_of_life,
+    # not directly for the glyph plotting, but it might affect the detail of positions if they were grid-derived.
+    # Since SEPHIROTH_POSITIONS are hardcoded, this resolution is less critical for positions.
+    tree_data = generate_tree_of_life(resolution=resolution_for_data)
+
+    _sephiroth_data = tree_data['sephiroth'] # This is a dict: {'Kether': {'position': (x,y), ...}, ...}
+    _paths_data = tree_data['paths']         # This is a list: [{'start_pos': (x1,y1), 'end_pos': (x2,y2)}, ...]
+
+    lines_data = []
+    for path_info in _paths_data:
+        p1 = path_info['start_pos']
+        p2 = path_info['end_pos']
+        lines_data.append((tuple(p1), tuple(p2)))
+
+    circles_data = []
+    all_x_coords = [] # Renamed
+    all_y_coords = [] # Renamed
+    # Use a consistent small radius for the nodes in the base glyph
+    glyph_node_radius = 0.25 # Adjust as needed for visual appeal
+
+    for seph_name, data in _sephiroth_data.items():
+        pos = data['position']
+        circles_data.append({'center': tuple(pos), 'radius': glyph_node_radius})
+        all_x_coords.append(pos[0])
+        all_y_coords.append(pos[1])
+
+    # Bounding box based on the predefined GRID_WIDTH, GRID_HEIGHT from tree_of_life.py
+    # and a small padding. Ensure GRID_WIDTH, GRID_HEIGHT are accessible.
+    # If they are not global in tree_of_life.py, we might need to pass them or recalculate bounds.
+    # For now, assuming they are accessible as they were defined at the top of your tree_of_life.py
+    padding_tol_glyph = 0.5 # Renamed
+
+    min_x_bound = 0 - padding_tol_glyph # Renamed
+    max_x_bound = GRID_WIDTH + padding_tol_glyph # Renamed
+    min_y_bound = 0 - padding_tol_glyph # Renamed (tree usually starts near y=0 or y=1)
+    max_y_bound = GRID_HEIGHT + padding_tol_glyph + 2 # Renamed (Malkuth is at 16, slightly outside 15)
+
+    return {
+        'lines': lines_data,
+        'circles': circles_data,
+        'projection_type': '2d',
+        'bounding_box': {
+            'xmin': float(min_x_bound), 'xmax': float(max_x_bound),
+            'ymin': float(min_y_bound), 'ymax': float(max_y_bound),
+        }
+    }
+
 # Example usage
 if __name__ == "__main__":
     # Generate Tree of Life structure

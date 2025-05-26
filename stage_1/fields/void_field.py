@@ -270,6 +270,7 @@ class VoidField(FieldBase):
     def update_step(self, delta_time: float) -> None:
         """Simulates Void dynamics: diffusion, dissipation, resonance, drift."""
         # Check if grids are initialized
+        logger.debug(f"VoidField update_step: dt={delta_time:.3f}s")
         if self.energy is None or self.frequency is None or \
            self.stability is None or self.coherence is None or \
            self.pattern_influence is None or self.order is None or \
@@ -560,6 +561,15 @@ class VoidField(FieldBase):
             # Final modulation by energy (brighter where more energy)
             self.color *= energy_factor[..., np.newaxis]
             self.color = np.clip(self.color, 0.0, 1.0)
+
+            # Add logging for significant changes
+            total_energy = np.sum(self.energy)
+            avg_order = np.mean(self.order)
+            avg_chaos = np.mean(self.chaos)
+            
+            if self.update_counter % 10 == 0:  # Log every 10 updates
+                logger.info(f"VoidField state: Total Energy={total_energy:.1f}SEU, "
+                        f"Avg Order={avg_order:.3f}, Avg Chaos={avg_chaos:.3f}")                                                                                 
 
         except Exception as e:
             logger.error(f"Error during VoidField update step: {e}", exc_info=True)

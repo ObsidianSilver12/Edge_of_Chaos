@@ -14,6 +14,7 @@ Author: Soul Development Framework Team
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import art3d
 import logging
 from scipy.spatial import ConvexHull
 
@@ -815,9 +816,10 @@ class MetatronsCube:
                     
                     # Add a transparent face
                     if len(face) == 3:  # Triangular face
-                        tri = [[vertices[i] for i in face]]
-                        ax.add_collection3d(plt.art3d.Poly3DCollection(
+                        tri = [[vertices[i] for i in face]]  # Create triangle vertices
+                        ax.add_collection3d(art3d.Poly3DCollection(
                             tri, alpha=0.2, color='cyan'))
+
             
             # Set axis labels and title
             ax.set_xlabel('X')
@@ -907,6 +909,35 @@ class MetatronsCube:
                 f"Number of Platonic Solids: {len(self.platonic_solids)}\n"
                 f"Resolution: {self.resolution}x{self.resolution}")
 
+    def get_base_glyph_elements(self) -> Dict[str, Any]:
+        """
+        Returns lines for a 2D projection of Metatron's Cube.
+        """
+        if not hasattr(self, 'vertices') or not self.vertices: self.vertices = self._generate_vertices()
+        if not hasattr(self, 'edges') or not self.edges: self.edges = self._generate_edges()
+
+        lines_data = []
+        all_x_mc = []; all_y_mc = [] # Renamed
+
+        for v1_id, v2_id in self.edges:
+            v1_coords = self.vertices[v1_id]
+            v2_coords = self.vertices[v2_id]
+            p1 = (v1_coords[0], v1_coords[1]) # 2D Projection
+            p2 = (v2_coords[0], v2_coords[1]) # 2D Projection
+            lines_data.append((p1, p2))
+            all_x_mc.extend([p1[0], p2[0]])
+            all_y_mc.extend([p1[1], p2[1]])
+        
+        padding_mc = self.radius * 0.2 if hasattr(self, 'radius') else 0.2 # Renamed
+
+        bbox_mc = {'xmin':-1.2*self.radius, 'xmax':1.2*self.radius, 'ymin':-1.2*self.radius, 'ymax':1.2*self.radius}
+        if all_x_mc and all_y_mc:
+            bbox_mc = {
+                'xmin': float(min(all_x_mc) - padding_mc), 'xmax': float(max(all_x_mc) + padding_mc),
+                'ymin': float(min(all_y_mc) - padding_mc), 'ymax': float(max(all_y_mc) + padding_mc),
+            }
+
+        return { 'lines': lines_data, 'projection_type': '2d', 'bounding_box': bbox_mc }
 
 if __name__ == "__main__":
     # Example usage

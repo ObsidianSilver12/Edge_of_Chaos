@@ -1,7 +1,7 @@
 import os
 import datetime
 from glyphs.glyph_resonance.encoder import encode_glyph  # Import encode_sigil function
-from glyphs.mother.mother_resonance import create_mother_resonance_data
+from stage_1.evolve.core.mother_resonance import create_mother_resonance_data
 
 def run_encode():
     """

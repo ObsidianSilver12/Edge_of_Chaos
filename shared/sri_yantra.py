@@ -701,7 +701,36 @@ class SriYantra:
                 f"Gates: {props['num_gates']}\n"
                 f"Resolution: {self.resolution}x{self.resolution}")
 
+    def get_base_glyph_elements(self) -> Dict[str, Any]:
+        """
+        Returns lines, circles, and points for Sri Yantra line art.
+        """
+        if not hasattr(self, 'triangles'): self.triangles = self._generate_triangles()
+        if not hasattr(self, 'circles'): self.circles = self._generate_circles()
+        if not hasattr(self, 'gates'): self.gates = self._generate_gates()
 
+        lines_data = []
+        for triangle_verts in self.triangles:
+            for i in range(len(triangle_verts)):
+                p1 = triangle_verts[i]; p2 = triangle_verts[(i + 1) % len(triangle_verts)]
+                lines_data.append((tuple(p1), tuple(p2)))
+        for p1_gate, p2_gate in self.gates: # Renamed p1, p2
+            lines_data.append((tuple(p1_gate), tuple(p2_gate)))
+
+        circles_data = [{'center': tuple(c['center']), 'radius': c['radius']} for c in self.circles]
+        points_data = [tuple(self.central_point)] if hasattr(self, 'central_point') else []
+        
+        padding_sri = 0.1 * self.radius # Renamed padding
+        bound_sri = 1.4 * self.radius + padding_sri # Renamed bound, adjusted to be slightly smaller to fit better
+
+        return {
+            'lines': lines_data, 'circles': circles_data, 'points': points_data,
+            'projection_type': '2d',
+            'bounding_box': {
+                'xmin': float(-bound_sri), 'xmax': float(bound_sri),
+                'ymin': float(-bound_sri), 'ymax': float(bound_sri),
+            }
+        }
 if __name__ == "__main__":
     # Example usage
     yantra = SriYantra(radius=1.0, resolution=512)

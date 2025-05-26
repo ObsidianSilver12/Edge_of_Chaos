@@ -222,6 +222,37 @@ def generate_flower_pattern(size: float) -> np.ndarray:
     fol = FlowerOfLife(radius=size/6, resolution=min(512, int(size*2)), iterations=3)
     return fol.generate_2d_pattern()
 
+def get_base_glyph_elements(self) -> Dict[str, Any]:
+    """
+    Returns the geometric elements (circles) for a simple line art
+    representation of the Flower of Life.
+    """
+    # Use _get_circle_centers which you confirmed exists
+    all_circle_centers = self._get_circle_centers() 
+
+    circles_data = []
+    for center_pos_fol in all_circle_centers: # Renamed center_pos
+        circles_data.append({'center': tuple(center_pos_fol), 'radius': self.radius})
+
+    if not all_circle_centers:
+        return {'circles': [], 'projection_type': '2d', 'bounding_box': {'xmin':-1.0,'xmax':1.0,'ymin':-1.0,'ymax':1.0}}
+
+    all_x_fol = [c[0] for c in all_circle_centers]; all_y_fol = [c[1] for c in all_circle_centers] # Renamed
+    padding_fol = self.radius * 0.2 # Renamed
+
+    min_x_coord = min(all_x_fol) - self.radius
+    max_x_coord = max(all_x_fol) + self.radius
+    min_y_coord = min(all_y_fol) - self.radius
+    max_y_coord = max(all_y_fol) + self.radius
+
+    return {
+        'circles': circles_data,
+        'projection_type': '2d',
+        'bounding_box': {
+            'xmin': float(min_x_coord - padding_fol), 'xmax': float(max_x_coord + padding_fol),
+            'ymin': float(min_y_coord - padding_fol), 'ymax': float(max_y_coord + padding_fol),
+        }
+    }
 
 # Example usage
 if __name__ == "__main__":

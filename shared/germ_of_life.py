@@ -651,6 +651,35 @@ def visualize_germ_of_life_3d(germ_data: Dict[str, Any],
     ax.set_zlim3d([center[2] - radius, center[2] + radius])
     
     return fig
+from typing import Tuple, Dict, Any, List # Add if not present
+import numpy as np # Add if not present
+
+# ... your existing generate_single_tetrahedron and generate_star_tetrahedron functions ...
+
+def get_base_glyph_elements(center: Tuple[float, float], radius: float) -> Dict[str, Any]:
+    """
+    Returns the geometric elements (circles) for a simple line art
+    representation of the Germ of Life.
+    """
+    germ_data = generate_germ_of_life_2d(center, radius, resolution=10) # Low res for data
+    
+    circles_data = []
+    for center_pos_germ in germ_data['centers']: # Renamed
+        circles_data.append({'center': tuple(center_pos_germ), 'radius': germ_data['radius']})
+
+    all_x_germ = [c[0] for c in germ_data['centers']]; all_y_germ = [c[1] for c in germ_data['centers']] # Renamed
+    padding_germ = germ_data['radius'] * 0.2 # Renamed
+
+    return {
+        'circles': circles_data,
+        'projection_type': '2d',
+        'bounding_box': {
+            'xmin': float(min(all_x_germ) - germ_data['radius'] - padding_germ), 
+            'xmax': float(max(all_x_germ) + germ_data['radius'] + padding_germ),
+            'ymin': float(min(all_y_germ) - germ_data['radius'] - padding_germ), 
+            'ymax': float(max(all_y_germ) + germ_data['radius'] + padding_germ),
+        }
+    }
 
 # Example usage
 if __name__ == "__main__":

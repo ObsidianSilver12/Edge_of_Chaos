@@ -514,7 +514,41 @@ class Merkaba:
                 f"Dimensional Stability: {metrics['dimensional_stability']:.4f}\n"
                 f"Resolution: {self.resolution}x{self.resolution}x{self.resolution}")
 
+    def get_base_glyph_elements(self) -> Dict[str, Any]:
+        """
+        Returns 3D lines for Merkaba base glyph.
+        """
+        if not hasattr(self, 'upward_vertices'): self.upward_vertices = self._generate_tetrahedron_vertices(up=True)
+        if not hasattr(self, 'downward_vertices'): self.downward_vertices = self._generate_tetrahedron_vertices(up=False)
+        if not hasattr(self, 'upward_edges'): self.upward_edges = self._generate_tetrahedron_edges(self.upward_vertices)
+        if not hasattr(self, 'downward_edges'): self.downward_edges = self._generate_tetrahedron_edges(self.downward_vertices)
 
+        lines_data = []
+        all_verts_list_mk = [] # Renamed
+
+        up_verts_mk_np = np.array(self.upward_vertices) # Renamed
+        all_verts_list_mk.extend(up_verts_mk_np.tolist())
+        for v_idx1, v_idx2 in self.upward_edges:
+            lines_data.append((up_verts_mk_np[v_idx1].tolist(), up_verts_mk_np[v_idx2].tolist()))
+
+        down_verts_mk_np = np.array(self.downward_vertices) # Renamed
+        all_verts_list_mk.extend(down_verts_mk_np.tolist())
+        for v_idx1, v_idx2 in self.downward_edges:
+            lines_data.append((down_verts_mk_np[v_idx1].tolist(), down_verts_mk_np[v_idx2].tolist()))
+        
+        overall_verts_mk_np = np.array(all_verts_list_mk) # Renamed
+        min_coords_mk = np.min(overall_verts_mk_np, axis=0); max_coords_mk = np.max(overall_verts_mk_np, axis=0) # Renamed
+        padding_mk = self.radius * 0.15 # Renamed
+
+        return {
+            'lines': lines_data,
+            'projection_type': '3d',
+            'bounding_box': {
+                'xmin': float(min_coords_mk[0]-padding_mk), 'xmax': float(max_coords_mk[0]+padding_mk),
+                'ymin': float(min_coords_mk[1]-padding_mk), 'ymax': float(max_coords_mk[1]+padding_mk),
+                'zmin': float(min_coords_mk[2]-padding_mk), 'zmax': float(max_coords_mk[2]+padding_mk),
+            }
+        }
 if __name__ == "__main__":
     # Example usage
     merkaba = Merkaba(radius=1.0, resolution=64, phi_ratio=1.618)

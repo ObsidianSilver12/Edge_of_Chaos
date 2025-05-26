@@ -42,7 +42,7 @@ DISPLAY_METRICS_IN_TERMINAL = True
 FORMAT_TERMINAL_OUTPUT = True
 
 # --- Logging Setup ---
-log_file_path = os.path.join("logs", "metrics_tracking.log")
+log_file_path = os.path.join("output/logs", "metrics_tracking.log")
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
 if not logging.getLogger().hasHandlers():
     logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')

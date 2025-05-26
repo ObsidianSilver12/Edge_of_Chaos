@@ -73,6 +73,19 @@ PLATONIC_HARMONIC_RATIOS: Dict[str, List[float]] = {
     'merkaba': [1.0, 1.5, 2.0, 3.0, PHI, 4.0]
 }
 
+# --- Creator Entanglement (CE) - Resonance & Connection Constants
+CE_RESONANCE_THRESHOLD: float = 0.75    # Min resonance score (0-1) considered 'strong' for certain effects (e.g., pattern modulation?)
+CE_CONNECTION_FREQ_WEIGHT: float = 0.6    # Weight of frequency resonance score in connection strength calculation
+CE_CONNECTION_COHERENCE_WEIGHT: float = 0.4 # Weight of soul's coherence (normalized) in connection strength calculation
+CE_PATTERN_MODULATION_STRENGTH: float = 0.05 # How strongly Kether's geometry influences soul's pattern coherence during connection
+CREATOR_POTENTIAL_DEFAULT = 0.7  # Default creator potential for entanglement
+ENTANGLEMENT_PREREQ_STABILITY_MIN_SU = 30.0  # Minimum stability required for entanglement
+ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU = 25.0  # Minimum coherence required for entanglement
+SPEED_OF_SOUND = 343.0  # Speed of sound in m/s, used for wavelength calculations
+ASPECT_TRANSFER_THRESHOLD = 0.3  # Minimum resonance * connection for aspect transfer
+ASPECT_TRANSFER_STRENGTH_FACTOR = 0.15  # Strength increase factor for existing aspects
+ASPECT_TRANSFER_INITIAL_STRENGTH = 0.4  # Initial strength for newly transferred aspects
+
 # --- Stability & Coherence Units & Ranges ---
 MAX_STABILITY_SU: float = 100.0
 MAX_COHERENCE_CU: float = 100.0
@@ -93,50 +106,37 @@ STABILITY_PATTERN_WEIGHT_ALIGNMENT: float = 0.2
 # --- Harmonic Strengthening (HS) - Targeted Refinement Cycle Constants (NEW for V4.3.8+) ---
 
 # Thresholds to trigger refinement for specific aspects (Scores 0-1, SU/CU 0-100)
-HS_TRIGGER_STABILITY_SU: float = 95.0     # If Stability is below this, HS might target it
-HS_TRIGGER_COHERENCE_CU: float = 95.0     # If Coherence is below this, HS might target it
-HS_TRIGGER_PHASE_COHERENCE: float = 0.90    # Target for (1.0 - Circular Variance)
-HS_TRIGGER_HARMONIC_PURITY: float = 0.90    # Target for (1.0 - Harmonic Deviation)
-HS_TRIGGER_FACTOR_THRESHOLD: float = 0.95   # Target for Phi, P.Coh, Harmony, Torus factors (0-1)
-
+HS_TRIGGER_STABILITY_SU = 99.0          # Target stability threshold
+HS_TRIGGER_COHERENCE_CU = 99.0          # Target coherence threshold
+HS_TRIGGER_PHASE_COHERENCE = 0.98       # Target phase coherence 
+HS_TRIGGER_HARMONIC_PURITY = 0.98       # Target harmonic purity
+HS_TRIGGER_FACTOR_THRESHOLD = 0.98      # Target for phi, pattern, harmony, torus
 # Cycle Control
-HS_MAX_CYCLES: int =  144                # Maximum refinement iterations if thresholds not met
+HS_MAX_CYCLES: int =  256                # Maximum refinement iterations if thresholds not met
 HS_UPDATE_STATE_INTERVAL: int = 10         # How many cycles between S/C recalculations via update_state()
-
 # Base rates for factor improvements per cycle (modulated by current state)
-HS_BASE_RATE_PHI: float = 0.003             # Base rate for Phi Resonance improvement
-HS_BASE_RATE_PCOH: float = 0.004            # Base rate for Pattern Coherence improvement
-HS_BASE_RATE_HARMONY: float = 0.005         # Base rate for Harmony improvement
-HS_BASE_RATE_TORUS: float = 0.006           # Base rate for Toroidal Flow improvement
-
+HS_BASE_RATE_PHI = 0.01                 # Base rate for phi improvement
+HS_BASE_RATE_PCOH = 0.01                # Base rate for pattern coherence
+HS_BASE_RATE_HARMONY = 0.01             # Base rate for harmony
+HS_BASE_RATE_TORUS = 0.01               # Base rate for torus
 # Adjustment rates for frequency structure refinement per cycle
-HS_PHASE_ADJUST_RATE: float = 0.005         # Max adjustment factor applied during phase optimization nudge
-HS_HARMONIC_ADJUST_RATE: float = 0.002       # Max adjustment factor applied during harmonic purity nudge
-
+HS_PHASE_ADJUST_RATE = 0.01             # Rate for phase adjustment
+HS_HARMONIC_ADJUST_RATE = 0.01          # Rate for harmonic adjustment
 # Energy adjustment based on harmony changes during HS
 HS_ENERGY_ADJUST_FACTOR: float = 5.0        # Scales SEU gain/loss based on delta_harmony in a cycle
-
-
-# --- Creator Entanglement (CE) - Resonance & Connection Constants
-CE_RESONANCE_THRESHOLD: float = 0.75    # Min resonance score (0-1) considered 'strong' for certain effects (e.g., pattern modulation?)
-CE_CONNECTION_FREQ_WEIGHT: float = 0.6    # Weight of frequency resonance score in connection strength calculation
-CE_CONNECTION_COHERENCE_WEIGHT: float = 0.4 # Weight of soul's coherence (normalized) in connection strength calculation
-CE_PATTERN_MODULATION_STRENGTH: float = 0.05 # How strongly Kether's geometry influences soul's pattern coherence during connection
-CREATOR_POTENTIAL_DEFAULT = 0.7  # Default creator potential for entanglement
-ENTANGLEMENT_PREREQ_STABILITY_MIN_SU = 30.0  # Minimum stability required for entanglement
-ENTANGLEMENT_PREREQ_COHERENCE_MIN_CU = 25.0  # Minimum coherence required for entanglement
-SPEED_OF_SOUND = 343.0  # Speed of sound in m/s, used for wavelength calculations
-ASPECT_TRANSFER_THRESHOLD = 0.3  # Minimum resonance * connection for aspect transfer
-ASPECT_TRANSFER_STRENGTH_FACTOR = 0.15  # Strength increase factor for existing aspects
-ASPECT_TRANSFER_INITIAL_STRENGTH = 0.4  # Initial strength for newly transferred aspects
-
 # --- NEW: Coherence Score Calculation Weights (Sum should ideally be 1.0) ---
-COHERENCE_WEIGHT_PHASE: float = 0.20      # Contribution from phase alignment
-COHERENCE_WEIGHT_HARMONY: float = 0.10   # Contribution from harmonic purity/alignment
-COHERENCE_WEIGHT_PATTERN: float = 0.25    # Contribution from pattern_coherence factor
-COHERENCE_WEIGHT_FIELD: float = 0.10     # Contribution from external field influences
-COHERENCE_WEIGHT_CREATOR: float = 0.10  # Contribution from creator connection strength
-COHERENCE_WEIGHT_TORUS = 0.25  # Contribution from toroidal coherence
+COHERENCE_WEIGHT_PHASE = 0.20           # Weight for phase coherence
+COHERENCE_WEIGHT_HARMONY = 0.20         # Weight for harmony factor
+COHERENCE_WEIGHT_HARMONIC_PURITY = 0.10  # Weight for harmonic purity
+COHERENCE_WEIGHT_PATTERN = 0.15         # Weight for pattern coherence
+COHERENCE_WEIGHT_FIELD = 0.15           # Weight for field influence
+COHERENCE_WEIGHT_CREATOR = 0.10         # Weight for creator connection
+COHERENCE_WEIGHT_TORUS = 0.10           # Weight for toroidal flow
+# Verify sum is exactly 1.0
+assert abs((COHERENCE_WEIGHT_PHASE + COHERENCE_WEIGHT_HARMONY + 
+            COHERENCE_WEIGHT_HARMONIC_PURITY + COHERENCE_WEIGHT_PATTERN + 
+            COHERENCE_WEIGHT_FIELD + COHERENCE_WEIGHT_CREATOR + 
+            COHERENCE_WEIGHT_TORUS) - 1.0) < 0.000001, "Coherence weights must sum to 1.0"
 
 # Other Calculation Factors
 STABILITY_VARIANCE_PENALTY_K: float = 50.0 # How much freq variance hurts stability
@@ -216,6 +216,7 @@ FLAG_SEPHIROTH_JOURNEY_COMPLETE="sephiroth_journey_complete";
 FLAG_READY_FOR_ENTANGLEMENT="ready_for_entanglement"; 
 FLAG_READY_FOR_COMPLETION="ready_for_completion"; 
 FLAG_CREATOR_ENTANGLED = "creator_entangled"  # Flag indicating successful creator entanglement
+FLAG_SPARK_HARMONIZED = "spark_harmonized"  # New Flag
 FLAG_READY_FOR_HARMONIZATION = "ready_for_harmonization"  # Flag indicating readiness for harmonization
 FLAG_READY_FOR_STRENGTHENING="ready_for_strengthening"; 
 FLAG_HARMONICALLY_STRENGTHENED="harmonically_strengthened"; 
@@ -298,7 +299,7 @@ CORD_INTEGRITY_FACTOR_EARTH_CONN: float = 0.3
 FINAL_STABILITY_BONUS_FACTOR: float = 0.15 # *** REVIEW: Scales SU bonus? ***
 
 
-#EEarth Harmonisation (Earth Resonance) Constants
+#Earth Harmonisation (Earth Resonance) Constants
 EARTH_ANCHOR_RESONANCE: float = 0.9
 ANCHOR_STRENGTH_MODIFIER: float = 0.6; 
 EARTH_ANCHOR_STRENGTH: float = 0.9; 
@@ -551,6 +552,44 @@ BRAIN_FREQUENCIES = {
     'lambda': (100, 400)    # Higher spiritual states
 }
 
+# --- Brain Seed Constants ---
+MIN_BRAIN_SEED_ENERGY: float = 1.0         # Minimum BEU for brain seed operation
+DEFAULT_BRAIN_SEED_FREQUENCY: float = 7.83 # Default frequency (Schumann resonance)
+SEED_FIELD_RADIUS: float = 5.0             # Energy field radius around seed
+MAX_BRAIN_SEED_CAPACITY: float = 1000.0    # Maximum energy capacity for brain seed
+BRAIN_FREQUENCY_SCALE: float = 0.85        # Scale factor for brain vs soul frequency
+
+# --- Brain Structure Constants ---
+BRAIN_GRID_SIZE: Tuple[int, int, int] = (256, 256, 256)  # Brain structure grid dimensions
+BRAIN_REGIONS: List[str] = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'brain_stem', 'cerebellum']
+BRAIN_COMPLEXITY_THRESHOLDS: Dict[str, float] = {
+    'energy_coverage': 0.3,     # Minimum energy coverage for complexity
+    'mycelial_coverage': 0.2,   # Minimum mycelial coverage
+    'avg_resonance': 0.3        # Average resonance threshold
+}
+
+# --- Consciousness Activation Thresholds ---
+CONSCIOUSNESS_ACTIVATION_THRESHOLDS: Dict[str, float] = {
+    'dream': 0.4,      # Threshold for dream state activation
+    'liminal': 0.6,    # Threshold for liminal state activation  
+    'aware': 0.8       # Threshold for aware state activation
+}
+
+# --- Mycelial Network Constants ---
+MYCELIAL_MAXIMUM_PATHWAY_LENGTH: int = 200  # Maximum distance for mycelial connections
+QUANTUM_ENTANGLEMENT_FREQUENCY: float = 432.0  # Frequency for quantum entanglement
+QUANTUM_SEEDS_PER_SUBREGION: int = 2         # Number of quantum seeds per subregion
+QUANTUM_EFFICIENCY: float = 0.98             # Quantum efficiency factor
+
+# --- Brain Region Constants ---
+REGION_FRONTAL: str = 'frontal'
+REGION_PARIETAL: str = 'parietal'
+REGION_TEMPORAL: str = 'temporal'
+REGION_OCCIPITAL: str = 'occipital'
+REGION_LIMBIC: str = 'limbic'
+REGION_BRAIN_STEM: str = 'brain_stem'
+REGION_CEREBELLUM: str = 'cerebellum'
+
 # --- Energy Units ---
 SYNAPSE_ENERGY_JOULES: float = 1e-14       # Energy of one synaptic firing in Joules
 # SOUL Energy Scale: SEU <-> Joules
@@ -584,6 +623,22 @@ GEOMETRY_BASE_FREQUENCIES: Dict[str, float] = { 'point': 963.0, 'line': 852.0, '
 PLATONIC_HARMONIC_RATIOS: Dict[str, List[float]] = { 'tetrahedron': [1.0, 2.0, 3.0, 5.0], 'hexahedron': [1.0, 2.0, 4.0, 8.0], 'octahedron': [1.0, 1.5, 2.0, 3.0], 'dodecahedron': [1.0, PHI, 2.0, PHI*2, 3.0], 'icosahedron': [1.0, 1.5, 2.0, 2.5, 3.0], 'sphere': [1.0, 1.5, 2.0, 2.5, 3.0, PHI, 4.0, 5.0], 'merkaba': [1.0, 1.5, 2.0, 3.0, PHI, 4.0] }
 GEOMETRY_VOID_INFLUENCE_STRENGTH: float = 0.15
 PLATONIC_VOID_INFLUENCE_STRENGTH: float = 0.20
+
+# Energy conversion factors (natural proportional relationships)
+NATURAL_ENERGY_TO_HARMONY = 0.05   # Energy units needed for 1% harmony increase
+NATURAL_HARMONY_TO_ENERGY = 20.0   # Energy generated by 1% harmony improvement
+NATURAL_ENERGY_CYCLE_RATIO = 0.02  # % of energy used per cycle (sustainable rate)
+
+# Natural scaling factors
+NATURAL_EFFORT_SCALING = 4.0       # Exponential effort scaling for approaching perfection
+NATURAL_STAGNATION_THRESHOLD = 10  # Cycles of no change to detect equilibrium
+NATURAL_VIABILITY_THRESHOLD = 0.5  # Minimum capacity needed for further natural development
+
+# Memory fragment constants
+MEMORY_FRAGMENT_ENERGY_THRESHOLD = 0.05  # Minimum energy to activate memory fragment
+
+# Mycelial network constants  
+MYCELIAL_DEFAULT_DENSITY = 0.1  # Default mycelial density for pathways
 
 # --- END OF FILE constants.py ---
 

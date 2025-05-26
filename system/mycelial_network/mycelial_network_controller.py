@@ -208,13 +208,11 @@ class MycelialNetworkController:
         
         logger.info(f"Distributing {energy_amount:.2f} BEU of soul energy")
       
-        # Extract soul properties
+        # Extract soul properties - use actual SU/CU values without dividing by 100
         soul_frequency = soul_properties.get('frequency', 432.0)
-        soul_stability = soul_properties.get('stability', 0.5) / 100.0  # Normalize from 0-100 to 0-1
-        soul_coherence = soul_properties.get('coherence', 0.5) / 100.0  # Normalize from 0-100 to 0-1
+        soul_stability = soul_properties.get('stability', 50.0)  # Already in SU units
+        soul_coherence = soul_properties.get('coherence', 50.0)  # Already in CU units
         
-
-
         # Distribute energy through mycelial network
         distribution_results = self.mycelial_network.distribute_energy(
             seed_position, energy_amount, soul_frequency, soul_stability, soul_coherence
@@ -353,300 +351,300 @@ class MycelialNetworkController:
             "timestamp": datetime.now().isoformat()
         }
     
-def save_system_state(self, output_path: str) -> Dict:
-    """
-    Save the current system state to disk.
-    
-    Args:
-        output_path: Path to save the system state
+    def save_system_state(self, output_path: str) -> Dict:
+        """
+        Save the current system state to disk.
         
-    Returns:
-        Dict containing save results
-    """
-    logger.info(f"Saving mycelial network system state to {output_path}")
-    
-    try:
-        # Compile system state
-        system_state = {
-            "initialized": self.initialized,
-            "energy_system_integrated": self.energy_system_integrated,
-            "memory_system_integrated": self.memory_system_integrated,
-            "processing_system_integrated": self.processing_system_integrated,
-            "subconscious_integrated": self.subconscious_integrated,
-            "monitoring_active": self.monitoring_active,
-            "config": self.config,
-            "operations_log": self.operations_log,
-            "network_metrics": self.mycelial_network.get_network_metrics(),
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
-        # Save to file
-        with open(output_path, 'w') as f:
-            json.dump(system_state, f, indent=2, default=str)
-        
-        logger.info(f"System state saved to {output_path}")
-        return {
-            "success": True,
-            "output_path": output_path,
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    except Exception as e:
-        logger.error(f"Error saving system state: {e}")
-        return {
-            "success": False,
-            "error": f"Failed to save system state: {e}",
-            "timestamp": datetime.now().isoformat()
-        }
-
-def load_system_state(self, input_path: str) -> Dict:
-    """
-    Load system state from disk.
-    
-    Args:
-        input_path: Path to load the system state from
-        
-    Returns:
-        Dict containing load results
-    """
-    logger.info(f"Loading mycelial network system state from {input_path}")
-    
-    try:
-        # Check if file exists
-        if not os.path.exists(input_path):
-            return {
-                "success": False,
-                "error": f"File not found: {input_path}",
-                "timestamp": datetime.now().isoformat()
-            }
-        
-        # Load from file
-        with open(input_path, 'r') as f:
-            system_state = json.load(f)
-        
-        # Validate state data
-        if not isinstance(system_state, dict) or "initialized" not in system_state:
-            return {
-                "success": False,
-                "error": "Invalid system state data",
-                "timestamp": datetime.now().isoformat()
-            }
-        
-        # Update controller state
-        self.initialized = system_state.get("initialized", False)
-        self.energy_system_integrated = system_state.get("energy_system_integrated", False)
-        self.memory_system_integrated = system_state.get("memory_system_integrated", False)
-        self.processing_system_integrated = system_state.get("processing_system_integrated", False)
-        self.subconscious_integrated = system_state.get("subconscious_integrated", False)
-        self.monitoring_active = system_state.get("monitoring_active", False)
-        self.config = system_state.get("config", self.config)
-        self.operations_log = system_state.get("operations_log", [])
-        
-        # Note: This doesn't restore the actual mycelial network density and energy grids
-        # Those would need to be reconstructed separately
-        
-        logger.info(f"System state loaded from {input_path}")
-        return {
-            "success": True,
-            "loaded_state": {k: v for k, v in system_state.items() if k != "operations_log"},
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    except Exception as e:
-        logger.error(f"Error loading system state: {e}")
-        return {
-            "success": False,
-            "error": f"Failed to load system state: {e}",
-            "timestamp": datetime.now().isoformat()
-        }
-
-def create_subconscious_integration(self, learning_paths: Optional[List[str]] = None) -> Dict:
-    """
-    Integrate with the subconscious system and create pathways for learning.
-    
-    Args:
-        learning_paths: Optional list of specific learning pathways to integrate
-        
-    Returns:
-        Dict containing integration results
-    """
-    if not self.initialized:
-        return {"success": False, "error": "System not initialized"}
-    
-    logger.info("Creating subconscious integration pathways")
-    
-    try:
-        # Default learning paths if none specified
-        if not learning_paths:
-            learning_paths = [
-                "emotional_maturity",
-                "creative_conceptualisation",
-                "language_learning",
-                "logic_learning",
-                "spiritual_progress"
-            ]
-        
-        # Placeholder for subconscious integration logic
-        # This would typically connect to your subconscious modules
-        
-        # Simulate pathway creation results
-        pathways_created = 0
-        integration_results = {}
-        
-        for path in learning_paths:
-            # Placeholder for actual integration logic
-            success = True  # Simulated success
+        Args:
+            output_path: Path to save the system state
             
-            if success:
-                pathways_created += 1
-                integration_results[path] = {"success": True}
-            else:
-                integration_results[path] = {"success": False, "error": "Integration failed"}
+        Returns:
+            Dict containing save results
+        """
+        logger.info(f"Saving mycelial network system state to {output_path}")
         
-        self.subconscious_integrated = pathways_created > 0
-        self.operations_log.append({
-            "operation": "subconscious_integration",
-            "timestamp": datetime.now().isoformat(),
-            "success": self.subconscious_integrated,
-            "pathways_created": pathways_created,
-            "learning_paths": learning_paths
-        })
+        try:
+            # Compile system state
+            system_state = {
+                "initialized": self.initialized,
+                "energy_system_integrated": self.energy_system_integrated,
+                "memory_system_integrated": self.memory_system_integrated,
+                "processing_system_integrated": self.processing_system_integrated,
+                "subconscious_integrated": self.subconscious_integrated,
+                "monitoring_active": self.monitoring_active,
+                "config": self.config,
+                "operations_log": self.operations_log,
+                "network_metrics": self.mycelial_network.get_network_metrics(),
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # Save to file
+            with open(output_path, 'w') as f:
+                json.dump(system_state, f, indent=2, default=str)
+            
+            logger.info(f"System state saved to {output_path}")
+            return {
+                "success": True,
+                "output_path": output_path,
+                "timestamp": datetime.now().isoformat()
+            }
         
-        return {
-            "success": self.subconscious_integrated,
-            "pathways_created": pathways_created,
-            "integration_results": integration_results,
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    except Exception as e:
-        logger.error(f"Subconscious integration failed: {e}")
-        return {
-            "success": False,
-            "error": f"Subconscious integration failed: {e}",
-            "timestamp": datetime.now().isoformat()
-        }
+        except Exception as e:
+            logger.error(f"Error saving system state: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to save system state: {e}",
+                "timestamp": datetime.now().isoformat()
+            }
 
-def process_homeostatic_feedback(self, feedback: Dict) -> Dict:
-    """
-    Process homeostatic feedback to adjust the mycelial network.
-    
-    Args:
-        feedback: Dictionary containing homeostatic feedback data
+    def load_system_state(self, input_path: str) -> Dict:
+        """
+        Load system state from disk.
         
-    Returns:
-            Dict containing processing results
-    """
-    if not self.initialized:
-        return {"success": False, "error": "System not initialized"}
-    
-    logger.info("Processing homeostatic feedback for mycelial network")
-    
-    try:
-        # Extract feedback data
-        stress_level = feedback.get("stress_level", 0.5)
-        energy_balance = feedback.get("energy_balance", 0.0)
-        regional_imbalances = feedback.get("regional_imbalances", {})
-        suggested_actions = feedback.get("suggested_actions", [])
+        Args:
+            input_path: Path to load the system state from
+            
+        Returns:
+            Dict containing load results
+        """
+        logger.info(f"Loading mycelial network system state from {input_path}")
         
-        # Placeholder for actual feedback processing logic
-        # This would typically make adjustments to the mycelial network
+        try:
+            # Check if file exists
+            if not os.path.exists(input_path):
+                return {
+                    "success": False,
+                    "error": f"File not found: {input_path}",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            # Load from file
+            with open(input_path, 'r') as f:
+                system_state = json.load(f)
+            
+            # Validate state data
+            if not isinstance(system_state, dict) or "initialized" not in system_state:
+                return {
+                    "success": False,
+                    "error": "Invalid system state data",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            # Update controller state
+            self.initialized = system_state.get("initialized", False)
+            self.energy_system_integrated = system_state.get("energy_system_integrated", False)
+            self.memory_system_integrated = system_state.get("memory_system_integrated", False)
+            self.processing_system_integrated = system_state.get("processing_system_integrated", False)
+            self.subconscious_integrated = system_state.get("subconscious_integrated", False)
+            self.monitoring_active = system_state.get("monitoring_active", False)
+            self.config = system_state.get("config", self.config)
+            self.operations_log = system_state.get("operations_log", [])
+            
+            # Note: This doesn't restore the actual mycelial network density and energy grids
+            # Those would need to be reconstructed separately
+            
+            logger.info(f"System state loaded from {input_path}")
+            return {
+                "success": True,
+                "loaded_state": {k: v for k, v in system_state.items() if k != "operations_log"},
+                "timestamp": datetime.now().isoformat()
+            }
         
-        # Track processing results
-        adjustments_made = 0
-        regions_adjusted = []
-        
-        # Apply feedback
-        if "adjust_network_density" in suggested_actions:
-            # Placeholder for density adjustment logic
-            adjustments_made += 1
-        
-        if "redistribute_energy" in suggested_actions:
-            # Placeholder for energy redistribution logic
-            adjustments_made += 1
-        
-        if "reinforce_pathways" in suggested_actions:
-            # Placeholder for pathway reinforcement logic
-            adjustments_made += 1
-        
-        # Process regional imbalances
-        for region, imbalance in regional_imbalances.items():
-            # Placeholder for regional adjustment logic
-            regions_adjusted.append(region)
-            adjustments_made += 1
-        
-        self.operations_log.append({
-            "operation": "homeostatic_feedback_processing",
-            "timestamp": datetime.now().isoformat(),
-            "feedback_summary": {
-                "stress_level": stress_level,
-                "energy_balance": energy_balance,
-                "regions_with_imbalances": list(regional_imbalances.keys())
-            },
-            "adjustments_made": adjustments_made
-        })
-        
-        return {
-            "success": True,
-            "adjustments_made": adjustments_made,
-            "regions_adjusted": regions_adjusted,
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    except Exception as e:
-        logger.error(f"Homeostatic feedback processing failed: {e}")
-        return {
-            "success": False,
-            "error": f"Feedback processing failed: {e}",
-            "timestamp": datetime.now().isoformat()
-        }
+        except Exception as e:
+            logger.error(f"Error loading system state: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to load system state: {e}",
+                "timestamp": datetime.now().isoformat()
+            }
 
-def shutdown_system(self) -> Dict:
-    """
-    Safely shutdown the mycelial network system.
-    
-    Returns:
-        Dict containing shutdown results
-    """
-    logger.info("Shutting down mycelial network system")
-    
-    try:
-        # Perform shutdown operations
-        if self.monitoring_active:
-            # Stop monitoring
-            self.monitoring_active = False
+    def create_subconscious_integration(self, learning_paths: Optional[List[str]] = None) -> Dict:
+        """
+        Integrate with the subconscious system and create pathways for learning.
         
-        # Reset mycelial network
-        if self.initialized:
-            self.mycelial_network.reset_network()
+        Args:
+            learning_paths: Optional list of specific learning pathways to integrate
+            
+        Returns:
+            Dict containing integration results
+        """
+        if not self.initialized:
+            return {"success": False, "error": "System not initialized"}
         
-        # Update state
-        self.initialized = False
-        self.energy_system_integrated = False
-        self.memory_system_integrated = False
-        self.processing_system_integrated = False
-        self.subconscious_integrated = False
+        logger.info("Creating subconscious integration pathways")
         
-        # Log operation
-        self.operations_log.append({
-            "operation": "system_shutdown",
-            "timestamp": datetime.now().isoformat(),
-            "success": True
-        })
+        try:
+            # Default learning paths if none specified
+            if not learning_paths:
+                learning_paths = [
+                    "emotional_maturity",
+                    "creative_conceptualisation",
+                    "language_learning",
+                    "logic_learning",
+                    "spiritual_progress"
+                ]
+            
+            # Placeholder for subconscious integration logic
+            # This would typically connect to your subconscious modules
+            
+            # Simulate pathway creation results
+            pathways_created = 0
+            integration_results = {}
+            
+            for path in learning_paths:
+                # Placeholder for actual integration logic
+                success = True  # Simulated success
+                
+                if success:
+                    pathways_created += 1
+                    integration_results[path] = {"success": True}
+                else:
+                    integration_results[path] = {"success": False, "error": "Integration failed"}
+            
+            self.subconscious_integrated = pathways_created > 0
+            self.operations_log.append({
+                "operation": "subconscious_integration",
+                "timestamp": datetime.now().isoformat(),
+                "success": self.subconscious_integrated,
+                "pathways_created": pathways_created,
+                "learning_paths": learning_paths
+            })
+            
+            return {
+                "success": self.subconscious_integrated,
+                "pathways_created": pathways_created,
+                "integration_results": integration_results,
+                "timestamp": datetime.now().isoformat()
+            }
         
-        return {
-            "success": True,
-            "system_shutdown": True,
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    except Exception as e:
-        logger.error(f"System shutdown failed: {e}")
-        return {
-            "success": False,
-            "error": f"System shutdown failed: {e}",
-            "timestamp": datetime.now().isoformat()
-        }
+        except Exception as e:
+            logger.error(f"Subconscious integration failed: {e}")
+            return {
+                "success": False,
+                "error": f"Subconscious integration failed: {e}",
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def process_homeostatic_feedback(self, feedback: Dict) -> Dict:
+        """
+        Process homeostatic feedback to adjust the mycelial network.
+        
+        Args:
+            feedback: Dictionary containing homeostatic feedback data
+            
+        Returns:
+                Dict containing processing results
+        """
+        if not self.initialized:
+            return {"success": False, "error": "System not initialized"}
+        
+        logger.info("Processing homeostatic feedback for mycelial network")
+        
+        try:
+            # Extract feedback data
+            stress_level = feedback.get("stress_level", 0.5)
+            energy_balance = feedback.get("energy_balance", 0.0)
+            regional_imbalances = feedback.get("regional_imbalances", {})
+            suggested_actions = feedback.get("suggested_actions", [])
+            
+            # Placeholder for actual feedback processing logic
+            # This would typically make adjustments to the mycelial network
+            
+            # Track processing results
+            adjustments_made = 0
+            regions_adjusted = []
+            
+            # Apply feedback
+            if "adjust_network_density" in suggested_actions:
+                # Placeholder for density adjustment logic
+                adjustments_made += 1
+            
+            if "redistribute_energy" in suggested_actions:
+                # Placeholder for energy redistribution logic
+                adjustments_made += 1
+            
+            if "reinforce_pathways" in suggested_actions:
+                # Placeholder for pathway reinforcement logic
+                adjustments_made += 1
+            
+            # Process regional imbalances
+            for region, imbalance in regional_imbalances.items():
+                # Placeholder for regional adjustment logic
+                regions_adjusted.append(region)
+                adjustments_made += 1
+            
+            self.operations_log.append({
+                "operation": "homeostatic_feedback_processing",
+                "timestamp": datetime.now().isoformat(),
+                "feedback_summary": {
+                    "stress_level": stress_level,
+                    "energy_balance": energy_balance,
+                    "regions_with_imbalances": list(regional_imbalances.keys())
+                },
+                "adjustments_made": adjustments_made
+            })
+            
+            return {
+                "success": True,
+                "adjustments_made": adjustments_made,
+                "regions_adjusted": regions_adjusted,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        except Exception as e:
+            logger.error(f"Homeostatic feedback processing failed: {e}")
+            return {
+                "success": False,
+                "error": f"Feedback processing failed: {e}",
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def shutdown_system(self) -> Dict:
+        """
+        Safely shutdown the mycelial network system.
+        
+        Returns:
+            Dict containing shutdown results
+        """
+        logger.info("Shutting down mycelial network system")
+        
+        try:
+            # Perform shutdown operations
+            if self.monitoring_active:
+                # Stop monitoring
+                self.monitoring_active = False
+            
+            # Reset mycelial network
+            if self.initialized:
+                self.mycelial_network.reset_network()
+            
+            # Update state
+            self.initialized = False
+            self.energy_system_integrated = False
+            self.memory_system_integrated = False
+            self.processing_system_integrated = False
+            self.subconscious_integrated = False
+            
+            # Log operation
+            self.operations_log.append({
+                "operation": "system_shutdown",
+                "timestamp": datetime.now().isoformat(),
+                "success": True
+            })
+            
+            return {
+                "success": True,
+                "system_shutdown": True,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        except Exception as e:
+            logger.error(f"System shutdown failed: {e}")
+            return {
+                "success": False,
+                "error": f"System shutdown failed: {e}",
+                "timestamp": datetime.now().isoformat()
+            }

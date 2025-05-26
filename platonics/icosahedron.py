@@ -461,6 +461,35 @@ def embed_icosahedron_in_field(field_array: np.ndarray,
     
     return modified_field
 
+def get_base_glyph_elements(center: Tuple[float, float, float], edge_length: float) -> Dict[str, Any]:
+    """
+    Returns the geometric elements (vertices, lines) for a simple line art
+    representation of a icosahedron.
+    """
+    solid_data = generate_icosahedron(center, edge_length) # Call your existing generator
+    
+    vertices_np = np.array(solid_data['vertices'])
+    lines = []
+    for edge_indices in solid_data['edges']:
+        p1 = vertices_np[edge_indices[0]].tolist()
+        p2 = vertices_np[edge_indices[1]].tolist()
+        lines.append((p1, p2))
+        
+    # Calculate a simple bounding box
+    min_coords = np.min(vertices_np, axis=0)
+    max_coords = np.max(vertices_np, axis=0)
+    padding = edge_length * 0.1 # 10% padding
+    
+    return {
+        'lines': lines,
+        'vertices': vertices_np.tolist(), # Optional: if you want to draw small dots for vertices
+        'projection_type': '3d',
+        'bounding_box': {
+            'xmin': min_coords[0] - padding, 'xmax': max_coords[0] + padding,
+            'ymin': min_coords[1] - padding, 'ymax': max_coords[1] + padding,
+            'zmin': min_coords[2] - padding, 'zmax': max_coords[2] + padding,
+        }
+    }
 
 # Example usage
 if __name__ == "__main__":

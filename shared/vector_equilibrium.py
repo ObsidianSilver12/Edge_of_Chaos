@@ -490,6 +490,33 @@ def visualize_vector_equilibrium_energy(ve_data: Dict[str, Any],
     plt.tight_layout()
     return fig
 
+def get_base_glyph_elements(center: Tuple[float, float, float], radius: float) -> Dict[str, Any]:
+    """
+    Returns lines for Vector Equilibrium base glyph. Radius here is dist to vertex.
+    """
+    ve_data = generate_vector_equilibrium(center, radius)
+    
+    vertices_np_ve = np.array(ve_data['vertices']) # Renamed
+    lines_data = []
+    for edge_indices in ve_data['edges']:
+        p1 = vertices_np_ve[edge_indices[0]].tolist()
+        p2 = vertices_np_ve[edge_indices[1]].tolist()
+        lines_data.append((p1, p2))
+    
+    min_coords_ve = np.min(vertices_np_ve, axis=0); max_coords_ve = np.max(vertices_np_ve, axis=0) # Renamed
+    padding_ve = radius * 0.15 # Renamed
+
+    return {
+        'lines': lines_data,
+        'projection_type': '3d',
+        'bounding_box': {
+            'xmin': float(min_coords_ve[0]-padding_ve), 'xmax': float(max_coords_ve[0]+padding_ve),
+            'ymin': float(min_coords_ve[1]-padding_ve), 'ymax': float(max_coords_ve[1]+padding_ve),
+            'zmin': float(min_coords_ve[2]-padding_ve), 'zmax': float(max_coords_ve[2]+padding_ve),
+        }
+    }
+
+
 # Example usage
 if __name__ == "__main__":
     # Create a vector equilibrium

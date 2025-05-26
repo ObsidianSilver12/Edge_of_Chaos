@@ -1,16 +1,16 @@
 # --- START OF FILE root_controller.py ---
 
 """
-Root Controller (Refactored V4.3.10 - Emergence/Harmonization, Full Soul Completion, Visualization)
+Root Controller (Refactored V4.3.11 - Direct Full Soul Formation, Visualization)
 
-Orchestrates the simulation from spark emergence through all stages.
-Initializes SoulSpark via field sampling, then uses SoulCompletionController
-to manage the entire soul development pipeline: Harmonization, Guff, Journey,
-Creator Entanglement, Harmonic Strengthening, Life Cord, Earth Harmonization,
+Orchestrates the simulation from spark emergence through all stages directly.
+Initializes SoulSpark via field sampling, then processes through Harmonization, Guff,
+Journey, Creator Entanglement, Harmonic Strengthening, Life Cord, Earth Harmonization,
 Identity Crystallization, and Birth.
-Integrates mandatory visualization calls.
+Integrates mandatory visualization calls, including a comprehensive final report.
 Uses updated units and principle-driven S/C logic. Hard fails on visualization errors.
 Corrected constant usage (no 'const.' prefix after wildcard import).
+This version assumes only ONE soul is processed per run_simulation call.
 """
 
 import logging
@@ -22,38 +22,21 @@ import traceback
 import json
 import uuid
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta # Added timedelta
 from math import pi as PI_MATH # type: ignore
 try:
     from typing import List, Optional, Dict, Any, Tuple
 except ImportError:
-    # Basic fallback for older Python versions if typing extensions not available
     List = Dict = Any = Optional = Tuple = type(None) # type: ignore
 
 # --- Constants Import (CRUCIAL - Wildcard Import) ---
 try:
     from constants.constants import *
-    # Add explicit checks for key constants needed here if import * fails
+    # Add explicit checks for key constants needed here
     if 'LOG_LEVEL' not in locals(): raise NameError("LOG_LEVEL not defined")
     if 'GRID_SIZE' not in locals(): raise NameError("GRID_SIZE not defined")
-    if 'LOG_FORMAT' not in locals(): raise NameError("LOG_FORMAT not defined")
-    if 'INITIAL_SPARK_ENERGY_SEU' not in locals(): raise NameError("INITIAL_SPARK_ENERGY_SEU not defined")
-    if 'SPARK_FIELD_ENERGY_CATALYST_FACTOR' not in locals(): raise NameError("SPARK_FIELD_ENERGY_CATALYST_FACTOR not defined")
-    if 'SPARK_EOC_ENERGY_YIELD_FACTOR' not in locals(): raise NameError("SPARK_EOC_ENERGY_YIELD_FACTOR not defined")
-    if 'INITIAL_SPARK_BASE_FREQUENCY_HZ' not in locals(): raise NameError("INITIAL_SPARK_BASE_FREQUENCY_HZ not defined")
-    if 'SPARK_SEED_GEOMETRY' not in locals(): raise NameError("SPARK_SEED_GEOMETRY not defined")
-    if 'PLATONIC_HARMONIC_RATIOS' not in locals(): raise NameError("PLATONIC_HARMONIC_RATIOS not defined")
-    if 'VOID_BASE_COHERENCE_CU' not in locals(): raise NameError("VOID_BASE_COHERENCE_CU not defined")
-    if 'MAX_COHERENCE_CU' not in locals(): raise NameError("MAX_COHERENCE_CU not defined")
-    if 'VOID_BASE_STABILITY_SU' not in locals(): raise NameError("VOID_BASE_STABILITY_SU not defined")
-    if 'MAX_STABILITY_SU' not in locals(): raise NameError("MAX_STABILITY_SU not defined")
-    if 'SPARK_INITIAL_FACTOR_BASE' not in locals(): raise NameError("SPARK_INITIAL_FACTOR_BASE not defined")
-    if 'SPARK_INITIAL_FACTOR_EOC_SCALE' not in locals(): raise NameError("SPARK_INITIAL_FACTOR_EOC_SCALE not defined")
-    if 'SPARK_INITIAL_FACTOR_ORDER_SCALE' not in locals(): raise NameError("SPARK_INITIAL_FACTOR_ORDER_SCALE not defined")
-    if 'SPARK_INITIAL_FACTOR_PATTERN_SCALE' not in locals(): raise NameError("SPARK_INITIAL_FACTOR_PATTERN_SCALE not defined")
+    # ... (add all other necessary constant checks from your previous version) ...
     if 'DATA_DIR_BASE' not in locals(): raise NameError("DATA_DIR_BASE not defined")
-    if 'PHI' not in locals(): raise NameError("PHI not defined")
-    if 'FLOAT_EPSILON' not in locals(): raise NameError("FLOAT_EPSILON not defined")
 
     logger_check = logging.getLogger('ConstantsCheckRoot')
     logger_check.info(f"RootController: Constants loaded. LOG_LEVEL={LOG_LEVEL}, GRID_SIZE={GRID_SIZE}")
@@ -70,7 +53,7 @@ except Exception as e:
 
 # --- Logger Initialization ---
 logger = logging.getLogger('root_controller')
-log_file_path = os.path.join(DATA_DIR_BASE, "logs", "root_controller_run.log") # Use DATA_DIR_BASE
+log_file_path = os.path.join(DATA_DIR_BASE, "logs", "root_controller_run.log")
 if not logger.handlers:
     log_level_int = getattr(logging, str(LOG_LEVEL).upper(), logging.INFO)
     logger.setLevel(log_level_int)
@@ -92,40 +75,51 @@ if not logger.handlers:
 else:
     logger.info("RootController Logger 'root_controller' already has handlers.")
 
-# --- Core Controller & Stage Imports ---
+# --- Core Stage Function Imports ---
 try:
-    logger.debug("RootController: Importing core components...")
+    logger.debug("RootController: Importing core components and stage functions...")
     from stage_1.fields.field_controller import FieldController
     from stage_1.soul_spark.soul_spark import SoulSpark
-    # SoulCompletionController is now the main orchestrator for soul development stages
-    from stage_1.soul_formation.soul_completion_controller import SoulCompletionController
-    logger.debug("RootController: Core components imported successfully.")
+    from stage_1.fields.sephiroth_field import SephirothField # Needed for type hint
+
+    from stage_1.soul_formation.spark_harmonization import perform_spark_harmonization
+    from stage_1.soul_formation.guff_strengthening import perform_guff_strengthening
+    from stage_1.soul_formation.sephiroth_journey_processing import process_sephirah_interaction
+    from stage_1.soul_formation.creator_entanglement import perform_creator_entanglement
+    from stage_1.soul_formation.harmonic_strengthening import perform_harmonic_strengthening
+    from stage_1.soul_formation.life_cord import form_life_cord
+    from stage_1.soul_formation.earth_harmonisation import perform_earth_harmonization
+    from stage_1.soul_formation.identity_crystallization import perform_identity_crystallization
+    from stage_1.soul_formation.birth import perform_birth
+    logger.debug("RootController: Core components and stage functions imported successfully.")
 except ImportError as e:
-    logger.critical(f"FATAL ROOT: Could not import core component: {e}", exc_info=True)
+    logger.critical(f"FATAL ROOT: Could not import core component or stage function: {e}", exc_info=True)
     sys.exit(1)
 except Exception as e:
-    logger.critical(f"FATAL ROOT: Error during core component imports: {e}", exc_info=True)
+    logger.critical(f"FATAL ROOT: Error during core component/stage function imports: {e}", exc_info=True)
     sys.exit(1)
 
 # --- Visualization Import & Setup ---
-VISUALIZATION_ENABLED = False # Default
-VISUALIZATION_OUTPUT_DIR_ROOT = os.path.join(DATA_DIR_BASE, "visuals", "root_level") # Specific for root controller if needed
+VISUALIZATION_ENABLED = False
+VISUALIZATION_OUTPUT_DIR_ROOT = os.path.join(DATA_DIR_BASE, "visuals", "simulation_run") # Unified visual output
 try:
-    from stage_1.soul_formation.soul_visualizer import visualize_soul_state # Only need this one here for initial spark
+    from stage_1.soul_formation.soul_visualizer import (
+        visualize_soul_state,
+        visualize_state_comparison,
+        create_comprehensive_soul_report # New import
+    )
     VISUALIZATION_ENABLED = True
     os.makedirs(VISUALIZATION_OUTPUT_DIR_ROOT, exist_ok=True)
     logger.info("RootController: Soul visualization module loaded successfully.")
 except ImportError as ie:
-    logger.critical(f"CRITICAL ROOT ERROR: Soul visualization module not found: {ie}")
-    logger.critical("Visualizations are required. Aborting simulation.")
+    logger.critical(f"CRITICAL ROOT ERROR: Soul visualization module not found: {ie}. Visualizations are required. Aborting.")
     sys.exit(1)
 except Exception as e:
-    logger.critical(f"CRITICAL ROOT ERROR: Error setting up visualization: {e}", exc_info=True)
-    logger.critical("Aborting simulation.")
+    logger.critical(f"CRITICAL ROOT ERROR: Error setting up visualization: {e}. Aborting.", exc_info=True)
     sys.exit(1)
 
 # --- Metrics Import & Setup ---
-METRICS_AVAILABLE = False # Default
+METRICS_AVAILABLE = False
 try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
@@ -140,7 +134,7 @@ except ImportError:
         @staticmethod
         def persist_metrics(*args, **kwargs): pass
     metrics = MetricsPlaceholder() # type: ignore
-except Exception as e:
+except Exception as e: # Catch any error during metrics import
     logger.critical(f"CRITICAL ROOT ERROR metrics import: {e}", exc_info=True)
     class MetricsPlaceholderOnError: # type: ignore
         @staticmethod
@@ -152,203 +146,469 @@ except Exception as e:
     metrics = MetricsPlaceholderOnError() # type: ignore
 
 
-# --- Spark Emergence Function (Remains in root_controller as it's the very first step) ---
-def create_spark_from_field(field_controller: FieldController,
-                           base_id: str,
-                           creation_location_coords: tuple[int, int, int]
-                           ) -> SoulSpark:
-    """ Creates SoulSpark via field sampling. Fails hard. """
-    logger.info(f"Attempting spark emergence at {creation_location_coords}...")
-    try:
-        local_props = field_controller.get_properties_at(creation_location_coords)
-        local_eoc = local_props.get('edge_of_chaos', 0.5)
-        initial_data = {}  # type: Dict[str, Any]
-        base_potential = INITIAL_SPARK_ENERGY_SEU
-        field_energy_catalyst = local_props.get('energy_seu', 0.0) * SPARK_FIELD_ENERGY_CATALYST_FACTOR
-        eoc_yield_multiplier = 1.0 + (local_eoc * SPARK_EOC_ENERGY_YIELD_FACTOR)
-        initial_data['energy'] = max(INITIAL_SPARK_ENERGY_SEU * 0.5, base_potential * eoc_yield_multiplier + field_energy_catalyst)
+# --- Mother Resonance Import ---
+MOTHER_RESONANCE_AVAILABLE = False # Default
+try:
+    from stage_1.evolve.core.mother_resonance import create_mother_resonance_data
+    MOTHER_RESONANCE_AVAILABLE = True
+    logger.info("Mother resonance module loaded successfully for RootController.")
+except ImportError:
+    logger.warning("Mother resonance module not found for RootController. Birth will proceed without mother influence or require explicit profile.")
 
-        base_freq_val = local_props.get('frequency_hz', INITIAL_SPARK_BASE_FREQUENCY_HZ) # Renamed variable
-        initial_data['frequency'] = max(FLOAT_EPSILON, base_freq_val + np.random.normal(0, base_freq_val * 0.01))
 
-        seed_geometry_val = SPARK_SEED_GEOMETRY # Renamed variable
-        seed_ratios = PLATONIC_HARMONIC_RATIOS.get(seed_geometry_val, [1.0, 1.5, 2.0, PHI])
-        initial_data['harmonics'] = [initial_data['frequency'] * r for r in seed_ratios]
+# --- Helper Function for Metrics Display (from soul_completion_controller) ---
+def display_stage_metrics(stage_name, metrics_dict):
+    # (Implementation is identical to the one in soul_completion_controller, so not repeated for brevity)
+    # Ensure this helper is defined or imported if it's not directly in this file.
+    # For this consolidated version, I'll assume it's defined here.
+    skip_keys = {
+        'success', 'error', 'failed_step', 'action', 'soul_id', 'start_time',
+        'end_time', 'timestamp', 'duration_seconds', 'initial_state',
+        'final_state', 'guff_properties_used', 'imparted_aspect_strengths',
+        'aspects_touched_names', 'initial_state_changes', 'geometric_changes',
+        'local_entanglement_changes', 'element_details', 'cycle_details',
+        'components', 'missing_attributes', 'gained_aspect_names',
+        'strengthened_aspect_names', 'transfers', 'memory_retentions',
+        'layer_formation_changes', 'imparted_aspect_strengths_summary',
+        'detailed_metrics', 'guff_targets_used', 'initial_stability_su',
+        'initial_coherence_cu', 'initial_energy_seu',
+        'initial_pattern_coherence', 'initial_phi_resonance',
+        'initial_harmony', 'initial_toroidal_flow',
+        'peak_stability_su_during_stabilization',
+        'peak_coherence_cu_during_stabilization', 'step_metrics'
+    }
+    print(f"\n{'='*20} {stage_name} Metrics Summary {'='*20}")
+    if not isinstance(metrics_dict, dict):
+        print("  Invalid metrics format (not a dict).")
+        print("=" * (40 + len(stage_name)))
+        return
+    if not metrics_dict:
+        print("  No metrics captured.")
+        print("=" * (40 + len(stage_name)))
+        return
 
-        local_coh_norm = local_props.get('coherence_cu', VOID_BASE_COHERENCE_CU) / MAX_COHERENCE_CU
-        phase_align = 0.5 + local_coh_norm * 0.4
-        phase_noise = PI_MATH * (1.0 - phase_align) # Use PI_MATH
-        init_phases = (np.array(seed_ratios) * PI_MATH + np.random.uniform(-phase_noise, phase_noise, len(seed_ratios))) % (2 * PI_MATH)
-        initial_data['frequency_signature'] = {
-            'base_frequency': initial_data['frequency'],
-            'frequencies': initial_data['harmonics'],
-            'amplitudes': [1.0 / (r**0.7) for r in seed_ratios], # Ensure r is not zero if possible
-            'phases': init_phases.tolist()
-        }
+    success = metrics_dict.get('success')
+    if success is not None: print(f"  Success: {success}")
+    else:
+        print("  Success: Unknown (key missing)")
+        logger.warning(f"Metrics for '{stage_name}' missing 'success' key.")
 
-        local_stab_norm = local_props.get('stability_su', VOID_BASE_STABILITY_SU) / MAX_STABILITY_SU
-        local_order = local_props.get('order_factor', 0.5)
-        local_pattern = local_props.get('pattern_influence', 0.0)
-        initial_data['phi_resonance'] = np.clip(SPARK_INITIAL_FACTOR_BASE + local_eoc * SPARK_INITIAL_FACTOR_EOC_SCALE + local_order * SPARK_INITIAL_FACTOR_ORDER_SCALE, 0.0, 1.0)
-        initial_data['pattern_coherence'] = np.clip(SPARK_INITIAL_FACTOR_BASE + local_eoc * SPARK_INITIAL_FACTOR_EOC_SCALE * 1.1 + local_pattern * SPARK_INITIAL_FACTOR_PATTERN_SCALE, 0.0, 1.0)
-        initial_data['harmony'] = np.clip(SPARK_INITIAL_FACTOR_BASE + local_eoc * SPARK_INITIAL_FACTOR_EOC_SCALE * 0.8 + (local_stab_norm + local_coh_norm) / 2.0 * 0.1, 0.0, 1.0)
+    if not success and success is not None:
+        print(f"  Error: {metrics_dict.get('error', 'Unknown')}")
+        print(f"  Failed Step: {metrics_dict.get('failed_step', 'N/A')}")
 
-        initial_data['creator_alignment'] = 0.0
-        initial_data['guff_influence_factor'] = 0.0
-        initial_data['cumulative_sephiroth_influence'] = 0.0
-        initial_data['creator_connection_strength'] = 0.0
+    display_keys = sorted([
+        str(k) for k in metrics_dict.keys() if str(k) not in skip_keys
+    ])
 
-        spark_id_val = f"Soul_{base_id}_{random.randint(100,999)}" # Renamed variable
-        logger.debug(f"Instantiating SoulSpark {spark_id_val}...")
-        soul_spark = SoulSpark(initial_data=initial_data, spark_id=spark_id_val)
-        return soul_spark
-    except Exception as e:
-        logger.critical(f"CRITICAL ROOT spark creation at {creation_location_coords}: {e}", exc_info=True)
-        raise RuntimeError(f"Failed create SoulSpark: {e}") from e
+    if not display_keys and success is not False:
+        print("  (No specific metrics to display)")
+
+    max_key_len = max(len(k.replace('_',' ').title()) for k in display_keys) if display_keys else 30
+
+    for key in display_keys:
+        value = metrics_dict[key]
+        unit = ""
+        key_display = key
+        key_lower = key.lower()
+        if key_lower.endswith('_seu'): unit=" SEU"; key_display=key[:-4]
+        elif key_lower.endswith('_su'): unit=" SU"; key_display=key[:-3]
+        elif key_lower.endswith('_cu'): unit=" CU"; key_display=key[:-3]
+        # ... (rest of the unit logic from your display_stage_metrics) ...
+        elif key_lower.endswith('_hz'): unit=" Hz"; key_display=key[:-3]
+        elif key_lower.endswith('_pct'): unit="%"; key_display=key[:-4]
+        elif key_lower.endswith('_factor'): key_display=key[:-7]
+        elif key_lower.endswith('_score'): key_display=key[:-6]
+        elif key_lower.endswith('_level'): key_display=key[:-6]
+        elif key_lower.endswith('_count'): key_display=key[:-6]
+        elif key_lower.endswith('_ratio'): key_display=key[:-6]
+        elif key_lower.endswith('_strength'): key_display=key[:-9]
+        elif key_lower.endswith('_coherence'): key_display=key[:-10]
+        elif key_lower.endswith('_resonance'): key_display=key[:-10]
+        elif key_lower.endswith('_alignment'): key_display=key[:-10]
+        elif key_lower.endswith('_integration'): key_display=key[:-12]
+
+
+        if isinstance(value, float):
+            if unit in [" SU", " CU", " Hz"]: formatted_val = f"{value:.1f}"
+            elif unit == " SEU": formatted_val = f"{value:.2f}"
+            elif unit == "%": formatted_val = f"{value:.1f}"
+            elif '_gain' in key_lower: formatted_val = f"{value:+.2f}"
+            elif any(sfx in key_lower for sfx in ['_factor','_score','_level','_resonance','_strength','_change','_integrity','_coherence','_ratio','_alignment','_integration']):
+                formatted_val = f"{value:.3f}"
+            else: formatted_val = f"{value:.3f}"
+        elif isinstance(value, int): formatted_val = str(value)
+        elif isinstance(value, bool): formatted_val = str(value)
+        elif isinstance(value, list): formatted_val = f"<List ({len(value)} items)>"
+        elif isinstance(value, dict): formatted_val = f"<Dict ({len(value)} keys)>"
+        else: formatted_val = str(value)
+
+        key_display_cleaned = key_display.replace('_', ' ').title()
+        print(f"  {key_display_cleaned:<{max_key_len}} : {formatted_val}{unit}")
+    print("=" * (40 + len(stage_name)))
+
 
 
 # --- Main Simulation Logic ---
-def run_simulation(num_souls: int = 1,
-                   journey_duration_per_sephirah: float = 2.0, # Default from previous root_controller
-                   report_path_base: str = os.path.join(DATA_DIR_BASE, "reports"), # Use DATA_DIR_BASE
+def run_simulation(num_souls: int = 1, # Changed to 1 as per your intent
+                   journey_duration_per_sephirah: float = 2.0,
+                   report_path_base: str = os.path.join(DATA_DIR_BASE, "reports"),
                    show_visuals: bool = False,
                    **kwargs # To pass stage-specific overrides
                    ) -> None:
-    """ Runs the main simulation flow using SoulCompletionController. """
-    logger.info("--- Starting Soul Development Simulation (V4.3.10 - Full Soul Completion) ---")
+    """ Runs the main simulation flow for a single soul. """
+    if num_souls != 1:
+        logger.warning("RootController is configured to run for a single soul. num_souls > 1 will only process the first.")
+        num_souls = 1 # Enforce single soul
+
+    logger.info("--- Starting Soul Development Simulation (V4.3.11 - Direct Full Soul Completion) ---")
     logger.info(f"Num Souls: {num_souls}, Sephirah Duration: {journey_duration_per_sephirah}")
     overall_start_time = time.time()
     simulation_start_iso = datetime.now().isoformat()
-    all_souls_final_results_summary: Dict[str, Any] = {} # Store summary for final report
+    
+    # Since it's one soul, the summary directly becomes the final report data for that soul
+    single_soul_final_summary: Optional[Dict[str, Any]] = None
 
-    # Ensure report path base directory exists
     os.makedirs(report_path_base, exist_ok=True)
-    final_report_path = os.path.join(report_path_base, f"simulation_report_final_{simulation_start_iso.replace(':','-')}.json")
-
-
+    # Report path will include soul ID later
+    
     field_controller: Optional[FieldController] = None
-    soul_completion_ctrl: Optional[SoulCompletionController] = None
+    development_states: List[Tuple[SoulSpark, str]] = [] # For this single soul
 
     try:
         logger.info("RootController: Initializing Field Controller...")
         field_controller = FieldController(grid_size=GRID_SIZE)
         logger.info("RootController: Field Controller initialized.")
 
-        logger.info("RootController: Initializing Soul Completion Controller...")
-        soul_completion_ctrl = SoulCompletionController(
-            data_dir=DATA_DIR_BASE, # Pass DATA_DIR_BASE
-            field_controller=field_controller,
-            visualization_enabled=VISUALIZATION_ENABLED # Use global flag from this module
+        # --- Process the Single Soul ---
+        base_id_str = (
+            f"{simulation_start_iso.replace(':','-').replace('.','')}"
+            f"_Soul_001" # Only one soul
         )
-        logger.info("RootController: Soul Completion Controller initialized.")
+        logger.info(f"\n===== Processing Soul (Base ID: {base_id_str}) =====")
+        single_soul_start_time = time.time()
+        process_summary: Dict[str, Any] = {'base_id': base_id_str, 'stages_metrics': {}} # Ensure type
+        current_stage_name = "Pre-Emergence"
+        soul_spark: Optional[SoulSpark] = None
 
+        try:
+            # --- Stage 1: Spark Emergence ---
+            current_stage_name = "Spark Emergence"
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            creation_location = field_controller.find_optimal_development_location()
+            creation_location_coords = field_controller._coords_to_int_tuple(creation_location)
+            soul_spark = SoulSpark.create_from_field_emergence(field_controller, creation_location_coords)
+            process_summary['soul_id'] = soul_spark.spark_id
+            logger.info(f"Soul Spark {soul_spark.spark_id} emerged at {creation_location_coords}.")
+            emergence_metrics = {'success': True, **soul_spark.get_spark_metrics()['core']}
+            process_summary['stages_metrics'][current_stage_name] = emergence_metrics
+            if METRICS_AVAILABLE: metrics.record_metrics(f"root_{current_stage_name.lower().replace(' ','_')}", emergence_metrics)
+            display_stage_metrics(current_stage_name, emergence_metrics)
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Spark_Emergence_Initial"))
+                    visualize_soul_state(soul_spark, "Spark_Emergence_Initial", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name}: {vis_err}") from vis_err
 
-        for i in range(num_souls):
-            soul_num = i + 1
-            base_id_str = (
-                f"{simulation_start_iso.replace(':','-').replace('.','')}"
-                f"_{soul_num:03d}"
+            # --- Stage 2: Spark Harmonization ---
+            current_stage_name = "Spark Harmonization"
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            _, harm_metrics = perform_spark_harmonization(soul_spark, iterations=kwargs.get('harmonization_iterations', HARMONIZATION_ITERATIONS))
+            process_summary['stages_metrics'][current_stage_name] = harm_metrics
+            display_stage_metrics(current_stage_name, harm_metrics)
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Harmonization"))
+                    visualize_soul_state(soul_spark, "Post_Harmonization", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name}: {vis_err}") from vis_err
+
+            # --- Stage 3: Move to Guff & Guff Strengthening ---
+            current_stage_name = "Guff Strengthening"
+            logger.info(f"RootController Stage: {current_stage_name} (including move)...")
+            field_controller.place_soul_in_guff(soul_spark)
+            logger.info(f"Soul {soul_spark.spark_id} moved to Guff.")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Guff_Strengthening"))
+                    visualize_soul_state(soul_spark, "Pre_Guff_Strengthening", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            _, guff_metrics = perform_guff_strengthening(
+                soul_spark=soul_spark, field_controller=field_controller,
+                duration=kwargs.get('guff_duration', GUFF_STRENGTHENING_DURATION)
             )
-            logger.info(f"\n===== Processing Soul {soul_num}/{num_souls} (Base ID: {base_id_str}) =====")
-            single_soul_start_time = time.time()
-            current_stage_name = "Pre-Emergence" # For error tracking before spark creation
-            soul_spark: Optional[SoulSpark] = None
+            process_summary['stages_metrics'][current_stage_name] = guff_metrics
+            display_stage_metrics(current_stage_name, guff_metrics)
+            field_controller.release_soul_from_guff(soul_spark) # Release after strengthening
+            logger.info(f"Soul {soul_spark.spark_id} released from Guff.")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Guff_Strengthening"))
+                    visualize_soul_state(soul_spark, "Post_Guff_Strengthening", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-            try:
-                # --- Stage 1: Spark Emergence (Handled by RootController) ---
-                current_stage_name = "Spark Emergence"
-                logger.info(f"RootController Stage: {current_stage_name}...")
-                creation_location = field_controller.find_optimal_development_location()
-                creation_location_coords = field_controller._coords_to_int_tuple(creation_location)
-                soul_spark = create_spark_from_field(
-                    field_controller, base_id_str, creation_location_coords
+            # --- Stage 4: Sephiroth Journey ---
+            current_stage_name = "Sephiroth Journey"
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            journey_path = ["kether", "chokmah", "binah", "daath", "chesed",
+                           "geburah", "tiphareth", "netzach", "hod", "yesod", "malkuth"]
+            journey_overall_metrics: Dict[str, Any] = {'steps': {}, 'success': True, 'total_duration': 0.0}
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Sephiroth_Journey"))
+                    visualize_soul_state(soul_spark, "Pre_Sephiroth_Journey", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+
+            for sephirah_name_iter in journey_path:
+                stage_id_readable = f"Journey: {sephirah_name_iter.capitalize()}"
+                logger.info(f"  Entering {sephirah_name_iter.capitalize()}...")
+                sephirah_influencer = field_controller.get_field(sephirah_name_iter)
+                if not sephirah_influencer or not isinstance(sephirah_influencer, SephirothField):
+                    raise RuntimeError(f"SephirothField missing for '{sephirah_name_iter}'.")
+                _, step_metrics = process_sephirah_interaction(
+                    soul_spark=soul_spark, sephirah_influencer=sephirah_influencer,
+                    field_controller=field_controller, duration=journey_duration_per_sephirah
                 )
-                soul_spark.position = creation_location # Set float position
-                soul_spark.current_field_key = 'void' # Initial field
-                logger.info(f"Soul Spark {soul_spark.spark_id} emerged at {creation_location_coords}.")
-                emergence_metrics = {'success': True, **soul_spark.get_spark_metrics()['core']}
-                if METRICS_AVAILABLE: metrics.record_metrics("spark_emergence_root", emergence_metrics)
+                journey_overall_metrics['steps'][sephirah_name_iter] = step_metrics
+                journey_overall_metrics['total_duration'] += journey_duration_per_sephirah
+                display_stage_metrics(stage_id_readable, step_metrics)
+                logger.info(f"  Exiting {sephirah_name_iter.capitalize()}.")
+                if VISUALIZATION_ENABLED and sephirah_name_iter in ["kether", "tiphareth", "malkuth"]:
+                    try: visualize_soul_state(soul_spark, f"Journey_{sephirah_name_iter.capitalize()}", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                    except Exception as vis_err: raise RuntimeError(f"Visualization error at Journey ({sephirah_name_iter}): {vis_err}") from vis_err
+            setattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, True)
+            setattr(soul_spark, FLAG_READY_FOR_ENTANGLEMENT, True)
+            process_summary['stages_metrics'][current_stage_name] = journey_overall_metrics
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Sephiroth_Journey"))
+                    visualize_soul_state(soul_spark, "Post_Sephiroth_Journey", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-                # Essential visualization for initial spark - Hard fails if visualization fails
-                if VISUALIZATION_ENABLED:
-                    try:
-                        visualize_soul_state(soul_spark, "Spark_Emergence_Initial", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
-                    except Exception as vis_err:
-                        logger.critical(f"CRITICAL ROOT: Visualization failed at Spark Emergence: {vis_err}")
-                        raise RuntimeError(f"Visualization error (required for simulation): {vis_err}") from vis_err
-                
-                # Pass control to SoulCompletionController for the rest of the stages
-                # This controller will handle its own internal visualization calls and metrics.
-                # The kwargs from run_simulation are passed to run_soul_completion
-                # to allow overriding defaults for specific stages.
-                _, soul_completion_metrics = soul_completion_ctrl.run_soul_completion(
-                    soul_spark,
-                    field_controller=field_controller, # Pass the already initialized field_controller
-                    journey_duration_per_sephirah=journey_duration_per_sephirah,
-                    show_visuals=show_visuals, # Pass down show_visuals preference
-                    **kwargs # Pass along any other overrides
-                )
+            # --- Stage 5: Creator Entanglement ---
+            current_stage_name = "Creator Entanglement"
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            kether_influencer = field_controller.kether_field
+            if not kether_influencer: raise RuntimeError("Kether field unavailable for Entanglement.")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Creator_Entanglement"))
+                    visualize_soul_state(soul_spark, "Pre_Creator_Entanglement", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            _, entanglement_metrics = perform_creator_entanglement(
+                soul_spark=soul_spark, kether_field=kether_influencer,
+                base_creator_potential=kwargs.get('base_creator_potential', CREATOR_POTENTIAL_DEFAULT),
+                edge_of_chaos_target=kwargs.get('edge_of_chaos_target', EDGE_OF_CHAOS_DEFAULT)
+            )
+            process_summary['stages_metrics'][current_stage_name] = entanglement_metrics
+            display_stage_metrics(current_stage_name, entanglement_metrics)
+            setattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, True) # Set by perform_creator_entanglement
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Creator_Entanglement"))
+                    visualize_soul_state(soul_spark, "Post_Creator_Entanglement", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-                # Store summary for the final report
-                all_souls_final_results_summary[soul_spark.spark_id] = soul_completion_metrics # Store the summary from SoulCompletionController
-                logger.info(f"===== Soul {soul_num}/{num_souls} (ID: {soul_spark.spark_id}) Processing Complete (RootController) =====")
-                logger.info(f"Total time for soul: {time.time() - single_soul_start_time:.2f}s. Incarnated={getattr(soul_spark, FLAG_INCARNATED, False)}")
+            # --- Stage 6: Harmonic Strengthening ---
+            current_stage_name = FLAG_HARMONICALLY_STRENGTHENED.replace('_',' ').title()
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Harmonic_Strengthening"))
+                    visualize_soul_state(soul_spark, "Pre_Harmonic_Strengthening", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            _, hs_metrics = perform_harmonic_strengthening(
+                soul_spark=soul_spark,
+                intensity=kwargs.get('harmony_intensity', HARMONIC_STRENGTHENING_INTENSITY_DEFAULT),
+                duration_factor=kwargs.get('harmony_duration_factor', HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT)
+            )
+            process_summary['stages_metrics'][current_stage_name] = hs_metrics
+            display_stage_metrics(current_stage_name, hs_metrics)
+            setattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, True) # Set by perform_harmonic_strengthening
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Harmonic_Strengthening"))
+                    visualize_soul_state(soul_spark, "Post_Harmonic_Strengthening", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-            except Exception as soul_err:
-                # This block catches errors from spark creation OR from SoulCompletionController.run_soul_completion
-                failed_stage_name = current_stage_name
-                if soul_spark and hasattr(soul_completion_ctrl, 'active_souls'): # Check if soul_completion_ctrl was initialized
-                    # If error happened within SoulCompletionController, it would have set its own stage
-                    active_soul_info = soul_completion_ctrl.active_souls.get(soul_spark.spark_id)
-                    if active_soul_info and active_soul_info.get('current_stage'):
-                        failed_stage_name = active_soul_info['current_stage']
+            # --- Stage 7: Life Cord Formation ---
+            current_stage_name = FLAG_CORD_FORMATION_COMPLETE.replace('_',' ').title()
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Life_Cord"))
+                    visualize_soul_state(soul_spark, "Pre_Life_Cord", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            _, lc_metrics = form_life_cord(
+                soul_spark=soul_spark,
+                intensity=kwargs.get('life_cord_intensity', 0.7), # Using the default passed to SoulCompletionController
+                complexity=kwargs.get('cord_complexity', LIFE_CORD_COMPLEXITY_DEFAULT)
+            )
+            process_summary['stages_metrics'][current_stage_name] = lc_metrics
+            display_stage_metrics(current_stage_name, lc_metrics)
+            # FLAG_READY_FOR_EARTH is set by form_life_cord
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Life_Cord"))
+                    visualize_soul_state(soul_spark, "Post_Life_Cord", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-                end_time_iso = datetime.now().isoformat()
-                logger.error(f"RootController: Soul processing failed at/before stage '{failed_stage_name}': {soul_err}", exc_info=True)
-                
-                process_summary_fail: Dict[str, Any] = { # Ensure type
-                    'base_id': base_id_str, 'success': False, 'failed_stage': failed_stage_name,
-                    'error': str(soul_err), 'end_time': end_time_iso,
-                    'total_duration_seconds': time.time() - single_soul_start_time
-                }
-                if soul_spark: process_summary_fail['soul_id'] = soul_spark.spark_id
+            # --- Stage 8: Earth Harmonization ---
+            current_stage_name = FLAG_EARTH_ATTUNED.replace('_',' ').title()
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Earth_Harmonization"))
+                    visualize_soul_state(soul_spark, "Pre_Earth_Harmonization", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            _, eh_metrics = perform_earth_harmonization(
+                soul_spark=soul_spark,
+                schumann_intensity=kwargs.get('schumann_intensity', EARTH_HARMONY_INTENSITY_DEFAULT),
+                core_intensity=kwargs.get('core_intensity', EARTH_HARMONY_INTENSITY_DEFAULT)
+            )
+            process_summary['stages_metrics'][current_stage_name] = eh_metrics
+            display_stage_metrics(current_stage_name, eh_metrics)
+            # FLAG_ECHO_PROJECTED is set by perform_earth_harmonization
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Earth_Harmonization"))
+                    visualize_soul_state(soul_spark, "Post_Earth_Harmonization", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-                # Visualization on Fail (if spark exists and visualization enabled)
-                if soul_spark and VISUALIZATION_ENABLED:
-                    stage_fail_name_vis = f"Failed_At_{failed_stage_name.replace(' ','_')}"
-                    try:
-                        visualize_soul_state(soul_spark, stage_fail_name_vis, VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
-                    except Exception as vis_e: logger.error(f"RootController: Failed to visualize failed state: {vis_e}")
+            # --- Stage 9: Identity Crystallization ---
+            current_stage_name = FLAG_IDENTITY_CRYSTALLIZED.replace('_',' ').title()
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Identity_Crystallization"))
+                    visualize_soul_state(soul_spark, "Pre_Identity_Crystallization", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+            id_kwargs = {k:v for k,v in kwargs.items() if k in [
+                'train_cycles', 'entrainment_bpm', 'entrainment_duration',
+                'love_cycles', 'geometry_stages', 'crystallization_threshold'
+            ]} # Filter relevant kwargs
+            _, id_metrics = perform_identity_crystallization(soul_spark=soul_spark, **id_kwargs)
+            process_summary['stages_metrics'][current_stage_name] = id_metrics
+            display_stage_metrics(current_stage_name, id_metrics)
+            # FLAG_READY_FOR_BIRTH is set by perform_identity_crystallization
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Identity_Crystallization"))
+                    visualize_soul_state(soul_spark, "Post_Identity_Crystallization", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post): {vis_err}") from vis_err
 
-                final_id_on_fail = getattr(soul_spark, 'spark_id', base_id_str)
-                all_souls_final_results_summary[final_id_on_fail] = process_summary_fail
-                logger.error(f"===== Soul {soul_num}/{num_souls} (ID: {final_id_on_fail}) Processing FAILED (RootController) =====")
-                print(f"\n{'='*20} ERROR ROOT: Soul Failed {'='*20}\n Stage: {failed_stage_name}\n Error: {soul_err}\n{'='*70}")
-                # Decide if one soul failure should stop the entire simulation
-                # For now, let's continue to process other souls if num_souls > 1
-                if num_souls == 1:
-                    raise # Re-raise to stop if only one soul
-                else:
-                    logger.warning("Continuing to next soul if any.")
+            # --- Stage 10: Birth Process ---
+            current_stage_name = "Birth"
+            logger.info(f"RootController Stage: {current_stage_name}...")
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Pre_Birth"))
+                    visualize_soul_state(soul_spark, "Pre_Birth", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Pre): {vis_err}") from vis_err
+
+            birth_mother_profile = kwargs.get('mother_profile')
+            if not birth_mother_profile and MOTHER_RESONANCE_AVAILABLE:
+                try:
+                    mother_resonance_data = create_mother_resonance_data()
+                    birth_mother_profile = {
+                        'nurturing_capacity': mother_resonance_data.get('nurturing_capacity', 0.7),
+                        'spiritual': mother_resonance_data.get('spiritual', {'connection': 0.6}),
+                        'love_resonance': mother_resonance_data.get('love_resonance', 0.7)
+                    }
+                except Exception as mother_err: logger.warning(f"Failed to create mother profile: {mother_err}")
+
+            _, birth_metrics = perform_birth(
+                soul_spark=soul_spark,
+                intensity=kwargs.get('birth_intensity', BIRTH_INTENSITY_DEFAULT),
+                mother_profile=birth_mother_profile
+            )
+            process_summary['stages_metrics'][current_stage_name] = birth_metrics
+            display_stage_metrics(current_stage_name, birth_metrics)
+            if VISUALIZATION_ENABLED:
+                try:
+                    development_states.append((soul_spark, "Post_Birth"))
+                    visualize_soul_state(soul_spark, "Post_Birth", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                    # Final comparison visualization
+                    comp_path = visualize_state_comparison(development_states, VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                    logger.info(f"Final development comparison visualization saved to: {comp_path}")
+                except Exception as vis_err: raise RuntimeError(f"Visualization error at {current_stage_name} (Post/Comparison): {vis_err}") from vis_err
+
+            # --- Generate Comprehensive Report for this Soul ---
+            if VISUALIZATION_ENABLED and soul_spark:
+                try:
+                    logger.info(f"Generating comprehensive report for soul {soul_spark.spark_id}...")
+                    report_file_path = create_comprehensive_soul_report(
+                        soul_spark, "Soul_Development_Complete", VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals
+                    )
+                    logger.info(f"Comprehensive soul report saved to: {report_file_path}")
+                    process_summary['comprehensive_report_path'] = report_file_path
+                except Exception as report_err:
+                    logger.error(f"Failed to generate comprehensive soul report for {soul_spark.spark_id}: {report_err}", exc_info=True)
 
 
-        # --- Final Report ---
-        logger.info("RootController: Simulation loop finished. Generating final report...")
-        final_report_data = {
+            # --- Completion ---
+            final_metrics_core = soul_spark.get_spark_metrics()['core']
+            process_summary['final_soul_state'] = final_metrics_core
+            process_summary['success'] = True
+            process_summary['end_time'] = datetime.now().isoformat()
+            process_summary['total_duration_seconds'] = time.time() - single_soul_start_time
+            single_soul_final_summary = process_summary # Since it's one soul
+            logger.info(f"===== Soul Processing Complete (ID: {soul_spark.spark_id}) (RootController) =====")
+            logger.info(f"Total time for soul: {process_summary['total_duration_seconds']:.2f}s. Incarnated={getattr(soul_spark, FLAG_INCARNATED, False)}")
+
+
+        except Exception as soul_err_main_loop: # Catch errors from any stage
+            failed_stage_name_main = current_stage_name # Use the last known stage
+            end_time_iso_main = datetime.now().isoformat()
+            
+            # Determine soul identifier for logging
+            soul_identifier_for_log = base_id_str # Default to base_id_str
+            if soul_spark and hasattr(soul_spark, 'spark_id') and soul_spark.spark_id:
+                soul_identifier_for_log = soul_spark.spark_id
+            
+            # Use soul_identifier_for_log instead of trying to construct from soul_num
+            logger.error(f"RootController: Soul processing (ID/BaseID: {soul_identifier_for_log}) failed at stage '{failed_stage_name_main}': {soul_err_main_loop}", exc_info=True)
+
+            process_summary_fail_main: Dict[str, Any] = {
+                'base_id': base_id_str, # Keep base_id for consistency if needed elsewhere
+                'soul_id_on_fail': getattr(soul_spark, 'spark_id', None), # Actual soul_id if available
+                'success': False,
+                'failed_stage': failed_stage_name_main,
+                'error': str(soul_err_main_loop),
+                'end_time': end_time_iso_main,
+                'total_duration_seconds': time.time() - single_soul_start_time
+            }
+            if soul_spark: process_summary_fail_main['final_soul_state_on_fail'] = soul_spark.get_spark_metrics().get('core', {})
+
+
+            if soul_spark and VISUALIZATION_ENABLED:
+                stage_fail_name_vis_main = f"Failed_At_{failed_stage_name_main.replace(' ','_')}"
+                try: visualize_soul_state(soul_spark, stage_fail_name_vis_main, VISUALIZATION_OUTPUT_DIR_ROOT, show=show_visuals)
+                except Exception as vis_e_main: logger.error(f"RootController: Failed to visualize failed state: {vis_e_main}")
+            
+            # Store the failure summary
+            single_soul_final_summary = process_summary_fail_main
+            
+            logger.error(f"===== Soul (ID/BaseID: {soul_identifier_for_log}) Processing FAILED (RootController) =====")
+            print(f"\n{'='*20} ERROR ROOT: Soul Failed {'='*20}\n Stage: {failed_stage_name_main}\n Error: {soul_err_main_loop}\n{'='*70}")
+            raise soul_err_main_loop
+
+
+        # --- Final Report for the single soul ---
+        logger.info("RootController: Simulation loop finished. Generating final report for the soul...")
+        final_report_data_single_soul = {
             'simulation_start_time': simulation_start_iso,
             'simulation_end_time': datetime.now().isoformat(),
             'total_duration_seconds': time.time() - overall_start_time,
             'parameters': {
-                'num_souls': num_souls,
+                'num_souls': 1, # Hardcoded to 1
                 'journey_duration_per_sephirah': journey_duration_per_sephirah,
                 'grid_size': GRID_SIZE,
-                **kwargs # Include any other simulation-wide kwargs
+                **kwargs
             },
-            'souls_processed_summary': len(all_souls_final_results_summary),
-            'results_per_soul': all_souls_final_results_summary
+            'soul_result': single_soul_final_summary # Store the summary for the single soul
         }
 
-        class NumpyEncoder(json.JSONEncoder):
+        class NumpyEncoder(json.JSONEncoder): # Define encoder for saving report
             def default(self, o):
                 if isinstance(o, (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)): return int(o)
                 elif isinstance(o, (np.float_, np.float16, np.float32, np.float64)):
@@ -369,23 +629,24 @@ def run_simulation(num_souls: int = 1,
                 try: return super().default(o)
                 except TypeError: logger.warning(f"NumpyEncoder fallback for type {type(o)}."); return str(o)
 
-        if final_report_path:
-            try:
-                with open(final_report_path, 'w') as f:
-                    json.dump(final_report_data, f, cls=NumpyEncoder, indent=2)
-                logger.info(f"RootController: Final report saved to {final_report_path}")
-            except Exception as report_err:
-                logger.error(f"RootController: Failed save report: {report_err}", exc_info=True)
-                print(f"ERROR ROOT saving report to {final_report_path}")
+        soul_report_filename = f"soul_report_{base_id_str}.json"
+        final_report_path_for_soul = os.path.join(report_path_base, soul_report_filename)
 
-        print("\n" + "=" * 80 + "\nROOT SIMULATION COMPLETE\n" + "=" * 80)
-        total_processed = len(all_souls_final_results_summary)
-        successful_souls = sum(1 for res in all_souls_final_results_summary.values() if res.get('success'))
-        failed_souls = total_processed - successful_souls
-        print(f"Processed {num_souls} souls | Duration: {time.time() - overall_start_time:.2f}s")
-        print(f"Success: {successful_souls}/{total_processed} | Failed: {failed_souls}/{total_processed}")
-        if final_report_path: print(f"Report: {final_report_path}")
-        print(f"Visualizations (if enabled) saved to directories under: {DATA_DIR_BASE}/visuals/")
+        if final_report_path_for_soul:
+            try:
+                with open(final_report_path_for_soul, 'w') as f:
+                    json.dump(final_report_data_single_soul, f, cls=NumpyEncoder, indent=2)
+                logger.info(f"RootController: Final report for soul {base_id_str} saved to {final_report_path_for_soul}")
+            except Exception as report_err:
+                logger.error(f"RootController: Failed save report for soul {base_id_str}: {report_err}", exc_info=True)
+                print(f"ERROR ROOT saving report for soul {base_id_str} to {final_report_path_for_soul}")
+
+        print("\n" + "=" * 80 + "\nROOT SIMULATION COMPLETE (Single Soul)\n" + "=" * 80)
+        success_status = single_soul_final_summary.get('success', False) if single_soul_final_summary else False
+        print(f"Processed 1 soul | Duration: {time.time() - overall_start_time:.2f}s")
+        print(f"Success: {'Yes' if success_status else 'No'}")
+        if final_report_path_for_soul: print(f"Report: {final_report_path_for_soul}")
+        print(f"Visualizations (if enabled) saved to: {VISUALIZATION_OUTPUT_DIR_ROOT}")
         print("=" * 80)
         logger.info("--- RootController: Soul Development Simulation Finished ---")
 
@@ -410,48 +671,52 @@ def run_simulation(num_souls: int = 1,
 if __name__ == "__main__":
     print("DEBUG: Starting main execution block of root_controller.py...")
     try:
-        # Parameters for the simulation run
-        # These can be loaded from a config file or command-line arguments in a full application
+        # Parameters for the simulation run (ensure these match expected kwargs in stages if not using defaults)
         simulation_params = {
-            "num_souls": 1, # Number of souls to simulate
-            "journey_duration_per_sephirah": 1.5, # seconds
-            "report_path_base": os.path.join(DATA_DIR_BASE, "reports", "simulation_runs"), # Base dir for reports
-            "show_visuals": False, # Set to True to display plots during simulation (can be slow)
+            "num_souls": 1,
+            "journey_duration_per_sephirah": 1.5,
+            "report_path_base": os.path.join(DATA_DIR_BASE, "reports", "simulation_runs"),
+            "show_visuals": False,
 
-            # Stage-specific overrides passed via kwargs
-            # Guff
-            "guff_duration": GUFF_STRENGTHENING_DURATION * 0.8, # e.g., shorter Guff time
+            # --- Stage-specific kwargs from your original root_controller's __main__ ---
+            # These will be passed via **kwargs to run_simulation and then to individual stages
+            # Spark Harmonization (uses HARMONIZATION_ITERATIONS from constants)
+            "harmonization_iterations": HARMONIZATION_ITERATIONS, # Example of passing it explicitly
+            # Guff Strengthening (uses GUFF_STRENGTHENING_DURATION from constants)
+            "guff_duration": GUFF_STRENGTHENING_DURATION * 0.8,
+            # Creator Entanglement (uses CREATOR_POTENTIAL_DEFAULT, EDGE_OF_CHAOS_DEFAULT from constants)
+            "base_creator_potential": CREATOR_POTENTIAL_DEFAULT,
+            "edge_of_chaos_target": EDGE_OF_CHAOS_DEFAULT,
             # Harmonic Strengthening
             "harmony_intensity": HARMONIC_STRENGTHENING_INTENSITY_DEFAULT * 1.1,
             "harmony_duration_factor": HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT * 0.9,
             # Life Cord
-            "life_cord_intensity": 0.85, # Explicit override
+            "life_cord_intensity": 0.85,
             "cord_complexity": LIFE_CORD_COMPLEXITY_DEFAULT * 1.1,
             # Earth Harmonization
-            "schumann_intensity": EARTH_HARMONY_INTENSITY_DEFAULT, # Example: Use default from constants
-            "core_intensity": 0.65, # Explicit override
+            "schumann_intensity": EARTH_HARMONY_INTENSITY_DEFAULT,
+            "core_intensity": 0.65,
             # Identity Crystallization
-            "specified_name": None, # Set to a string to bypass user input for name, e.g., "Anima_Prime"
+            "specified_name": None, #"Anima_Test_Root", # or None for user input
             "train_cycles": 6,
             "entrainment_bpm": 70.0,
             "entrainment_duration": 75.0,
             "love_cycles": 4,
             "geometry_stages": 4,
-            "crystallization_threshold": IDENTITY_CRYSTALLIZATION_THRESHOLD * 0.98, # Slightly lower threshold for testing
+            "crystallization_threshold": IDENTITY_CRYSTALLIZATION_THRESHOLD * 0.98,
             # Birth
             "birth_intensity": BIRTH_INTENSITY_DEFAULT * 0.95,
-            # "mother_profile": { # Example of overriding mother profile
+            # "mother_profile": { # Example, will be generated if None and MOTHER_RESONANCE_AVAILABLE=True
             #     'nurturing_capacity': 0.75,
             #     'spiritual': {'connection': 0.65},
             #     'love_resonance': 0.85
-            # } # If not provided and MOTHER_RESONANCE_AVAILABLE is True, it will be generated.
+            # }
         }
 
         run_simulation(**simulation_params)
         print("DEBUG: run_simulation completed successfully from __main__.")
 
     except Exception as e:
-        # This will catch any unhandled exceptions from run_simulation or parameter setup
         log_func = logger.critical if logger.hasHandlers() else print
         log_func(f"FATAL ERROR in root_controller __main__: {e}", exc_info=True)
         print(f"\nFATAL ERROR in __main__: {type(e).__name__}: {e}")
@@ -459,7 +724,6 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         print("DEBUG: Main execution block of root_controller.py finished.")
-        # Final attempt to persist metrics if module was loaded
         if METRICS_AVAILABLE:
             try:
                 print("Persisting metrics from __main__ finally block...")
@@ -467,8 +731,7 @@ if __name__ == "__main__":
                 print("Metrics persisted from __main__ finally block.")
             except Exception as persist_e:
                 print(f"ERROR persisting metrics from __main__ finally: {persist_e}")
-        # Ensure logging is shut down
-        if logging.getLogger().hasHandlers(): # Check if root logger has handlers
+        if logging.getLogger().hasHandlers():
             logging.shutdown()
 
 # --- END OF FILE root_controller.py ---

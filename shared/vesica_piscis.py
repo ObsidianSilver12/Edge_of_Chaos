@@ -487,6 +487,37 @@ def embed_vesica_in_field(field_array: np.ndarray,
     return modified_field
 
 
+def get_base_glyph_elements(center1: Tuple[float, float],
+                              center2: Tuple[float, float],
+                              radius: float) -> Dict[str, Any]:
+    """
+    Returns the two defining circles for a Vesica Piscis line art.
+    """
+    # Validate parameters by calling the existing generator (it raises ValueError if invalid)
+    try:
+        _ = generate_vesica_piscis_2d(center1, center2, radius, resolution=10) 
+    except ValueError as e:
+        raise ValueError(f"Invalid parameters for Vesica Piscis glyph: {e}")
+
+    circles_data = [
+        {'center': tuple(center1), 'radius': radius},
+        {'center': tuple(center2), 'radius': radius},
+    ]
+
+    # Calculate bounding box based on the two circles
+    all_x_coords_vp = [center1[0] - radius, center1[0] + radius, center2[0] - radius, center2[0] + radius] # Renamed
+    all_y_coords_vp = [center1[1] - radius, center1[1] + radius, center2[1] - radius, center2[1] + radius] # Renamed
+    padding_vp = radius * 0.1 # Renamed
+
+    return {
+        'circles': circles_data,
+        'projection_type': '2d',
+        'bounding_box': {
+            'xmin': float(min(all_x_coords_vp) - padding_vp), 'xmax': float(max(all_x_coords_vp) + padding_vp),
+            'ymin': float(min(all_y_coords_vp) - padding_vp), 'ymax': float(max(all_y_coords_vp) + padding_vp),
+        }
+    }
+
 # Example usage
 if __name__ == "__main__":
     # Create a 2D vesica piscis

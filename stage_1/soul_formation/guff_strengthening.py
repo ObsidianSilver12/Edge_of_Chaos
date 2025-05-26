@@ -158,7 +158,7 @@ def _calculate_guff_boosts(soul_spark: SoulSpark,
         # Calculate Guff Influence Factor Increment
         # Base rate modified by coupling and time. Stronger coupling -> faster influence gain.
         influence_increment = (coupling_factor * delta_time *
-                               const.GUFF_INFLUENCE_RATE_K) # Use new rate
+                               const.GUFF_INFLUENCE_RATE_K) # Use rate constant
 
         logger.debug(f"  Guff Calc: Resonance={resonance:.3f}, "
                      f"Coupling={coupling_factor:.3f}")
@@ -243,7 +243,7 @@ def perform_guff_strengthening(
         # --- Simulation Loop ---
         total_e_gain = 0.0
         total_influence_gain = 0.0
-        
+
         for step in range(num_steps):
             # --- Capture state BEFORE calculation for this step ---
             e_before_step = soul_spark.energy
@@ -254,67 +254,63 @@ def perform_guff_strengthening(
             # --- Calculate boosts for this step ---
             e_boost, influence_increment = _calculate_guff_boosts(
                 soul_spark, guff_props, time_step
-            )# --- Simulation Loop ---
-            total_e_gain = 0.0
-            total_influence_gain = 0.0
+            )
+
+            # --- Log pre-application state and calculated deltas ---
+            log_pre = (f"  Guff Step {step+1}/{num_steps}: BEFORE - "
+                    f"E={e_before_step:.1f}, S={s_before_step:.1f}, C={c_before_step:.1f}, "
+                    f"GuffInf={inf_before_step:.4f}")
+            logger.debug(log_pre)
+            log_calc = (f"  Guff Step {step+1}/{num_steps}: CALC   - "
+                        f"dE={e_boost:+.3f}, dInf={influence_increment:+.5f}") # Added '+' for sign
+            logger.debug(log_calc)
+
+            # --- Apply Energy Boost ---
+            soul_spark.energy = min(const.MAX_SOUL_ENERGY_SEU,
+                                    max(0.0, soul_spark.energy + e_boost))
+            actual_e_gain_step = soul_spark.energy - e_before_step
+            total_e_gain += actual_e_gain_step
+
+            # --- Apply Guff Influence Factor Increment ---
+            new_influence = min(1.0, inf_before_step + influence_increment)
+            setattr(soul_spark, 'guff_influence_factor', new_influence)
+            actual_inf_gain_step = new_influence - inf_before_step
+            total_influence_gain += actual_inf_gain_step
+
+            # --- Update Derived S/C Scores using soul_spark's internal method ---
+            if hasattr(soul_spark, 'update_state'):
+                soul_spark.update_state() # This recalculates S/C based on *new* influence factor
+            else:
+                logger.error("SoulSpark object missing 'update_state' method!")
+                raise AttributeError("SoulSpark needs 'update_state' method.")
+
+            # --- Capture coherence change AFTER update ---
+            c_after_step = soul_spark.coherence
+            c_delta_step = c_after_step - c_before_step
+
+            # --- NEW: Override stability change to be proportional to coherence change ---
+            # Use the proportional factor you specified (0.2 * coherence gain or loss)
+            proportional_s_delta = 0.2 * c_delta_step
             
-            for step in range(num_steps):
-                # --- Capture state BEFORE calculation for this step ---
-                e_before_step = soul_spark.energy
-                s_before_step = soul_spark.stability # Get S/C BEFORE update_state for this step
-                c_before_step = soul_spark.coherence
-                inf_before_step = getattr(soul_spark, 'guff_influence_factor', 0.0)
+            # Apply the proportional stability change, replacing whatever change came from update_state
+            # This makes stability directly follow coherence with the specified factor
+            soul_spark.stability = min(const.MAX_STABILITY_SU, 
+                                    max(0.0, s_before_step + proportional_s_delta))
+            
+            # Recalculate the actual stability change for logging
+            s_after_step = soul_spark.stability
+            s_delta_step = s_after_step - s_before_step
+            
+            # --- Continue with Capture and Log state AFTER application and update ---
+            e_after_step = soul_spark.energy
+            inf_after_step = new_influence # Already calculated
 
-                # --- Calculate boosts for this step ---
-                e_boost, influence_increment = _calculate_guff_boosts(
-                    soul_spark, guff_props, time_step
-                )
-
-                # --- Log pre-application state and calculated deltas ---
-                log_pre = (f"  Guff Step {step+1}/{num_steps}: BEFORE - "
-                        f"E={e_before_step:.1f}, S={s_before_step:.1f}, C={c_before_step:.1f}, "
-                        f"GuffInf={inf_before_step:.4f}")
-                logger.debug(log_pre)
-                log_calc = (f"  Guff Step {step+1}/{num_steps}: CALC   - "
-                            f"dE={e_boost:+.3f}, dInf={influence_increment:+.5f}") # Added '+' for sign
-                logger.debug(log_calc)
-
-                # --- Apply Energy Boost ---
-                soul_spark.energy = min(const.MAX_SOUL_ENERGY_SEU,
-                                        max(0.0, soul_spark.energy + e_boost))
-                actual_e_gain_step = soul_spark.energy - e_before_step
-                total_e_gain += actual_e_gain_step
-
-                # --- Apply Guff Influence Factor Increment ---
-                new_influence = min(1.0, inf_before_step + influence_increment)
-                setattr(soul_spark, 'guff_influence_factor', new_influence)
-                actual_inf_gain_step = new_influence - inf_before_step
-                total_influence_gain += actual_inf_gain_step
-
-                # --- Update Derived S/C Scores using soul_spark's internal method ---
-                if hasattr(soul_spark, 'update_state'):
-                    soul_spark.update_state() # This recalculates S/C based on *new* influence factor
-                else:
-                    logger.error("SoulSpark object missing 'update_state' method!")
-                    raise AttributeError("SoulSpark needs 'update_state' method.")
-
-                # --- Capture and Log state AFTER application and update ---
-                e_after_step = soul_spark.energy
-                s_after_step = soul_spark.stability
-                c_after_step = soul_spark.coherence
-                inf_after_step = new_influence # Already calculated
-
-                # Calculate S/C deltas *for this step*
-                s_delta_step = s_after_step - s_before_step
-                c_delta_step = c_after_step - c_before_step
-
-                log_post = (f"  Guff Step {step+1}/{num_steps}: AFTER  - "
-                            f"E={e_after_step:.1f}({actual_e_gain_step:+.1f}), " # Show change
-                            f"S={s_after_step:.1f}({s_delta_step:+.2f}), " # Show change
-                            f"C={c_after_step:.1f}({c_delta_step:+.2f}), " # Show change
-                            f"GuffInf={inf_after_step:.4f}({actual_inf_gain_step:+.5f})") # Show change
-                logger.debug(log_post)
-                
+            log_post = (f"  Guff Step {step+1}/{num_steps}: AFTER  - "
+                        f"E={e_after_step:.1f}({actual_e_gain_step:+.1f}), " # Show change
+                        f"S={s_after_step:.1f}({s_delta_step:+.2f}), " # Show change
+                        f"C={c_after_step:.1f}({c_delta_step:+.2f}), " # Show change
+                        f"GuffInf={inf_after_step:.4f}({actual_inf_gain_step:+.5f})") # Show change
+            logger.debug(log_post)
 
         # --- Final Update & Metrics ---
         setattr(soul_spark, const.FLAG_GUFF_STRENGTHENED, True)
@@ -405,6 +401,6 @@ def record_failure_metric(spark_id: str, start_time_iso: str,
                 'error': error_msg, 'failed_step': failed_step
             })
         except Exception as metric_e:
-            logger.error(f"Failed record failure metrics for {spark_id}: {metric_e}")
+            logger.error(f"Failed to record failure metrics for {spark_id}: {metric_e}")
 
 # --- END OF FILE src/stage_1/soul_formation/guff_strengthening.py ---

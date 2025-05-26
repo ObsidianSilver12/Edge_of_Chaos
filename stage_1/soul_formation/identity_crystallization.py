@@ -679,6 +679,83 @@ def assign_name(soul_spark: SoulSpark) -> None:
     except Exception as e:
         logger.error(f"Error processing assigned name: {e}", exc_info=True)
         raise RuntimeError("Name processing failed.") from e
+    
+# --- Create Aura Layer ---
+def _create_identity_aura_layer(soul_spark: SoulSpark) -> Dict[str, Any]:
+    """
+    Creates a specialized identity aura layer that encodes the soul's 
+    light physics frequency and identity signature.
+    
+    Args:
+        soul_spark: The soul to create identity layer for
+        
+    Returns:
+        Dictionary with created layer data
+    """
+    logger.info("Identity Step: Creating Identity Aura Layer...")
+    
+    # Get soul properties
+    soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+    soul_color = getattr(soul_spark, 'soul_color', '#FFFFFF')
+    name = getattr(soul_spark, 'name', 'Unknown')
+    
+    # Calculate light physics frequency (MHz range)
+    light_physics_freq = soul_frequency * 1e6
+    
+    # Convert soul frequency to wavelength
+    wavelength_m = SPEED_OF_LIGHT / light_physics_freq if light_physics_freq > 0 else 0
+    
+    # Convert soul color to spectral components
+    r = int(soul_color[1:3], 16) / 255.0
+    g = int(soul_color[3:5], 16) / 255.0
+    b = int(soul_color[5:7], 16) / 255.0
+    
+    # Calculate dominant wavelength from RGB
+    # Simplified spectral calculation
+    if max(r, g, b) <= FLOAT_EPSILON:
+        dominant_wavelength_nm = 550  # Default green
+    elif r >= g and r >= b:
+        # Red dominant (620-750nm)
+        dominant_wavelength_nm = 620 + (r * 130)
+    elif g >= r and g >= b:
+        # Green dominant (495-570nm)
+        dominant_wavelength_nm = 495 + (g * 75)
+    else:
+        # Blue dominant (450-495nm)
+        dominant_wavelength_nm = 450 + (b * 45)
+    
+    # Create identity layer
+    identity_layer = {
+        "type": "identity",
+        "name": f"Identity Layer - {name}",
+        "light_physics_frequency": float(light_physics_freq),
+        "wavelength_m": float(wavelength_m),
+        "soul_color": soul_color,
+        "dominant_wavelength_nm": float(dominant_wavelength_nm),
+        "spectral_components": {
+            "red": float(r),
+            "green": float(g),
+            "blue": float(b)
+        },
+        "resonant_frequencies": [
+            float(soul_frequency),
+            float(soul_frequency * PHI),
+            float(soul_frequency * 2.0)
+        ],
+        "creation_timestamp": datetime.now().isoformat()
+    }
+    
+    # Add identity layer to soul's aura layers
+    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
+        setattr(soul_spark, 'layers', [])
+    
+    # Append to existing layers
+    soul_spark.layers.append(identity_layer)
+    
+    logger.info(f"Created Identity Aura Layer with Light Physics Frequency: {light_physics_freq:.2f}MHz, "
+               f"Wavelength: {wavelength_m:.2e}m, Dominant Wavelength: {dominant_wavelength_nm:.2f}nm")
+    
+    return identity_layer
 
 def _integrate_name_with_aura_layers(soul_spark: SoulSpark, 
                                    standing_waves: Dict[str, Any]) -> None:
@@ -1055,6 +1132,10 @@ def process_soul_color(soul_spark: SoulSpark) -> None:
     """
     Process soul color using light physics and derive related identity attributes.
     Creates proper light-frequency relationships and integrates with aura layers.
+    
+    This function creates the soul's spectral signature, mapping its frequency
+    to visible light and electromagnetic ranges, establishing quantum coherence
+    between frequency bands.
     """
     logger.info("Identity Step: Processing Soul Color with Light Physics...")
     
@@ -1137,6 +1218,18 @@ def process_soul_color(soul_spark: SoulSpark) -> None:
             "wavelength_nm": float(SPEED_OF_LIGHT / (color_frequency * 1e12)) if color_frequency > 0 else 0
         }
         
+        # Calculate photon energy according to E=hf
+        # Planck's constant h = 6.626e-34 J⋅s
+        # Convert to eV for more intuitive scale
+        planck_constant = 6.626e-34  # J⋅s
+        electron_volt = 1.602e-19     # J/eV
+        
+        photon_energy_joules = planck_constant * (color_frequency * 1e12)  # Convert to THz
+        photon_energy_ev = photon_energy_joules / electron_volt
+        
+        color_properties["photon_energy_ev"] = float(photon_energy_ev)
+        color_properties["quantum_field_strength"] = float(saturation * value * 0.8 + 0.2)
+        
         # Generate sound based on color frequency if sound modules available
         if SOUND_MODULES_AVAILABLE:
             try:
@@ -1161,7 +1254,8 @@ def process_soul_color(soul_spark: SoulSpark) -> None:
         
         logger.info(f"Soul color processed: {soul_color}, " +
                    f"Frequency: {color_frequency:.2f}Hz, " +
-                   f"Wavelength: {color_properties['wavelength_nm']:.2f}nm")
+                   f"Wavelength: {color_properties['wavelength_nm']:.2f}nm, " +
+                   f"Photon Energy: {photon_energy_ev:.4f}eV")
         
     except Exception as e:
         logger.error(f"Error processing soul color: {e}", exc_info=True)
@@ -1992,6 +2086,7 @@ def identify_primary_sephiroth(soul_spark: SoulSpark) -> None:
     except Exception as e:
         logger.error(f"Error identifying Sephiroth aspect: {e}", exc_info=True)
         raise RuntimeError("Sephirah aspect ID failed.") from e
+
 def _integrate_sephiroth_with_aura_layers(soul_spark: SoulSpark, sephiroth_name: str) -> None:
     """
     Integrate Sephiroth energetic pattern with aura layers.
@@ -2671,6 +2766,7 @@ def _create_geometric_standing_waves(soul_spark: SoulSpark, symbol: str,
         logger.error(f"Error creating geometric standing waves: {e}", exc_info=True)
 
         raise RuntimeError("Geometric standing wave creation failed") from e
+
 def _integrate_geometry_with_aura_layers(soul_spark: SoulSpark, symbol: str,
                                        base_freq: float, harmonic_freqs: List[float],
                                        nodes: List[Dict], antinodes: List[Dict]) -> None:
@@ -3287,7 +3383,7 @@ def _create_heart_centered_field(soul_spark: SoulSpark, love_freq: float,
         # Calculate field strength based on points
         field_strength = sum(p["value"] for p in field_points) / len(field_points)
         
-# Integrate heart field with aura layers
+        # Integrate heart field with aura layers
         integrated_layers = _integrate_heart_field_with_aura_layers(
             soul_spark, love_freq, harmonic_freqs, field_points, field_strength)
         
@@ -3420,6 +3516,9 @@ def apply_sacred_geometry(soul_spark: SoulSpark, stages: int = 5) -> None:
     """
     Applies sacred geometry with proper light interference patterns that reinforce
     coherence through constructive interference in the aura's standing waves.
+    
+    This function ensures that the geometry is encoded directly in the soul's structure,
+    regardless of stability/coherence levels.
     """
     logger.info("Identity Step: Apply Sacred Geometry with Light Interference Patterns...")
     if not isinstance(stages, int) or stages < 0:
@@ -3540,6 +3639,7 @@ def apply_sacred_geometry(soul_spark: SoulSpark, stages: int = 5) -> None:
         interference_boost_factor = interference_pattern.get("coherence", 0.0) * 0.2
         
         # Apply final pattern reinforcement boosts with interference enhancement
+        # MODIFICATION: Even if soul already has perfect SU/CU, we still apply sacred geometry
         soul_spark.pattern_coherence = min(1.0, soul_spark.pattern_coherence + 
                                          total_pcoh_boost * (1.0 + interference_boost_factor))
         
@@ -3552,11 +3652,24 @@ def apply_sacred_geometry(soul_spark: SoulSpark, stages: int = 5) -> None:
         soul_spark.toroidal_flow_strength = min(1.0, soul_spark.toroidal_flow_strength + 
                                              total_torus_boost * (1.0 + interference_boost_factor))
         
-        # Update soul with sacred geometry data
+        # Update soul with sacred geometry data - ALWAYS STORE THIS
         setattr(soul_spark, 'crystallization_level', float(current_cryst_level))
         setattr(soul_spark, 'sacred_geometry_imprint', dominant_geometry)
         setattr(soul_spark, 'sacred_geometry_applications', geometry_applications)
         setattr(soul_spark, 'interference_pattern', interference_pattern)
+        
+        # Add sacred geometry to soul's core properties
+        # Ensure this is always saved regardless of SU/CU
+        if not hasattr(soul_spark, 'core_properties'):
+            setattr(soul_spark, 'core_properties', {})
+        
+        soul_spark.core_properties['sacred_geometry'] = {
+            'dominant_geometry': dominant_geometry,
+            'pattern_coherence': float(soul_spark.pattern_coherence),
+            'phi_resonance': float(soul_spark.phi_resonance),
+            'interference_pattern_coherence': float(interference_pattern.get("coherence", 0.0))
+        }
+        
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
         # Record metrics
@@ -4949,6 +5062,9 @@ def perform_identity_crystallization(soul_spark: SoulSpark,
         # --- Run Sequence ---
         assign_name(soul_spark)
         process_metrics_summary['steps_completed'].append('name')
+
+        _create_identity_aura_layer(soul_spark)
+        process_metrics_summary['steps_completed'].append('identity_layer')
         
         assign_voice_frequency(soul_spark)
         process_metrics_summary['steps_completed'].append('voice')
