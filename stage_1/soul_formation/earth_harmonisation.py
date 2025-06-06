@@ -181,6 +181,16 @@ def _ensure_soul_properties(soul_spark: SoulSpark):
                 'total': 0.0,
                 'timestamp': datetime.now().isoformat()
             }
+        else:
+            # FIXED: Ensure all required keys exist in existing earth_resonance
+            if 'schumann' not in layer['earth_resonance']:
+                layer['earth_resonance']['schumann'] = 0.0
+            if 'core' not in layer['earth_resonance']:
+                layer['earth_resonance']['core'] = 0.0
+            if 'total' not in layer['earth_resonance']:
+                layer['earth_resonance']['total'] = 0.0
+            if 'timestamp' not in layer['earth_resonance']:
+                layer['earth_resonance']['timestamp'] = datetime.now().isoformat()
         
         # Initialize resonant_chambers in layer if needed
         if 'resonant_chambers' not in layer:
@@ -250,7 +260,7 @@ def _create_resonant_layer_chamber(soul_spark: SoulSpark, layer_idx: int,
     
     layer['resonant_chambers'].append(chamber)
     
-    # Update layer's earth_resonance property
+    # FIXED: Initialize layer's earth_resonance property with ALL required keys
     if 'earth_resonance' not in layer:
         layer['earth_resonance'] = {
             'schumann': 0.0,
@@ -258,20 +268,28 @@ def _create_resonant_layer_chamber(soul_spark: SoulSpark, layer_idx: int,
             'total': 0.0,
             'timestamp': datetime.now().isoformat()
         }
+    else:
+        # FIXED: Ensure all required keys exist in existing earth_resonance
+        if 'schumann' not in layer['earth_resonance']:
+            layer['earth_resonance']['schumann'] = 0.0
+        if 'core' not in layer['earth_resonance']:
+            layer['earth_resonance']['core'] = 0.0
+        if 'total' not in layer['earth_resonance']:
+            layer['earth_resonance']['total'] = 0.0
     
     # Update the appropriate resonance based on chamber type
-    if chamber_type == 'schumann':
+    if chamber_type == 'schumann' or 'schumann' in chamber_type:
         layer['earth_resonance']['schumann'] = max(
             layer['earth_resonance']['schumann'],
             chamber_resonance
         )
-    elif chamber_type == 'core':
+    elif chamber_type == 'core' or 'core' in chamber_type:
         layer['earth_resonance']['core'] = max(
             layer['earth_resonance']['core'],
             chamber_resonance
         )
     
-    # Recalculate total resonance
+    # Recalculate total resonance (NOW all keys are guaranteed to exist)
     layer['earth_resonance']['total'] = (
         layer['earth_resonance']['schumann'] * 0.7 +
         layer['earth_resonance']['core'] * 0.3
@@ -282,6 +300,7 @@ def _create_resonant_layer_chamber(soul_spark: SoulSpark, layer_idx: int,
                 f"Freq={target_freq:.1f}Hz, Res={chamber_resonance:.3f}")
     
     return chamber
+
 
 def _get_chamber_geometry(chamber_type: str, wavelength: float, resonance: float) -> Dict[str, Any]:
     """
@@ -471,9 +490,8 @@ def _create_earth_resonance_layer(soul_spark: SoulSpark, earth_freq: float,
 def _establish_standing_waves(soul_spark: SoulSpark, earth_freq: float, 
                             chamber_type: str) -> float:
     """
-    NATURAL VERSION: Establishes standing waves between soul and Earth frequency.
-    Uses natural aura adaptation - same principle as Sephiroth system.
-    No artificial boosting - pure harmonic resonance calculation.
+    FIXED VERSION: Uses actively tuned layer frequencies for Earth resonance.
+    Expects layers to have been tuned to Earth frequencies via active tuning process.
     
     Args:
         soul_spark: The soul to establish standing waves with
@@ -488,88 +506,54 @@ def _establish_standing_waves(soul_spark: SoulSpark, earth_freq: float,
     if not isinstance(earth_freq, (int, float)) or earth_freq <= FLOAT_EPSILON:
         raise ValueError(f"Invalid Earth frequency: {earth_freq}")
     
-    # Get soul's base frequency - this doesn't change
-    soul_frequency = soul_spark.frequency
+    # Get the best resonance from tuned layer frequencies
+    best_layer_resonance = 0.0
+    tuned_freq_used = None
+    tuned_frequencies_found = 0
     
-    # NATURAL: Calculate pure frequency resonance (same as Sephiroth system)
-    base_resonance = calculate_resonance(soul_frequency, earth_freq)
-    
-    # NATURAL: Check for harmonic relationships in existing aura layers
-    # Soul's aura layers can create harmonic resonance chambers
-    layer_harmonic_boost = 0.0
     if hasattr(soul_spark, 'layers') and soul_spark.layers:
         for layer in soul_spark.layers:
             if isinstance(layer, dict) and 'resonant_frequencies' in layer:
                 layer_freqs = layer.get('resonant_frequencies', [])
                 for layer_freq in layer_freqs:
                     if layer_freq > FLOAT_EPSILON:
-                        # Check if this layer frequency creates harmony with Earth freq
-                        layer_earth_resonance = calculate_resonance(layer_freq, earth_freq)
-                        layer_harmonic_boost = max(layer_harmonic_boost, layer_earth_resonance)
+                        tuned_frequencies_found += 1
+                        # Calculate resonance with tuned frequency
+                        layer_resonance = calculate_resonance(layer_freq, earth_freq)
+                        if layer_resonance > best_layer_resonance:
+                            best_layer_resonance = layer_freq
+                            tuned_freq_used = layer_freq
     
-    # NATURAL: Combine base resonance with layer harmonic potential
-    # This is how aura naturally adapts - existing structure enables new resonance
-    combined_resonance = max(base_resonance, layer_harmonic_boost)
+    # Check if we found tuned frequencies
+    if tuned_frequencies_found == 0:
+        raise ValueError(f"No tuned layer frequencies found for {chamber_type} resonance calculation. Active tuning may have failed.")
     
-    # NATURAL: Apply chamber-type specific harmonic relationships
+    # Use the best tuned frequency resonance
+    combined_resonance = best_layer_resonance
+    logger.debug(f"Using tuned layer frequency {tuned_freq_used:.1f}Hz for {chamber_type} resonance: {combined_resonance:.3f}")
+    
+    # Apply chamber-type specific harmonic relationships
     if chamber_type == 'schumann':
-        # Schumann frequency is naturally biocompatible - slight natural affinity
         if earth_freq == SCHUMANN_FREQUENCY:
             combined_resonance *= 1.1  # Natural biological resonance
     elif chamber_type == 'core':
-        # Earth core requires grounding through existing earth connections
         earth_element = getattr(soul_spark, 'elements', {}).get('earth', 0.2)
-        if earth_element > 0.3:  # Natural earth affinity
+        if earth_element > 0.3:
             combined_resonance *= (0.9 + earth_element * 0.2)
     
-    # NATURAL: Final resonance is clamped but not artificially boosted
+    # Final resonance
     final_resonance = min(1.0, max(0.0, combined_resonance))
     
-    # Record resonance in soul attributes for tracking
+    # Record resonance in soul attributes
     if chamber_type == 'schumann':
         setattr(soul_spark, 'schumann_resonance_level', float(final_resonance))
     elif chamber_type == 'core':
         setattr(soul_spark, 'earth_core_resonance_level', float(final_resonance))
     
-    logger.debug(f"{chamber_type} natural resonance: "
-                f"base={base_resonance:.3f}, "
-                f"layer_boost={layer_harmonic_boost:.3f}, "
-                f"final={final_resonance:.3f}")
-    
-    # Generate sound for standing wave formation if available
-    if SOUND_MODULES_AVAILABLE and final_resonance > 0.1:
-        try:
-            harmonics = [1.0, 2.0, 3.0, 4.0, 5.0]
-            amplitudes = [0.7, 0.4, 0.3, 0.2, 0.1]
-            
-            sound_gen = SoundGenerator()
-            standing_wave_sound = sound_gen.generate_harmonic_tone(
-                earth_freq, harmonics, amplitudes, duration=5.0
-            )
-            
-            sound_file = f"{chamber_type}_waves_{soul_spark.spark_id[:8]}_{datetime.now().strftime('%Y%m%d%H%M%S')}.wav"
-            universe_sounds = UniverseSounds()
-            universe_sounds.save_sound(
-                standing_wave_sound, sound_file,
-                f"{chamber_type.capitalize()} standing waves for soul {soul_spark.spark_id[:8]}"
-            )
-            
-            logger.info(f"Generated {chamber_type} standing wave sound: {sound_file}")
-            
-            if METRICS_AVAILABLE:
-                metrics.record_metrics('earth_harmonization_sound', {
-                    'soul_id': soul_spark.spark_id,
-                    'sound_type': f"{chamber_type}_standing_waves",
-                    'sound_file': sound_file,
-                    'frequency': earth_freq,
-                    'natural_resonance': final_resonance,
-                    'timestamp': datetime.now().isoformat()
-                })
-                
-        except Exception as sound_err:
-            logger.warning(f"Failed to generate standing wave sound: {sound_err}")
+    logger.debug(f"{chamber_type} resonance with tuned frequencies: {final_resonance:.3f}")
     
     return final_resonance
+
 
 def _attune_to_schumann_resonance(soul_spark: SoulSpark) -> Dict[str, Any]:
     """
@@ -1805,65 +1789,97 @@ def _check_natural_earth_compatibility(soul_spark: SoulSpark) -> Dict[str, Any]:
 
 def _enhance_natural_earth_resonance(soul_spark: SoulSpark) -> Dict[str, Any]:
     """
-    NATURAL: Applies natural techniques to enhance earth resonance potential.
-    Similar to meditation techniques - works with soul's existing structure.
-    No artificial boosting - just natural focus and alignment.
+    ACTIVE TUNING: Aura layers actively tune their frequencies to Earth resonance.
+    Like meditation - the aura consciously adjusts to match Earth frequencies.
+    No "natural alignment" needed - this IS the alignment process.
     """
-    logger.info("Applying natural earth resonance enhancement...")
+    logger.info("Actively tuning aura frequencies to Earth resonance...")
     
     enhancement_metrics = {}
     
-    # NATURAL: Harmonic alignment of existing frequencies
-    # Like tuning an instrument - adjust existing harmonics slightly toward earth resonance
+    # ACTIVE: Tune existing layer frequencies toward Earth frequencies
     if hasattr(soul_spark, 'layers') and soul_spark.layers:
-        harmonic_alignments = 0
+        tuning_adjustments = 0
+        
+        # Target Earth frequencies for tuning
+        earth_targets = [
+            SCHUMANN_FREQUENCY,      # 7.83 Hz
+            EARTH_FREQUENCY,         # Whatever the core frequency is
+            14.3, 20.8, 27.3, 33.8  # Schumann harmonics
+        ]
         
         for i, layer in enumerate(soul_spark.layers):
             if isinstance(layer, dict) and 'resonant_frequencies' in layer:
                 layer_freqs = layer.get('resonant_frequencies', [])
-                aligned_freqs = []
+                tuned_freqs = []
                 
                 for freq in layer_freqs:
                     if freq > FLOAT_EPSILON:
-                        # Find closest natural harmonic to earth frequencies
-                        schumann_distance = abs(freq - SCHUMANN_FREQUENCY) / SCHUMANN_FREQUENCY
-                        core_distance = abs(freq - EARTH_FREQUENCY) / EARTH_FREQUENCY
+                        # ACTIVE TUNING: Find closest Earth frequency and tune toward it
+                        closest_earth_freq = min(earth_targets, key=lambda x: abs(x - freq))
                         
-                        # If frequency is close to an earth harmonic, gently align it
-                        if schumann_distance < 0.1:  # Within 10% of Schumann
-                            # Natural harmonic alignment (like tuning)
-                            alignment_factor = 0.95 + 0.05 * (1.0 - schumann_distance * 10)
-                            aligned_freq = freq * alignment_factor
-                            aligned_freqs.append(aligned_freq)
-                            harmonic_alignments += 1
-                        elif core_distance < 0.1:  # Within 10% of core
-                            alignment_factor = 0.95 + 0.05 * (1.0 - core_distance * 10)
-                            aligned_freq = freq * alignment_factor
-                            aligned_freqs.append(aligned_freq)
-                            harmonic_alignments += 1
+                        # Calculate tuning adjustment (like adjusting meditation frequency)
+                        freq_ratio = closest_earth_freq / freq
+                        
+                        # Apply tuning adjustment (gradual shift toward target)
+                        if 0.5 <= freq_ratio <= 2.0:  # Within reasonable tuning range
+                            # Tune 80% of the way toward the target
+                            tuned_freq = freq + (closest_earth_freq - freq) * 0.8
+                            tuned_freqs.append(tuned_freq)
+                            tuning_adjustments += 1
+                            
+                            logger.debug(f"Layer {i}: Tuned {freq:.1f}Hz -> {tuned_freq:.1f}Hz (target: {closest_earth_freq:.1f}Hz)")
                         else:
-                            aligned_freqs.append(freq)  # No change needed
+                            # If too far apart, add the target frequency as a new resonance
+                            tuned_freqs.append(freq)  # Keep original
+                            tuned_freqs.append(closest_earth_freq)  # Add target
+                            tuning_adjustments += 1
+                            
+                            logger.debug(f"Layer {i}: Added Earth frequency {closest_earth_freq:.1f}Hz alongside {freq:.1f}Hz")
                 
-                # Update layer frequencies with aligned versions
-                if aligned_freqs != layer_freqs:
-                    layer['resonant_frequencies'] = aligned_freqs
+                # Update layer frequencies with tuned versions
+                if tuned_freqs:
+                    layer['resonant_frequencies'] = tuned_freqs
         
-        enhancement_metrics['harmonic_alignments'] = harmonic_alignments
+        enhancement_metrics['frequency_tuning_adjustments'] = tuning_adjustments
     
-    # NATURAL: Elemental balancing toward earth affinity
-    # Like dietary or lifestyle changes that naturally shift elemental balance
+    # ACTIVE: Add Earth frequencies to layers that don't have them
+    earth_freq_additions = 0
+    if hasattr(soul_spark, 'layers') and soul_spark.layers:
+        for i, layer in enumerate(soul_spark.layers):
+            if isinstance(layer, dict):
+                if 'resonant_frequencies' not in layer:
+                    layer['resonant_frequencies'] = []
+                
+                layer_freqs = layer['resonant_frequencies']
+                
+                # Add Schumann frequency if not present
+                if not any(abs(f - SCHUMANN_FREQUENCY) < 1.0 for f in layer_freqs):
+                    layer_freqs.append(SCHUMANN_FREQUENCY)
+                    earth_freq_additions += 1
+                    logger.debug(f"Layer {i}: Added Schumann frequency {SCHUMANN_FREQUENCY:.1f}Hz")
+                
+                # Add Earth core frequency if not present  
+                if not any(abs(f - EARTH_FREQUENCY) < 1.0 for f in layer_freqs):
+                    layer_freqs.append(EARTH_FREQUENCY)
+                    earth_freq_additions += 1
+                    logger.debug(f"Layer {i}: Added Earth core frequency {EARTH_FREQUENCY:.1f}Hz")
+    
+    enhancement_metrics['earth_frequency_additions'] = earth_freq_additions
+    
+    # ACTIVE: Elemental balancing toward earth affinity
     elements = getattr(soul_spark, 'elements', {})
     current_earth = elements.get('earth', 0.2)
     current_water = elements.get('water', 0.2)
     
-    # Natural shift toward earth/water balance (small adjustment)
+    # Active shift toward earth/water balance
     if current_earth < 0.3:
-        earth_boost = min(0.05, 0.3 - current_earth)  # Small natural increase
+        earth_boost = min(0.05, 0.3 - current_earth)
         elements['earth'] = current_earth + earth_boost
         enhancement_metrics['earth_element_boost'] = earth_boost
     
     if current_water < 0.25 and current_earth > 0.25:
-        water_boost = min(0.03, 0.25 - current_water)  # Water supports earth
+        water_boost = min(0.03, 0.25 - current_water)
         elements['water'] = current_water + water_boost
         enhancement_metrics['water_element_boost'] = water_boost
     
@@ -1875,17 +1891,69 @@ def _enhance_natural_earth_resonance(soul_spark: SoulSpark) -> Dict[str, Any]:
     
     setattr(soul_spark, 'elements', elements)
     
-    logger.info(f"Natural earth resonance enhancement applied: "
-               f"{harmonic_alignments} harmonic alignments, "
+    logger.info(f"Active Earth frequency tuning applied: "
+               f"{tuning_adjustments} frequency adjustments, "
+               f"{earth_freq_additions} Earth frequency additions, "
                f"earth element: {current_earth:.3f} -> {elements.get('earth', 0.2):.3f}")
     
     return enhancement_metrics
 
+def _recalculate_earth_resonances_after_alignment(soul_spark: SoulSpark) -> Dict[str, Any]:
+    """
+    Recalculates all Earth resonances after harmonic alignment has been applied.
+    This ensures we use the aligned frequencies for final resonance calculations.
+    """
+    logger.info("Recalculating Earth resonances with aligned frequencies...")
+    
+    # Recalculate Schumann resonance with aligned frequencies
+    schumann_resonance = _establish_standing_waves(soul_spark, SCHUMANN_FREQUENCY, 'schumann')
+    
+    # Recalculate Schumann harmonics
+    schumann_harmonics = [14.3, 20.8, 27.3, 33.8]
+    harmonic_resonances = []
+    
+    for h_freq in schumann_harmonics:
+        h_resonance = _establish_standing_waves(soul_spark, h_freq, 'schumann_harmonic')
+        harmonic_resonances.append(h_resonance)
+    
+    # Calculate weighted Schumann average
+    if harmonic_resonances:
+        primary_weight = 0.6
+        harmonic_weight = 0.4
+        harmonic_average = sum(harmonic_resonances) / len(harmonic_resonances)
+        schumann_weighted = (schumann_resonance * primary_weight + harmonic_average * harmonic_weight)
+    else:
+        schumann_weighted = schumann_resonance
+    
+    # Recalculate Earth core resonance with aligned frequencies  
+    core_resonance = _establish_standing_waves(soul_spark, EARTH_FREQUENCY, 'core')
+    
+    # Update earth resonance with recalculated values
+    schumann_contribution = schumann_weighted * HARMONY_SCHUMANN_INTENSITY
+    core_contribution = core_resonance * HARMONY_CORE_INTENSITY
+    total_weight = HARMONY_SCHUMANN_INTENSITY + HARMONY_CORE_INTENSITY
+    
+    recalculated_earth_resonance = (schumann_contribution + core_contribution) / total_weight
+    setattr(soul_spark, 'earth_resonance', float(recalculated_earth_resonance))
+    
+    logger.info(f"Recalculated resonances - Schumann: {schumann_weighted:.3f}, "
+               f"Core: {core_resonance:.3f}, Earth: {recalculated_earth_resonance:.3f}")
+    
+    return {
+        'schumann_resonance': schumann_resonance,
+        'schumann_harmonics': harmonic_resonances,
+        'schumann_weighted': schumann_weighted,
+        'core_resonance': core_resonance,
+        'recalculated_earth_resonance': recalculated_earth_resonance,
+        'timestamp': datetime.now().isoformat()
+    }
 
 def perform_earth_harmonization(soul_spark: SoulSpark, schumann_intensity: float = HARMONY_SCHUMANN_INTENSITY, 
                                 core_intensity: float = HARMONY_CORE_INTENSITY) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
     Performs complete Earth harmonization process using aura layer resonance.
+    
+    FIXED VERSION: Proper order - alignment first, then resonance calculation.
     
     Creates resonant chambers in aura layers that align with Earth frequencies.
     Establishes standing waves and echo fields for information exchange.
@@ -1957,96 +2025,87 @@ def perform_earth_harmonization(soul_spark: SoulSpark, schumann_intensity: float
             'stages_completed': []
         }
         
-        # --- Step 1: Attune to Schumann Resonance ---
-        logger.info("Step 1: Attuning to Schumann resonance...")
-        schumann_metrics = _attune_to_schumann_resonance(soul_spark)
-        echo_state['schumann_resonance'] = schumann_metrics.get('schumann_weighted_average', 0.0)
-        echo_state['stages_completed'].append('schumann')
-        process_metrics_summary['steps']['schumann'] = schumann_metrics
-        
-        # --- Step 2: Attune to Earth Core ---
-        logger.info("Step 2: Attuning to Earth core frequency...")
-        core_metrics = _attune_to_earth_core(soul_spark)
-        echo_state['earth_core_resonance'] = core_metrics.get('core_resonance', 0.0)
-        echo_state['stages_completed'].append('earth_core')
-        process_metrics_summary['steps']['earth_core'] = core_metrics
-        
-        # --- Step 2.5: Check Natural Earth Compatibility (NEW) ---
-        logger.info("Step 2.5: Checking natural earth compatibility...")
+        # --- Step 1: Check Natural Earth Compatibility FIRST ---
+        logger.info("Step 1: Checking natural earth compatibility...")
         compatibility_metrics = _check_natural_earth_compatibility(soul_spark)
         process_metrics_summary['steps']['compatibility_check'] = compatibility_metrics
         
-        # Apply natural enhancement if compatibility is moderate
-        if compatibility_metrics['overall_compatibility'] >= 0.3:
+        # --- Step 2: Apply Natural Enhancement if Compatible ---
+        logger.info("Step 2: Applying natural earth resonance enhancement...")
+        if compatibility_metrics['overall_compatibility'] >= 0.2:  # Lower threshold
             enhancement_metrics = _enhance_natural_earth_resonance(soul_spark)
             process_metrics_summary['steps']['natural_enhancement'] = enhancement_metrics
             logger.info(f"Applied natural earth resonance enhancement: {enhancement_metrics}")
         else:
             logger.info(f"Soul has minimal earth compatibility ({compatibility_metrics['overall_compatibility']:.3f}) - proceeding with natural assessment only")
+            enhancement_metrics = {}
+            process_metrics_summary['steps']['natural_enhancement'] = enhancement_metrics
         
-        # --- Step 3: Integrate Light Spectrum ---
-        logger.info("Step 3: Integrating light spectrum...")
+        # --- Step 3: Attune to Schumann Resonance (with aligned frequencies) ---
+        logger.info("Step 3: Attuning to Schumann resonance with aligned frequencies...")
+        schumann_metrics = _attune_to_schumann_resonance(soul_spark)
+        echo_state['schumann_resonance'] = schumann_metrics.get('schumann_weighted_average', 0.0)
+        echo_state['stages_completed'].append('schumann')
+        process_metrics_summary['steps']['schumann'] = schumann_metrics
+        
+        # --- Step 4: Attune to Earth Core (with aligned frequencies) ---
+        logger.info("Step 4: Attuning to Earth core frequency with aligned frequencies...")
+        core_metrics = _attune_to_earth_core(soul_spark)
+        echo_state['earth_core_resonance'] = core_metrics.get('core_resonance', 0.0)
+        echo_state['stages_completed'].append('earth_core')
+        process_metrics_summary['steps']['earth_core'] = core_metrics
+        
+        # --- Step 5: Recalculate Final Earth Resonances ---
+        logger.info("Step 5: Recalculating final Earth resonances with all alignments...")
+        recalc_metrics = _recalculate_earth_resonances_after_alignment(soul_spark)
+        echo_state['earth_resonance'] = recalc_metrics.get('recalculated_earth_resonance', 0.0)
+        echo_state['stages_completed'].append('recalculation')
+        process_metrics_summary['steps']['recalculation'] = recalc_metrics
+        
+        # --- Step 6: Integrate Light Spectrum ---
+        logger.info("Step 6: Integrating light spectrum...")
         light_metrics = _perform_light_spectrum_integration(soul_spark)
         echo_state['light_resonance'] = light_metrics.get('light_resonance', 0.0)
         echo_state['stages_completed'].append('light_spectrum')
         process_metrics_summary['steps']['light_spectrum'] = light_metrics
         
-        # --- Step 4: Calculate Earth Cycle Resonance ---
-        logger.info("Step 4: Calculating Earth cycle resonance...")
+        # --- Step 7: Calculate Earth Cycle Resonance ---
+        logger.info("Step 7: Calculating Earth cycle resonance...")
         cycle_metrics = calculate_earth_cycle_resonance(soul_spark)
         echo_state['cycle_resonance'] = cycle_metrics.get('average_resonance', 0.0)
         echo_state['stages_completed'].append('earth_cycles')
         process_metrics_summary['steps']['earth_cycles'] = cycle_metrics
         
-        # --- Step 5: Calculate Elemental Balance ---
-        logger.info("Step 5: Calculating elemental balance...")
+        # --- Step 8: Calculate Elemental Balance ---
+        logger.info("Step 8: Calculating elemental balance...")
         element_metrics = calculate_elemental_balance(soul_spark)
         echo_state['element_balance'] = element_metrics.get('elements', {})
         echo_state['stages_completed'].append('elements')
         process_metrics_summary['steps']['elements'] = element_metrics
         
-        # --- Step 6: Calculate Planetary Resonance ---
-        logger.info("Step 6: Calculating planetary resonance...")
+        # --- Step 9: Calculate Planetary Resonance ---
+        logger.info("Step 9: Calculating planetary resonance...")
         planet_metrics = _calculate_planetary_resonance(soul_spark)
         echo_state['planetary_resonance'] = planet_metrics.get('overall_resonance', 0.0)
         echo_state['stages_completed'].append('planetary')
         process_metrics_summary['steps']['planetary'] = planet_metrics
         
-        # --- Step 7: Calculate Overall Earth Resonance ---
-        # NATURAL: Get the naturally achieved resonances (no artificial calculation)
-        schumann_level = getattr(soul_spark, 'schumann_resonance_level', 0.0)
-        core_level = getattr(soul_spark, 'earth_core_resonance_level', 0.0)
-        
-        # NATURAL: Earth resonance is naturally weighted combination (no artificial boosting)
-        natural_earth_resonance = (
-            schumann_intensity * schumann_level +
-            core_intensity * core_level
-        ) / (schumann_intensity + core_intensity)
-        
-        # Update echo_state with natural value
-        echo_state['earth_resonance'] = natural_earth_resonance
-        
-        # NATURAL: Update the soul's earth_resonance attribute with natural value
-        setattr(soul_spark, 'earth_resonance', float(natural_earth_resonance))
-        
-        logger.info(f"Step 7: Natural earth resonance calculated: Schumann={schumann_level:.3f}, Core={core_level:.3f}, Combined={natural_earth_resonance:.3f}")
-        
-        # --- Step 8: Optimize Gaia Connection ---
-        logger.info("Step 8: Optimizing Gaia connection...")
+        # --- Step 10: Optimize Gaia Connection ---
+        logger.info("Step 10: Optimizing Gaia connection...")
         gaia_metrics = _optimize_gaia_connection(soul_spark, echo_state['earth_resonance'])
         echo_state['gaia_connection'] = gaia_metrics.get('new_gaia_connection', 0.0)
         echo_state['stages_completed'].append('gaia')
         process_metrics_summary['steps']['gaia'] = gaia_metrics
         
-        # --- Step 9: Project Echo Field ---
-        logger.info("Step 9: Projecting echo field...")
+        # --- Step 11: Project Echo Field ---
+        logger.info("Step 11: Projecting echo field...")
         echo_metrics = _project_echo_field(soul_spark, echo_state)
         echo_state['echo_projected'] = echo_metrics.get('echo_id') is not None
         echo_state['stages_completed'].append('echo')
         process_metrics_summary['steps']['echo'] = echo_metrics
         
-        # --- Step 10: Finalize Earth Harmonization ---
-        logger.info("Step 10: Finalizing Earth harmonization...")
+        # --- Step 12: Finalize Earth Harmonization ---
+        logger.info("Step 12: Finalizing Earth harmonization...")
         final_metrics = finalize_earth_harmonization(soul_spark, echo_state)
         echo_state['finalized'] = True
         echo_state['stages_completed'].append('finalization')

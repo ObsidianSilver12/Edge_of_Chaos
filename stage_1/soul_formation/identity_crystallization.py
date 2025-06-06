@@ -58,6 +58,91 @@ except ImportError:
     METRICS_AVAILABLE = False
     raise ImportError("Critical metrics module missing.") from None
 
+def log_soul_identity_summary(soul_spark: SoulSpark) -> None:
+    """
+    Log key soul identity properties to terminal before name assignment.
+    Shows the soul's fundamental characteristics.
+    """
+    print("\n" + "="*80)
+    print("SOUL IDENTITY SUMMARY - PRE-NAMING")
+    print("="*80)
+    
+    # Basic soul info
+    print(f"Soul ID: {getattr(soul_spark, 'spark_id', 'Unknown')}")
+    print(f"Base Frequency: {getattr(soul_spark, 'frequency', 0.0):.2f} Hz")
+    print(f"Soul Frequency: {getattr(soul_spark, 'soul_frequency', 0.0):.2f} Hz")
+    
+    # Soul color
+    soul_color = getattr(soul_spark, 'soul_color', None)
+    if soul_color:
+        print(f"Soul Color: {soul_color}")
+    else:
+        print("Soul Color: Not yet determined")
+    
+    # Current state
+    print(f"Stability: {getattr(soul_spark, 'stability', 0.0):.1f} SU")
+    print(f"Coherence: {getattr(soul_spark, 'coherence', 0.0):.1f} CU")
+    print(f"Energy: {getattr(soul_spark, 'energy', 0.0):.1f} SEU")
+    
+    # Sephiroth aspects
+    aspects = getattr(soul_spark, 'aspects', {})
+    if aspects:
+        print(f"\nSephiroth Aspects ({len(aspects)} total):")
+        # Show top 5 strongest aspects
+        sorted_aspects = sorted(aspects.items(), 
+                              key=lambda x: x[1].get('strength', 0.0), 
+                              reverse=True)[:5]
+        for aspect_name, aspect_data in sorted_aspects:
+            strength = aspect_data.get('strength', 0.0)
+            source = aspect_data.get('source', 'Unknown')
+            print(f"  • {aspect_name}: {strength:.3f} (from {source})")
+        if len(aspects) > 5:
+            print(f"  ... and {len(aspects) - 5} more aspects")
+    else:
+        print("\nSephiroth Aspects: None acquired yet")
+    
+    # Astrological info (if available)
+    zodiac_sign = getattr(soul_spark, 'zodiac_sign', None)
+    governing_planet = getattr(soul_spark, 'governing_planet', None)
+    birth_datetime = getattr(soul_spark, 'conceptual_birth_datetime', None)
+    
+    if zodiac_sign or governing_planet or birth_datetime:
+        print(f"\nAstrological Signature:")
+        if birth_datetime:
+            try:
+                birth_dt = datetime.fromisoformat(birth_datetime)
+                print(f"  Birth DateTime: {birth_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+            except:
+                print(f"  Birth DateTime: {birth_datetime}")
+        if zodiac_sign:
+            print(f"  Zodiac Sign: {zodiac_sign}")
+        if governing_planet:
+            print(f"  Governing Planet: {governing_planet}")
+    
+    # Elemental balance
+    elements = getattr(soul_spark, 'elements', {})
+    if elements:
+        print(f"\nElemental Balance:")
+        for element, value in sorted(elements.items(), key=lambda x: x[1], reverse=True):
+            percentage = value * 100
+            print(f"  {element.capitalize()}: {percentage:.1f}%")
+    
+    # Earth connection
+    earth_resonance = getattr(soul_spark, 'earth_resonance', 0.0)
+    gaia_connection = getattr(soul_spark, 'gaia_connection', 0.0)
+    if earth_resonance > 0 or gaia_connection > 0:
+        print(f"\nEarth Connection:")
+        print(f"  Earth Resonance: {earth_resonance:.3f}")
+        print(f"  Gaia Connection: {gaia_connection:.3f}")
+    
+    # Layer count
+    layers = getattr(soul_spark, 'layers', [])
+    print(f"\nAura Layers: {len(layers)} formed")
+    
+    print("="*80)
+    print("READY FOR NAME ASSIGNMENT")
+    print("="*80 + "\n")
+
 # --- Helper Functions ---
 
 def _check_prerequisites(soul_spark: SoulSpark) -> bool:
@@ -486,9 +571,39 @@ def _generate_color_from_frequency(frequency: float) -> str:
         raise RuntimeError(f"Color generation failed: {e}") from e
 
 def _calculate_color_frequency(color_hex: str) -> float:
-    """Calculate a frequency in Hz associated with a color hex code."""
-    if not isinstance(color_hex, str) or not re.match(r'^#[0-9A-F]{6}$', color_hex.upper()):
-        raise ValueError(f"Invalid color hex code: {color_hex}")
+    """Calculate a frequency in Hz associated with a color hex code or color name."""
+    if not isinstance(color_hex, str):
+        raise ValueError(f"Color must be a string, got {type(color_hex)}")
+    
+    # Color name to hex mapping
+    color_name_map = {
+        'red': '#FF0000',
+        'green': '#00FF00', 
+        'blue': '#0000FF',
+        'yellow': '#FFFF00',
+        'orange': '#FFA500',
+        'purple': '#800080',
+        'violet': '#8A2BE2',
+        'indigo': '#4B0082',
+        'cyan': '#00FFFF',
+        'magenta': '#FF00FF',
+        'pink': '#FFC0CB',
+        'brown': '#A52A2A',
+        'black': '#000000',
+        'white': '#FFFFFF',
+        'gray': '#808080',
+        'grey': '#808080'
+    }
+    
+    # Convert color name to hex if needed
+    original_color = color_hex
+    if color_hex.lower() in color_name_map:
+        color_hex = color_name_map[color_hex.lower()]
+        logger.debug(f"Converted color name '{original_color}' to hex '{color_hex}'")
+    
+    # Validate hex format
+    if not re.match(r'^#[0-9A-F]{6}$', color_hex.upper()):
+        raise ValueError(f"Invalid color format: '{original_color}' -> '{color_hex}'. Expected hex format like #FF0000 or color name.")
     
     try:
         # Convert hex to RGB
@@ -551,8 +666,9 @@ def _calculate_color_frequency(color_hex: str) -> float:
         return float(audio_freq)
         
     except Exception as e:
-        logger.error(f"Error calculating frequency from color {color_hex}: {e}")
+        logger.error(f"Error calculating frequency from color {original_color}: {e}")
         raise RuntimeError(f"Color frequency calculation failed: {e}") from e
+
 
 def _find_closest_spectrum_color(hex_color: str, color_spectrum) -> str:
     """Find the closest color in the spectrum to the given hex color."""
@@ -609,6 +725,7 @@ def assign_name(soul_spark: SoulSpark) -> None:
     Assigns name via user input, calculates gematria/resonance(0-1), and 
     establishes standing wave patterns and frequency signature.
     """
+    log_soul_identity_summary(soul_spark)
     logger.info("Identity Step: Assign Name with Light-Sound Signature...")
     name_to_use = None
     print("-" * 30+"\nIDENTITY CRYSTALLIZATION: SOUL NAMING"+"\nSoul ID: "+soul_spark.spark_id)

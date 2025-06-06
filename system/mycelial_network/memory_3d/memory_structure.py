@@ -36,8 +36,8 @@ class MemoryStructure:
         """Initialize the database tables/collections structure"""
         # Create empty tables/collections
         
-        # --- Primary Seed Table ---
-        self.seeds = {}  # Primary seed/node table
+        # --- Primary Node Table ---
+        self.nodes = {}  # Primary node table
         
         # --- Level 1: Categories ---
         self.categories = {}  # Domain categories
@@ -72,9 +72,9 @@ class MemoryStructure:
         self.token_meta_tags = {}  # Meta tags specifically for tokens
         
         # --- Junction Tables ---
-        self.seed_meta_tags = {}  # Many-to-many seed to meta tags
-        self.seed_personal_tags = {}  # Many-to-many seed to personal tags
-        self.seed_concepts = {}  # Many-to-many seed to concepts
+        self.node_meta_tags = {}  # Many-to-many node to meta tags
+        self.node_personal_tags = {}  # Many-to-many node to personal tags
+        self.node_concepts = {}  # Many-to-many node to concepts
     
     def get_table_structure(self):
         """
@@ -82,8 +82,8 @@ class MemoryStructure:
         showing the structure of the memory system.
         """
         schema = {
-            "seeds": {
-                "seed_id": "UUID (PK)",
+            "node": {
+                "node_id": "UUID (PK)",
                 "content": "Text/Blob",
                 "creation_timestamp": "Timestamp",
                 "last_accessed": "Timestamp",
@@ -109,7 +109,7 @@ class MemoryStructure:
                 "wbs_level_id": "UUID (PK)",
                 "level_name": "String",
                 "level_description": "Text",
-                "level_type": "String",  # e.g., 'concept', 'task', 'subtask', etc.
+                "level_type": "String",  
                 "parent_level_id": "Foreign Key -> wbs-levels (Self)",
             },
             "level_types" : {
@@ -328,23 +328,23 @@ class MemoryStructure:
             },
             
             # Junction tables
-            "seed_meta_tags": {
-                "seed_meta_tag_id": "UUID (PK)",
-                "seed_id": "Foreign Key -> seeds",
+            "node_meta_tags": {
+                "node_meta_tag_id": "UUID (PK)",
+                "node_id": "Foreign Key -> nodes",
                 "meta_tag_id": "Foreign Key -> meta_tags",
                 "relevance_score": "Float"
             },
             
-            "seed_personal_tags": {
-                "seed_personal_tag_id": "UUID (PK)",
-                "seed_id": "Foreign Key -> seeds",
+            "node_personal_tags": {
+                "node_personal_tag_id": "UUID (PK)",
+                "node_id": "Foreign Key -> nodes",
                 "personal_tag_id": "Foreign Key -> personal_tags",
                 "importance_score": "Float"
             },
             
-            "seed_concepts": {
-                "seed_concept_id": "UUID (PK)",
-                "seed_id": "Foreign Key -> seeds",
+            "node_concepts": {
+                "node_concept_id": "UUID (PK)",
+                "node_id": "Foreign Key -> nodes",
                 "concept_id": "Foreign Key -> concepts",
                 "relevance_score": "Float",
                 "relationship_type": "String"
@@ -355,13 +355,13 @@ class MemoryStructure:
     
     # API methods would remain largely the same, with additions for new tables...
     
-    def create_memory_seed(self, content, category_id, memory_type_id, 
+    def create_memory_node(self, content, category_id, memory_type_id, 
                         coordinate=None, temporal_ref=None,
                         tags=None, concepts=None, frequency=None, glyph=None) -> str:
-        """Define the API for creating a memory seed."""
-        seed_id = str(uuid.uuid4())
-        logger.info(f"Memory seed creation API called: seed_id={seed_id}")
-        return seed_id
+        """Define the API for creating a memory node."""
+        node_id = str(uuid.uuid4())
+        logger.info(f"Memory node creation API called: node_id={node_id}")
+        return node_id
     
     def create_concept(self, name, description, academic_score=0.5, 
                     logical_score=0.5, _ethical_score=0.5, _spiritual_score=0.5,
@@ -514,17 +514,17 @@ class MemoryStructure:
             "tables": list(self.get_table_structure().keys()),
             "relationships": [
                 "categories -> subcategories (1:N)",
-                "seeds -> categories (N:1)",
-                "seeds -> subcategories (N:1)",
-                "seeds -> memory_types (N:1)",
-                "seeds -> coordinates (N:1)",
-                "seeds -> temporal_refs (N:1)",
-                "seeds -> frequencies (N:1)",
-                "seeds -> glyphs (N:1)",
-                "seeds -> tokens (N:1)",
-                "seeds <-> meta_tags (N:M)",
-                "seeds <-> personal_tags (N:M)",
-                "seeds <-> concepts (N:M)",
+                "nodes -> categories (N:1)",
+                "nodes -> subcategories (N:1)",
+                "nodes -> memory_types (N:1)",
+                "nodes -> coordinates (N:1)",
+                "nodes -> temporal_refs (N:1)",
+                "nodes -> frequencies (N:1)",
+                "nodes -> glyphs (N:1)",
+                "nodes -> tokens (N:1)",
+                "nodes <-> meta_tags (N:M)",
+                "nodes <-> personal_tags (N:M)",
+                "nodes <-> concepts (N:M)",
                 "concepts <-> concepts (N:M)",
                 "concepts -> related_concepts (1:N)",
                 "glyphs -> glyph_images (1:1)",

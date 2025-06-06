@@ -497,165 +497,179 @@ class BrainSoulAttachment:
 
 # --- Standalone Functions for Birth Module ---
 
-def attach_soul_to_brain(soul_spark, brain_seed) -> Dict[str, Any]:
+def attach_soul_to_brain(soul_spark, brain_structure, enhanced_network=None):
     """
-    Standalone function to attach soul to brain through brain seed.
-    This is a simplified version for the birth process.
+    Attach soul to brain using current architecture.
     
     Args:
         soul_spark: The soul spark to attach
-        brain_seed: The brain seed (acts as minimal brain structure)
-        
-    Returns:
-        Dict containing attachment metrics
+        brain_structure: HybridBrainStructure instance
+        enhanced_network: Enhanced mycelial network for coordination
     """
-    logger.info(f"Attaching soul {getattr(soul_spark, 'spark_id', 'unknown')} to minimal brain seed")
+    logger.info(f"Attaching soul {getattr(soul_spark, 'soul_id', 'unknown')} to brain structure")
     
     try:
-        # For minimal brain seed attachment, we create a simplified structure
-        # Create a minimal brain structure object that has the required attributes
-        class MinimalBrainStructure:
-            def __init__(self, dimensions=(64, 64, 64)):
-                self.dimensions = dimensions
-                self.brain_id = getattr(brain_seed, 'seed_id', 'minimal_brain')
-                
-                # Initialize minimal grids
-                self.region_grid = np.full(dimensions, 'core', dtype=object)
-                self.sub_region_grid = np.full(dimensions, 'center', dtype=object)
-                self.energy_grid = np.ones(dimensions) * 0.1
-                self.frequency_grid = np.ones(dimensions) * getattr(soul_spark, 'frequency', DEFAULT_BRAIN_SEED_FREQUENCY)
-                self.resonance_grid = np.ones(dimensions) * 0.5
-                self.coherence_grid = np.ones(dimensions) * 0.5
-                self.soul_presence_grid = np.zeros(dimensions)
-                
-                # Optional grids
-                if not hasattr(self, 'soul_frequency_grid'):
-                    self.soul_frequency_grid = np.zeros(dimensions)
+        # Find optimal position using brain structure's complexity analysis
+        soul_position = find_optimal_soul_position(brain_structure)
         
-        # Create minimal brain structure
-        brain_structure = MinimalBrainStructure()
+        # Create soul container in brain structure (sparse storage)
+        container_result = create_soul_container_sparse(soul_spark, brain_structure, soul_position)
         
-        # Use the attachment class
-        attachment_handler = BrainSoulAttachment()
+        # Connect life cord
+        life_cord_result = connect_life_cord_simple(soul_spark, brain_structure, soul_position)
         
-        # Perform attachment
-        attachment_metrics = attachment_handler.attach_soul_to_brain_method(
-            soul_spark, brain_structure, brain_seed)
+        # Distribute soul aspects to memory system
+        if enhanced_network and hasattr(enhanced_network, 'memory_fragment_system'):
+            aspect_result = distribute_soul_aspects_enhanced(
+                soul_spark, enhanced_network.memory_fragment_system, enhanced_network
+            )
+        else:
+            aspect_result = {'aspects_distributed': 0, 'message': 'No memory system available'}
         
-        # Store brain connection info in soul
+        # Store soul connection info
         if hasattr(soul_spark, '__dict__'):
             soul_spark.brain_connection = {
-                'brain_seed_id': getattr(brain_seed, 'seed_id', 'unknown'),
+                'brain_id': brain_structure.brain_id,
+                'position': soul_position,
                 'attachment_time': datetime.now().isoformat(),
-                'attachment_success': attachment_metrics.get('success', False)
+                'container_cells': container_result.get('cells_filled', 0),
+                'life_cord_active': life_cord_result.get('active', False)
             }
         
-        logger.info("Soul attachment to minimal brain seed completed successfully")
-        return attachment_metrics
-        
-    except Exception as e:
-        logger.error(f"Error in standalone attach_soul_to_brain: {e}", exc_info=True)
-        return {
-            'success': False,
-            'error': str(e),
-            'attachment_time': datetime.now().isoformat()
-        }
-
-
-def distribute_soul_aspects(soul_spark, brain_seed) -> Dict[str, Any]:
-    """
-    Standalone function to distribute soul aspects to brain seed memory system.
-    
-    Args:
-        soul_spark: The soul spark with aspects
-        brain_seed: The brain seed to store aspects in
-        
-    Returns:
-        Dict containing distribution metrics
-    """
-    logger.info(f"Distributing soul aspects to brain seed memory system")
-    
-    try:
-        # Extract soul aspects if available
-        soul_aspects = {}
-        if hasattr(soul_spark, 'aspects') and isinstance(soul_spark.aspects, dict):
-            soul_aspects = soul_spark.aspects
-        
-        if not soul_aspects:
-            logger.info("No soul aspects found for distribution")
-            return {
-                'aspects_distributed': 0,
-                'fragments_created': 0,
-                'distribution_success': True,
-                'message': "No aspects to distribute"
-            }
-        
-        aspects_distributed = 0
-        fragments_created = 0
-        
-        # Distribute aspects to brain seed
-        for aspect_id, aspect_data in soul_aspects.items():
-            try:
-                # Convert aspect data to storable format
-                if isinstance(aspect_data, dict):
-                    aspect_content = json.dumps(aspect_data)
-                else:
-                    aspect_content = str(aspect_data)
-                
-                # Store in brain seed
-                if hasattr(brain_seed, 'add_memory_fragment'):
-                    # Use brain seed's memory fragment system
-                    fragment_id = brain_seed.add_memory_fragment(
-                        fragment_content=aspect_content,
-                        fragment_frequency=getattr(soul_spark, 'frequency', DEFAULT_BRAIN_SEED_FREQUENCY),
-                        fragment_meta={'aspect_id': aspect_id, 'origin': 'soul'}
-                    )
-                    fragments_created += 1
-                    logger.debug(f"Created memory fragment {fragment_id} for aspect {aspect_id}")
-                else:
-                    # Store as simple attribute
-                    if not hasattr(brain_seed, 'soul_aspects'):
-                        brain_seed.soul_aspects = {}
-                    brain_seed.soul_aspects[aspect_id] = aspect_data
-                    logger.debug(f"Stored aspect {aspect_id} as attribute")
-                
-                aspects_distributed += 1
-                
-            except Exception as e:
-                logger.warning(f"Failed to distribute aspect {aspect_id}: {e}")
-        
-        # Create associations between aspects if brain seed supports it
-        if hasattr(brain_seed, 'associate_fragments') and fragments_created > 1:
-            try:
-                # Simple sequential association
-                fragment_ids = []
-                if hasattr(brain_seed, 'memory_fragments'):
-                    fragment_ids = list(brain_seed.memory_fragments.keys())[-fragments_created:]
-                
-                for i in range(len(fragment_ids) - 1):
-                    brain_seed.associate_fragments(
-                        fragment_ids[i], fragment_ids[i+1], 0.5)
-                
-            except Exception as e:
-                logger.warning(f"Failed to create aspect associations: {e}")
-        
-        logger.info(f"Soul aspect distribution complete: {aspects_distributed} aspects, {fragments_created} fragments")
+        logger.info("Soul attachment completed successfully")
         
         return {
-            'aspects_distributed': aspects_distributed,
-            'fragments_created': fragments_created,
-            'distribution_success': aspects_distributed > 0,
-            'aspect_count': len(soul_aspects)
+            'success': True,
+            'soul_position': soul_position,
+            'container_result': container_result,
+            'life_cord_result': life_cord_result,
+            'aspect_distribution': aspect_result
         }
         
     except Exception as e:
-        logger.error(f"Error in standalone distribute_soul_aspects: {e}", exc_info=True)
-        return {
-            'aspects_distributed': 0,
-            'fragments_created': 0,
-            'distribution_success': False,
-            'error': str(e)
-        }
+        logger.error(f"Soul attachment failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def find_optimal_soul_position(brain_structure):
+    """Find optimal soul position using brain structure's existing systems."""
+    # Use brain structure's existing limbic region center
+    if hasattr(brain_structure, 'regions') and 'limbic' in brain_structure.regions:
+        return brain_structure.regions['limbic']['center']
+    
+    # Fallback to brain center
+    return (
+        brain_structure.dimensions[0] // 2,
+        brain_structure.dimensions[1] // 2,
+        brain_structure.dimensions[2] // 2
+    )
+
+
+def create_soul_container_sparse(soul_spark, brain_structure, position):
+    """Create soul container using sparse storage."""
+    x, y, z = position
+    soul_size = (16, 16, 16)  # Default soul container size
+    cells_filled = 0
+    
+    # Use brain structure's sparse active_cells storage
+    for dx in range(-soul_size[0]//2, soul_size[0]//2):
+        for dy in range(-soul_size[1]//2, soul_size[1]//2):
+            for dz in range(-soul_size[2]//2, soul_size[2]//2):
+                nx, ny, nz = x + dx, y + dy, z + dz
+                
+                if (0 <= nx < brain_structure.dimensions[0] and 
+                    0 <= ny < brain_structure.dimensions[1] and 
+                    0 <= nz < brain_structure.dimensions[2]):
+                    
+                    # Add to sparse active cells
+                    cell_position = (nx, ny, nz)
+                    if cell_position not in brain_structure.active_cells:
+                        brain_structure.active_cells[cell_position] = {}
+                    
+                    # Set soul properties
+                    brain_structure.active_cells[cell_position].update({
+                        'soul_presence': 0.8,
+                        'frequency': getattr(soul_spark, 'frequency', 7.83),
+                        'energy': 0.5,
+                        'soul_container': True
+                    })
+                    
+                    # Assign region
+                    brain_structure.region_assignments[cell_position] = 'limbic'
+                    cells_filled += 1
+    
+    return {
+        'success': True,
+        'cells_filled': cells_filled,
+        'position': position,
+        'size': soul_size
+    }
+
+
+def connect_life_cord_simple(soul_spark, brain_structure, position):
+    """Connect life cord using current architecture."""
+    life_cord_data = getattr(soul_spark, 'life_cord', {
+        'primary_frequency_hz': getattr(soul_spark, 'frequency', 7.83),
+        'efficiency': 0.8
+    })
+    
+    # Store life cord connection in brain structure
+    if hasattr(brain_structure, 'soul_connections'):
+        brain_structure.soul_connections = {}
+    
+    brain_structure.soul_connections[position] = {
+        'soul_id': getattr(soul_spark, 'soul_id', 'unknown'),
+        'life_cord_data': life_cord_data,
+        'connection_time': datetime.now().isoformat()
+    }
+    
+    return {
+        'active': True,
+        'frequency': life_cord_data['primary_frequency_hz'],
+        'efficiency': life_cord_data.get('efficiency', 0.8)
+    }
+
+
+def distribute_soul_aspects_enhanced(soul_spark, memory_system, enhanced_network):
+    """Distribute soul aspects using enhanced network coordination."""
+    if not hasattr(soul_spark, 'aspects'):
+        return {'aspects_distributed': 0, 'message': 'No soul aspects found'}
+    
+    aspects_distributed = 0
+    fragments_created = []
+    
+    for aspect_id, aspect_data in soul_spark.aspects.items():
+        try:
+            # Use enhanced network for optimal placement
+            if hasattr(enhanced_network, 'coordinate_memory_placement'):
+                placement_result = enhanced_network.coordinate_memory_placement(aspect_data)
+                region = placement_result.get('region', 'temporal')
+                position = placement_result.get('position')
+            else:
+                region = 'temporal'
+                position = None
+            
+            # Create memory fragment
+            fragment_id = memory_system.add_fragment(
+                content=aspect_data,
+                region=region,
+                position=position,
+                frequency=getattr(soul_spark, 'frequency', 7.83),
+                meta_tags={'aspect_id': aspect_id, 'origin': 'soul'},
+                origin='soul'
+            )
+            
+            fragments_created.append(fragment_id)
+            aspects_distributed += 1
+            
+        except Exception as e:
+            logger.warning(f"Failed to distribute aspect {aspect_id}: {e}")
+    
+    return {
+        'aspects_distributed': aspects_distributed,
+        'fragments_created': fragments_created,
+        'total_aspects': len(soul_spark.aspects)
+    }
 
 
 # --- END OF FILE stage_1/evolve/brain_soul_attachment.py ---

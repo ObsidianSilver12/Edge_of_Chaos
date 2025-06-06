@@ -1,627 +1,507 @@
-# --- field_dynamics.py - Dynamic field system for soul-brain integration ---
+# field_dynamics.py (Updated V6.0.0 - Brain Structure Integration)
 
 """
-Field Dynamics System V4.5.0 - Enhanced Brain Integration
+Brain Field Dynamics (Version 6.0.0 - Brain Structure Integration)
 
-Creates dynamic energy fields that facilitate soul-brain integration through:
-- Multi-dimensional field geometries
-- Resonance amplification zones
-- Energy circulation patterns
-- Field harmonics and interference patterns
-- Consciousness field emergence
+Integrates with brain_structure.py's static field patterns and standing waves.
+Provides state-dependent field modulation while brain structure handles complex calculations.
 """
 
-import logging
 import numpy as np
-import math
+import logging
+import random
 import uuid
-from typing import Dict, List, Tuple, Optional, Any, Union
-from datetime import datetime
+from typing import Tuple, Dict, List, Optional, Any, Set
 
-# Configure logging
-logger = logging.getLogger("FieldDynamics")
+from constants.constants import *
+
+logger = logging.getLogger("BrainFieldDynamics")
 if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 
-# Constants
-PHI = 1.618033988749895
-LOVE_FREQUENCY = 528.0
-FIELD_DECAY_RATE = 0.95
-MIN_FIELD_STRENGTH = 0.01
 
-class FieldDynamics:
+class BrainFieldDynamics:
     """
-    Dynamic field system for soul-brain integration.
+    Manages dynamic field modulation working with brain structure's static patterns.
+    Brain structure handles standing waves, phi ratios, and static foundations.
+    This class handles state-dependent modulation only.
     """
     
-    def __init__(self, brain_grid_shape: Tuple[int, int, int] = (64, 64, 32)):
-        """
-        Initialize field dynamics system.
+    def __init__(self, brain_structure_dimensions: Tuple[int, int, int]):
+        if brain_structure_dimensions != GRID_DIMENSIONS:
+            raise ValueError(f"BrainFieldDynamics must be initialized with GRID_DIMENSIONS {GRID_DIMENSIONS}, got {brain_structure_dimensions}")
         
-        Args:
-            brain_grid_shape: Shape of brain grid (x, y, z)
-        """
-        self.field_id = str(uuid.uuid4())
-        self.creation_time = datetime.now().isoformat()
-        self.brain_shape = brain_grid_shape
+        self.dimensions: Tuple[int, int, int] = brain_structure_dimensions
+        self.field_system_id: str = str(uuid.uuid4())
         
-        # Field grids
-        self.primary_field = np.zeros(brain_grid_shape, dtype=np.float32)
-        self.harmonic_field = np.zeros(brain_grid_shape, dtype=np.float32)
-        self.resonance_field = np.zeros(brain_grid_shape, dtype=np.float32)
+        # Reference to brain structure (set by brain structure)
+        self.brain_structure_ref = None
         
-        # Field properties
-        self.field_active = False
-        self.base_frequency = 432.0  # Hz
-        self.field_strength = 0.0
-        self.resonance_zones = []
+        # Simple state tracking
+        self.current_brain_state: str = BRAIN_STATE_DORMANT
+        self.active_regions_in_current_state: Set[str] = set()
+        self.last_specific_thought_signature: Optional[str] = None
+        self.last_processing_intensity: float = 0.0
         
-        # Circulation patterns
-        self.circulation_vectors = np.zeros(brain_grid_shape + (3,), dtype=np.float32)
-        self.circulation_strength = 0.0
+        # Basic field properties
+        self.static_patterns_available: bool = False
+        self.field_active: bool = False
+        self.chaos_level: float = FIELD_CHAOS_LEVEL_DEFAULT
         
-        # Field history
-        self.field_history = []
-        self.resonance_events = []
+        # Dynamic field modulations (small arrays for state changes)
+        self.state_modulation_cache: Dict[str, np.ndarray] = {}
+        self.current_modulation = np.zeros(self.dimensions, dtype=np.float32)
         
-        # Performance metrics
-        self.metrics = {
-            'total_field_time': 0.0,
-            'resonance_events_count': 0,
-            'peak_field_strength': 0.0,
-            'circulation_cycles': 0,
-            'harmonic_interactions': 0
-        }
-        
-        logger.info(f"Field dynamics system initialized with ID {self.field_id}")
+        logger.info(f"BrainFieldDynamics system {self.field_system_id} initialized for {self.dimensions} grid.")
     
-    def initialize_field(self, soul_frequency: float = 432.0, initial_strength: float = 0.5) -> Dict[str, Any]:
-        """
-        Initialize the dynamic field system.
+    def set_brain_structure_reference(self, brain_structure):
+        """Set reference to brain structure."""
+        self.brain_structure_ref = brain_structure
         
-        Args:
-            soul_frequency: Base frequency for field resonance
-            initial_strength: Initial field strength (0.0-1.0)
+        # Check if brain structure has static patterns
+        if (hasattr(brain_structure, 'static_fields_created') and 
+            brain_structure.static_fields_created):
+            self.static_patterns_available = True
+            logger.info("Brain structure static patterns detected and available")
+        else:
+            logger.warning("Brain structure static patterns not yet available")
+    
+    def validate_field_integrity(self) -> bool:
+        """Validates that brain structure's static patterns are available and valid."""
+        logger.debug("Validating field integrity via brain structure...")
+        
+        if not self.brain_structure_ref:
+            logger.error("Integrity Check Failed: No brain structure reference.")
+            return False
+        
+        if not self.static_patterns_available:
+            logger.error("Integrity Check Failed: Brain structure static patterns not available.")
+            return False
+        
+        # Check if brain structure has required static systems
+        required_attributes = [
+            'static_fields_created',
+            'standing_waves_calculated', 
+            'regions_defined'
+        ]
+        
+        for attr in required_attributes:
+            if not hasattr(self.brain_structure_ref, attr):
+                logger.error(f"Integrity Check Failed: Brain structure missing {attr}")
+                return False
             
-        Returns:
-            Dict with initialization results
+            if not getattr(self.brain_structure_ref, attr):
+                logger.error(f"Integrity Check Failed: Brain structure {attr} is False")
+                return False
+        
+        logger.debug("Field integrity validated successfully via brain structure.")
+        return True
+    
+    def update_fields_for_new_state(self, 
+                                   new_brain_state: str, 
+                                   active_regions_now: Optional[Set[str]] = None,
+                                   processing_intensity: float = 0.5,
+                                   specific_thought_signature: Optional[str] = None):
         """
-        logger.info(f"Initializing field dynamics with frequency {soul_frequency} Hz")
+        Update dynamic field modulations for new brain state.
+        Brain structure handles static patterns, this handles state-dependent changes.
+        """
+        if not self.static_patterns_available:
+            logger.warning("Cannot update fields: Brain structure static patterns not available")
+            return
+        
+        active_regions_now = active_regions_now if active_regions_now is not None else set()
+        
+        # Check if state actually changed
+        state_changed = (new_brain_state != self.current_brain_state or
+                        active_regions_now != self.active_regions_in_current_state or
+                        specific_thought_signature != self.last_specific_thought_signature or
+                        abs(processing_intensity - self.last_processing_intensity) > FLOAT_EPSILON)
+        
+        if not state_changed:
+            logger.debug(f"Brain state unchanged ('{new_brain_state}'). Adding minor chaos only.")
+            self._inject_biological_chaos(self.current_modulation, intensity_scale=0.05)
+            return
+        
+        logger.info(f"Updating field dynamics: '{self.current_brain_state}' -> '{new_brain_state}'. "
+                   f"Active: {active_regions_now}. Intensity: {processing_intensity:.2f}")
+        
+        # Update state tracking
+        self.current_brain_state = new_brain_state
+        self.active_regions_in_current_state = active_regions_now
+        self.last_specific_thought_signature = specific_thought_signature
+        self.last_processing_intensity = processing_intensity
+        
+        # Create cache key for this state
+        cache_key = f"{new_brain_state}_{hash(frozenset(active_regions_now))}_{processing_intensity:.2f}"
+        
+        # Check cache first
+        if FIELD_STATE_CACHE_ENABLED and cache_key in self.state_modulation_cache:
+            logger.debug(f"Using cached modulation for state: {cache_key}")
+            self.current_modulation = self.state_modulation_cache[cache_key].copy()
+        else:
+            # Calculate new modulation
+            self.current_modulation = self._calculate_state_modulation(
+                new_brain_state, active_regions_now, processing_intensity, specific_thought_signature
+            )
+            
+            # Cache the modulation
+            if FIELD_STATE_CACHE_ENABLED:
+                self.state_modulation_cache[cache_key] = self.current_modulation.copy()
+        
+        # Apply biological chaos
+        self._inject_biological_chaos(self.current_modulation, intensity_scale=processing_intensity)
+        
+        # Mark field as active
+        self.field_active = True
+        
+        logger.info(f"Field dynamics updated for state '{new_brain_state}'")
+    
+    def _calculate_state_modulation(self, brain_state: str, active_regions: Set[str], 
+                                   intensity: float, thought_signature: Optional[str]) -> np.ndarray:
+        """Calculate state-dependent field modulation."""
+        modulation = np.zeros(self.dimensions, dtype=np.float32)
         
         try:
-            self.base_frequency = soul_frequency
-            self.field_strength = max(0.0, min(1.0, initial_strength))
+            # State-specific modulations
+            if brain_state == BRAIN_STATE_FORMATION:
+                # Formation state: enhance development around brain seed
+                if hasattr(self.brain_structure_ref, 'seed_integration_data'):
+                    seed_data = self.brain_structure_ref.seed_integration_data
+                    if seed_data and 'position' in seed_data:
+                        position = seed_data['position']
+                        strength = intensity * 0.2
+                        self._add_radial_modulation(modulation, position, strength, radius=20)
             
-            # Create initial field distribution
-            self._create_base_field()
+            elif brain_state == BRAIN_STATE_AWARE_PROCESSING:
+                # Aware processing: enhance active regions
+                for region_name in active_regions:
+                    if region_name in self.brain_structure_ref.regions:
+                        region = self.brain_structure_ref.regions[region_name]
+                        center = region['center']
+                        radius = region['radius']
+                        strength = intensity * 0.15
+                        self._add_radial_modulation(modulation, center, strength, radius)
             
-            # Establish harmonic resonances
-            self._create_harmonic_field()
+            elif brain_state == BRAIN_STATE_SOUL_ATTACHED_SETTLING:
+                # Soul settling: enhance around soul attachment point
+                if hasattr(self.brain_structure_ref, 'seed_integration_data'):
+                    seed_data = self.brain_structure_ref.seed_integration_data
+                    if seed_data and 'position' in seed_data:
+                        position = seed_data['position']
+                        strength = intensity * 0.3
+                        self._add_radial_modulation(modulation, position, strength, radius=15)
             
-            # Initialize circulation patterns
-            self._initialize_circulation()
+            elif brain_state == 'calming':
+                # Calming state: gentle, uniform enhancement
+                base_strength = intensity * 0.1
+                modulation.fill(base_strength)
             
-            # Create resonance zones
-            self._create_resonance_zones()
-            
-            # Activate field
-            self.field_active = True
-            
-            # Record initialization
-            self.field_history.append({
-                'event': 'initialization',
-                'timestamp': datetime.now().isoformat(),
-                'frequency': self.base_frequency,
-                'strength': self.field_strength
-            })
-            
-            logger.info("Field dynamics initialized successfully")
-            
-            return {
-                'success': True,
-                'field_id': self.field_id,
-                'base_frequency': self.base_frequency,
-                'field_strength': self.field_strength,
-                'resonance_zones': len(self.resonance_zones)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error initializing field dynamics: {e}", exc_info=True)
-            return {
-                'success': False,
-                'reason': f'Initialization error: {e}'
-            }
-    
-    def _create_base_field(self):
-        """Create the base field distribution."""
-        x, y, z = np.meshgrid(
-            np.linspace(-1, 1, self.brain_shape[0]),
-            np.linspace(-1, 1, self.brain_shape[1]),
-            np.linspace(-1, 1, self.brain_shape[2]),
-            indexing='ij'
-        )
-        
-        # Create field with multiple centers (consciousness regions)
-        centers = [
-            (0.0, 0.2, 0.3),    # Frontal cortex
-            (0.0, -0.3, 0.1),   # Temporal region
-            (0.0, 0.0, -0.2),   # Brainstem
-            (0.3, 0.0, 0.0),    # Right hemisphere
-            (-0.3, 0.0, 0.0)    # Left hemisphere
-        ]
-        
-        for cx, cy, cz in centers:
-            # Distance from center
-            distance = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-            
-            # Gaussian field distribution
-            field_component = self.field_strength * np.exp(-distance**2 * 4)
-            
-            # Add frequency modulation
-            frequency_factor = np.sin(distance * self.base_frequency / 100.0)
-            field_component *= (1.0 + 0.3 * frequency_factor)
-            
-            self.primary_field += field_component
-        
-        # Normalize field
-        if np.max(self.primary_field) > 0:
-            self.primary_field /= np.max(self.primary_field)
-            self.primary_field *= self.field_strength
-    
-    def _create_harmonic_field(self):
-        """Create harmonic field resonances."""
-        # Generate harmonic frequencies
-        harmonics = [
-            self.base_frequency * 2,      # Octave
-            self.base_frequency * PHI,    # Golden ratio
-            self.base_frequency * 3/2,    # Perfect fifth
-            LOVE_FREQUENCY                # Love frequency
-        ]
-        
-        x, y, z = np.meshgrid(
-            np.linspace(0, 2*np.pi, self.brain_shape[0]),
-            np.linspace(0, 2*np.pi, self.brain_shape[1]),
-            np.linspace(0, 2*np.pi, self.brain_shape[2]),
-            indexing='ij'
-        )
-        
-        # Create harmonic patterns
-        for i, harmonic_freq in enumerate(harmonics):
-            phase_offset = i * np.pi / 4
-            
-            # Create standing wave pattern
-            harmonic_pattern = (
-                np.sin(x * harmonic_freq / 100.0 + phase_offset) *
-                np.cos(y * harmonic_freq / 150.0 + phase_offset) *
-                np.sin(z * harmonic_freq / 200.0 + phase_offset)
-            )
-            
-            self.harmonic_field += harmonic_pattern * (0.2 / len(harmonics))
-        
-        # Apply modulation from primary field
-        self.harmonic_field *= (0.5 + 0.5 * self.primary_field)
-    
-    def _initialize_circulation(self):
-        """Initialize field circulation patterns."""
-        x, y, z = np.meshgrid(
-            np.linspace(-1, 1, self.brain_shape[0]),
-            np.linspace(-1, 1, self.brain_shape[1]),
-            np.linspace(-1, 1, self.brain_shape[2]),
-            indexing='ij'
-        )
-        
-        # Create circulation vectors (simplified vortex pattern)
-        self.circulation_vectors[:,:,:,0] = -y * z  # X component
-        self.circulation_vectors[:,:,:,1] = x * z   # Y component  
-        self.circulation_vectors[:,:,:,2] = -x * y  # Z component
-        
-        # Normalize circulation vectors
-        magnitude = np.sqrt(np.sum(self.circulation_vectors**2, axis=3))
-        magnitude = np.maximum(magnitude, 1e-8)  # Avoid division by zero
-        
-        for i in range(3):
-            self.circulation_vectors[:,:,:,i] /= magnitude
-        
-        # Set circulation strength
-        self.circulation_strength = self.field_strength * 0.3
-    
-    def _create_resonance_zones(self):
-        """Create specific resonance zones in the field."""
-        self.resonance_zones = [
-            {
-                'name': 'consciousness_core',
-                'center': (32, 40, 20),
-                'radius': 8,
-                'frequency': self.base_frequency,
-                'strength': self.field_strength * 1.2
-            },
-            {
-                'name': 'memory_formation',
-                'center': (32, 20, 16),
-                'radius': 6,
-                'frequency': self.base_frequency * PHI,
-                'strength': self.field_strength * 0.8
-            },
-            {
-                'name': 'emotional_processing',
-                'center': (20, 32, 12),
-                'radius': 5,
-                'frequency': LOVE_FREQUENCY,
-                'strength': self.field_strength * 0.9
-            },
-            {
-                'name': 'creative_synthesis',
-                'center': (44, 32, 12),
-                'radius': 5,
-                'frequency': self.base_frequency * 1.5,
-                'strength': self.field_strength * 0.7
-            }
-        ]
-        
-        # Apply resonance zones to field
-        for zone in self.resonance_zones:
-            cx, cy, cz = zone['center']
-            radius = zone['radius']
-            
-            # Create distance grid from zone center
-            x_idx, y_idx, z_idx = np.meshgrid(
-                np.arange(self.brain_shape[0]),
-                np.arange(self.brain_shape[1]),
-                np.arange(self.brain_shape[2]),
-                indexing='ij'
-            )
-            
-            distance = np.sqrt(
-                (x_idx - cx)**2 + (y_idx - cy)**2 + (z_idx - cz)**2
-            )
-            
-            # Create resonance field for this zone
-            zone_field = np.zeros(self.brain_shape)
-            mask = distance <= radius
-            
-            if np.any(mask):
-                zone_field[mask] = zone['strength'] * (1.0 - distance[mask] / radius)
-                self.resonance_field += zone_field
-    
-    def propagate_soul_energy(self, soul_position: Tuple[int, int, int], 
-                             energy_amount: float, soul_properties: Dict) -> Dict[str, Any]:
-        """
-        Propagate soul energy through the field system.
-        
-        Args:
-            soul_position: Position of soul energy injection
-            energy_amount: Amount of energy to propagate
-            soul_properties: Soul properties affecting propagation
-            
-        Returns:
-            Dict with propagation results
-        """
-        if not self.field_active:
-            return {'success': False, 'reason': 'Field not active'}
-        
-        logger.info(f"Propagating {energy_amount:.2f} BEU of soul energy")
-        
-        try:
-            x, y, z = soul_position
-            
-            # Validate position
-            if not (0 <= x < self.brain_shape[0] and 
-                   0 <= y < self.brain_shape[1] and 
-                   0 <= z < self.brain_shape[2]):
-                return {'success': False, 'reason': 'Invalid soul position'}
-            
-            # Extract soul properties
-            soul_frequency = soul_properties.get('frequency', self.base_frequency)
-            soul_coherence = soul_properties.get('coherence', 0.5) 
-            soul_stability = soul_properties.get('stability', 0.5)
-            
-            # Calculate frequency resonance with field
-            freq_resonance = self._calculate_frequency_resonance(soul_frequency)
-            
-            # Create propagation pattern
-            propagation_field = self._create_propagation_pattern(
-                soul_position, energy_amount, freq_resonance, soul_coherence
-            )
-            
-            # Apply field circulation
-            circulated_field = self._apply_circulation(propagation_field, soul_stability)
-            
-            # Update field grids
-            field_enhancement = energy_amount * freq_resonance * soul_coherence
-            self.primary_field += circulated_field * field_enhancement
-            
-            # Update resonance field based on interactions
-            self._update_resonance_interactions(soul_position, soul_frequency, energy_amount)
-            
-            # Record propagation event
-            self.field_history.append({
-                'event': 'soul_energy_propagation',
-                'timestamp': datetime.now().isoformat(),
-                'position': soul_position,
-                'energy_amount': energy_amount,
-                'frequency_resonance': freq_resonance,
-                'field_enhancement': field_enhancement
-            })
-            
-            # Update metrics
-            self.metrics['peak_field_strength'] = max(
-                self.metrics['peak_field_strength'], 
-                np.max(self.primary_field)
-            )
-            
-            logger.info(f"Soul energy propagated with resonance {freq_resonance:.3f}")
-            
-            return {
-                'success': True,
-                'frequency_resonance': freq_resonance,
-                'field_enhancement': field_enhancement,
-                'propagation_radius': self._calculate_propagation_radius(energy_amount, freq_resonance),
-                'resonance_zones_affected': self._get_affected_zones(soul_position, energy_amount)
-            }
+            # Add thought signature effects if present
+            if thought_signature == 'mother_comfort':
+                # Mother comfort: gentle limbic enhancement
+                if 'limbic' in self.brain_structure_ref.regions:
+                    limbic_region = self.brain_structure_ref.regions['limbic']
+                    center = limbic_region['center']
+                    radius = limbic_region['radius'] * 1.2
+                    strength = intensity * 0.25
+                    self._add_radial_modulation(modulation, center, strength, radius)
             
         except Exception as e:
-            logger.error(f"Error propagating soul energy: {e}", exc_info=True)
-            return {
-                'success': False,
-                'reason': f'Propagation error: {e}'
-            }
+            logger.error(f"Error calculating state modulation: {e}")
+        
+        return modulation
     
-    def _calculate_frequency_resonance(self, soul_frequency: float) -> float:
-        """Calculate resonance between soul and field frequencies."""
-        # Check resonance with base frequency
-        base_resonance = 1.0 / (1.0 + abs(soul_frequency - self.base_frequency) / 100.0)
+    def _add_radial_modulation(self, modulation: np.ndarray, center: Tuple[int, int, int], 
+                              strength: float, radius: float):
+        """Add radial modulation around a center point."""
+        cx, cy, cz = center
         
-        # Check resonance with harmonic frequencies
-        harmonics = [
-            self.base_frequency * 2,
-            self.base_frequency * PHI,
-            self.base_frequency * 3/2,
-            LOVE_FREQUENCY
-        ]
+        # Create coordinate grids
+        x = np.arange(self.dimensions[0])
+        y = np.arange(self.dimensions[1])
+        z = np.arange(self.dimensions[2])
         
-        harmonic_resonances = []
-        for harmonic in harmonics:
-            resonance = 1.0 / (1.0 + abs(soul_frequency - harmonic) / 50.0)
-            harmonic_resonances.append(resonance)
+        # Calculate distances from center
+        x_dist = (x - cx) ** 2
+        y_dist = (y[:, np.newaxis] - cy) ** 2
+        z_dist = (z[:, np.newaxis, np.newaxis] - cz) ** 2
         
-        # Combined resonance
-        total_resonance = base_resonance + 0.3 * max(harmonic_resonances)
-        return min(total_resonance, 2.0)  # Cap at 2.0
+        distance = np.sqrt(x_dist[np.newaxis, np.newaxis, :] + 
+                          y_dist[np.newaxis, :, np.newaxis] + 
+                          z_dist[:, np.newaxis, np.newaxis])
+        
+        # Apply modulation with falloff
+        mask = distance <= radius
+        if np.any(mask):
+            falloff = 1.0 - (distance / radius)
+            modulation[mask] += strength * falloff[mask]
     
-    def _create_propagation_pattern(self, position: Tuple[int, int, int], 
-                                  energy: float, resonance: float, coherence: float) -> np.ndarray:
-        """Create energy propagation pattern from injection point."""
+    def _inject_biological_chaos(self, field_array: np.ndarray, intensity_scale: float = 1.0):
+        """Adds small random noise for biological realism."""
+        if self.chaos_level > FLOAT_EPSILON:
+            noise_std_dev = self.chaos_level * intensity_scale * 0.05
+            if noise_std_dev < FLOAT_EPSILON:
+                noise_std_dev = FLOAT_EPSILON * 10
+            
+            noise = np.random.normal(0, noise_std_dev, field_array.shape).astype(np.float32)
+            field_array += noise
+        
+        return field_array
+    
+    def get_combined_field_value_at_point(self, position: Tuple[int, int, int]) -> float:
+        """
+        Get combined field value at point.
+        Combines brain structure's static patterns with dynamic modulation.
+        """
+        if not self.static_patterns_available or not self.brain_structure_ref:
+            logger.warning("Cannot get field value: static patterns not available")
+            return 0.0
+        
+        # Validate position
         x, y, z = position
-        
-        # Create distance grid from injection point
-        x_idx, y_idx, z_idx = np.meshgrid(
-            np.arange(self.brain_shape[0]),
-            np.arange(self.brain_shape[1]),
-            np.arange(self.brain_shape[2]),
-            indexing='ij'
-        )
-        
-        distance = np.sqrt((x_idx - x)**2 + (y_idx - y)**2 + (z_idx - z)**2)
-        
-        # Create propagation based on energy, resonance, and coherence
-        max_distance = energy * resonance * coherence * 20  # Propagation range
-        
-        # Exponential decay with distance
-        propagation = np.exp(-distance / max_distance)
-        
-        # Add wave interference pattern
-        wave_pattern = np.sin(distance * resonance / 5.0) * coherence
-        propagation *= (1.0 + 0.2 * wave_pattern)
-        
-        return propagation
-    
-    def _apply_circulation(self, field: np.ndarray, stability: float) -> np.ndarray:
-        """Apply circulation patterns to the field."""
-        if self.circulation_strength < MIN_FIELD_STRENGTH:
-            return field
-        
-        # Simple circulation by rotating field values
-        circulated = field.copy()
-        
-        # Apply circulation based on circulation vectors and stability
-        circulation_factor = self.circulation_strength * stability
-        
-        # Create circulation by applying small rotations
-        for i in range(3):
-            if circulation_factor > 0.01:
-                shift_amount = int(circulation_factor * 2)
-                if shift_amount > 0:
-                    circulated = np.roll(circulated, shift_amount, axis=i)
-        
-        self.metrics['circulation_cycles'] += 1
-        
-        return circulated
-    
-    def _update_resonance_interactions(self, position: Tuple[int, int, int], 
-                                     frequency: float, energy: float):
-        """Update resonance field based on new energy injection."""
-        # Check which resonance zones are affected
-        affected_zones = self._get_affected_zones(position, energy)
-        
-        for zone in affected_zones:
-            # Calculate frequency interaction
-            freq_diff = abs(frequency - zone['frequency'])
-            interaction_strength = energy / (1.0 + freq_diff / 100.0)
-            
-            # Update zone strength
-            zone['strength'] = min(1.0, zone['strength'] + interaction_strength * 0.1)
-            
-            # Record resonance event
-            self.resonance_events.append({
-                'timestamp': datetime.now().isoformat(),
-                'zone': zone['name'],
-                'frequency_difference': freq_diff,
-                'interaction_strength': interaction_strength
-            })
-            
-            self.metrics['resonance_events_count'] += 1
-    
-    def _get_affected_zones(self, position: Tuple[int, int, int], energy: float) -> List[Dict]:
-        """Get resonance zones affected by energy injection."""
-        x, y, z = position
-        affected = []
-        
-        for zone in self.resonance_zones:
-            cx, cy, cz = zone['center']
-            distance = math.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-            
-            # Zone is affected if within influence radius
-            influence_radius = zone['radius'] + energy * 5
-            if distance <= influence_radius:
-                affected.append(zone)
-        
-        return affected
-    
-    def _calculate_propagation_radius(self, energy: float, resonance: float) -> float:
-        """Calculate effective propagation radius."""
-        return energy * resonance * 10.0  # Simplified calculation
-    
-    def evolve_field(self, time_step: float = 0.1) -> Dict[str, Any]:
-        """
-        Evolve the field over time.
-        
-        Args:
-            time_step: Time step for evolution
-            
-        Returns:
-            Dict with evolution results
-        """
-        if not self.field_active:
-            return {'success': False, 'reason': 'Field not active'}
+        if not (0 <= x < self.dimensions[0] and 
+                0 <= y < self.dimensions[1] and 
+                0 <= z < self.dimensions[2]):
+            logger.error(f"Position {position} out of bounds {self.dimensions}")
+            return 0.0
         
         try:
-            # Apply field decay
-            self.primary_field *= FIELD_DECAY_RATE
-            self.harmonic_field *= (FIELD_DECAY_RATE + 0.02)  # Slower decay for harmonics
+            # Get static field value from brain structure
+            static_value = 0.0
+            if hasattr(self.brain_structure_ref, 'get_field_value'):
+                static_value = self.brain_structure_ref.get_field_value(position, 'energy')
+            elif (hasattr(self.brain_structure_ref, 'static_field_foundation') and 
+                  self.brain_structure_ref.static_field_foundation is not None):
+                static_value = float(self.brain_structure_ref.static_field_foundation[x, y, z])
             
-            # Update circulation
-            if self.circulation_strength > MIN_FIELD_STRENGTH:
-                self.circulation_strength *= 0.98  # Natural circulation decay
+            # Add dynamic modulation
+            dynamic_value = float(self.current_modulation[x, y, z])
             
-            # Apply harmonic reinforcement
-            harmonic_interaction = np.multiply(self.primary_field, self.harmonic_field)
-            self.resonance_field += harmonic_interaction * 0.1
-            self.metrics['harmonic_interactions'] += np.sum(harmonic_interaction > 0.1)
-            
-            # Update metrics
-            self.metrics['total_field_time'] += time_step
-            
-            return {
-                'success': True,
-                'field_strength': np.mean(self.primary_field),
-                'harmonic_strength': np.mean(self.harmonic_field),
-                'resonance_strength': np.mean(self.resonance_field),
-                'circulation_strength': self.circulation_strength
-            }
+            return static_value + dynamic_value
             
         except Exception as e:
-            logger.error(f"Error evolving field: {e}", exc_info=True)
-            return {
-                'success': False,
-                'reason': f'Evolution error: {e}'
-            }
+            logger.error(f"Error getting field value at {position}: {e}")
+            return 0.0
     
     def get_field_state(self) -> Dict[str, Any]:
         """Get current field state."""
         return {
-            'field_id': self.field_id,
+            'field_system_id': self.field_system_id,
             'field_active': self.field_active,
-            'base_frequency': self.base_frequency,
-            'field_strength': self.field_strength,
-            'circulation_strength': self.circulation_strength,
-            'resonance_zones_count': len(self.resonance_zones),
-            'field_statistics': {
-                'primary_field_mean': float(np.mean(self.primary_field)),
-                'primary_field_max': float(np.max(self.primary_field)),
-                'harmonic_field_mean': float(np.mean(self.harmonic_field)),
-                'resonance_field_mean': float(np.mean(self.resonance_field))
-            },
-            'metrics': self.metrics.copy(),
-            'creation_time': self.creation_time
+            'current_brain_state': self.current_brain_state,
+            'static_patterns_available': self.static_patterns_available,
+            'brain_structure_connected': self.brain_structure_ref is not None,
+            'active_regions': list(self.active_regions_in_current_state),
+            'processing_intensity': self.last_processing_intensity,
+            'modulation_cache_size': len(self.state_modulation_cache),
+            'chaos_level': self.chaos_level
         }
+
+
+# === Quantum Seeds Coordinator ===
+
+class QuantumSeedsCoordinator:
+    """
+    Coordinates quantum seeds network with enhanced mycelial network.
+    Handles cross-region communication and workload distribution.
+    """
     
-    def reset_field(self) -> Dict[str, Any]:
-        """Reset the field system."""
-        logger.info("Resetting field dynamics system")
+    def __init__(self, enhanced_network=None):
+        self.coordinator_id = str(uuid.uuid4())
+        self.enhanced_network = enhanced_network
+        self.quantum_network = None
+        self.coordination_active = False
+        
+        logger.info(f"Quantum seeds coordinator initialized: {self.coordinator_id[:8]}")
+    
+    def set_quantum_network(self, quantum_network):
+        """Set the quantum seeds network."""
+        self.quantum_network = quantum_network
+        self.coordination_active = True
+        logger.info("Quantum seeds network connected to coordinator")
+    
+    def coordinate_cross_region_processing(self, workload_type: str, 
+                                         source_region: str, 
+                                         target_regions: List[str]) -> Dict[str, Any]:
+        """Use quantum entanglement for efficient cross-region processing."""
+        if not self.quantum_network:
+            return {'success': False, 'reason': 'No quantum network available'}
         
         try:
-            # Reset field grids
-            self.primary_field.fill(0.0)
-            self.harmonic_field.fill(0.0)
-            self.resonance_field.fill(0.0)
-            self.circulation_vectors.fill(0.0)
+            # Find quantum seeds in source region
+            source_seeds = self._find_seeds_in_region(source_region)
             
-            # Reset state
-            self.field_active = False
-            self.field_strength = 0.0
-            self.circulation_strength = 0.0
-            self.resonance_zones.clear()
+            # Find quantum seeds in target regions
+            target_seeds = []
+            for region in target_regions:
+                region_seeds = self._find_seeds_in_region(region)
+                target_seeds.extend(region_seeds)
             
-            # Clear history
-            self.field_history.clear()
-            self.resonance_events.clear()
+            # Process workload using entangled seeds
+            processing_results = []
+            successful_coordinations = 0
             
-            return {'success': True, 'reset_time': datetime.now().isoformat()}
+            for target_seed in target_seeds:
+                # Check if any source seed is entangled with target
+                if self._has_entanglement(source_seeds, target_seed):
+                    result = target_seed.process_workload(
+                        workload_type=workload_type,
+                        workload_data={'source_region': source_region},
+                        processing_time=1.0
+                    )
+                    
+                    if result.get('success', False):
+                        processing_results.append(result)
+                        successful_coordinations += 1
+            
+            # Report to enhanced network if available
+            if self.enhanced_network and hasattr(self.enhanced_network, 'metrics'):
+                self.enhanced_network.metrics['quantum_coordinations'] = (
+                    self.enhanced_network.metrics.get('quantum_coordinations', 0) + 
+                    successful_coordinations
+                )
+            
+            logger.info(f"Quantum coordination completed: {successful_coordinations} successful")
+            
+            return {
+                'success': True,
+                'workload_type': workload_type,
+                'source_region': source_region,
+                'target_regions': target_regions,
+                'source_seeds_found': len(source_seeds),
+                'target_seeds_found': len(target_seeds),
+                'successful_coordinations': successful_coordinations,
+                'processing_results': processing_results
+            }
             
         except Exception as e:
-            logger.error(f"Error resetting field: {e}", exc_info=True)
-            return {'success': False, 'reason': f'Reset error: {e}'}
+            logger.error(f"Quantum coordination error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _find_seeds_in_region(self, region_name: str) -> List:
+        """Find quantum seeds that focus on specific brain region."""
+        if not self.quantum_network or not hasattr(self.quantum_network, 'seeds'):
+            return []
+        
+        region_seeds = []
+        
+        # Map region names to workload focus types
+        region_focus_map = {
+            'brain_stem': 'survival',
+            'limbic': 'emotional', 
+            'frontal': 'creative',
+            'temporal': 'emotional',
+            'parietal': 'creative',
+            'occipital': 'survival',
+            'cerebellum': 'survival'
+        }
+        
+        target_focus = region_focus_map.get(region_name, 'survival')
+        
+        for seed_id, seed in self.quantum_network.seeds.items():
+            if hasattr(seed, 'workload_focus') and seed.workload_focus == target_focus:
+                region_seeds.append(seed)
+        
+        return region_seeds
+    
+    def _has_entanglement(self, source_seeds: List, target_seed) -> bool:
+        """Check if any source seed is entangled with target seed."""
+        if not hasattr(target_seed, 'entangled_seeds'):
+            return False
+        
+        for source_seed in source_seeds:
+            if hasattr(source_seed, 'seed_id'):
+                if source_seed.seed_id in target_seed.entangled_seeds:
+                    return True
+        
+        return False
+    
+    def optimize_entanglement_network(self) -> Dict[str, Any]:
+        """Optimize quantum entanglement network for better coordination."""
+        if not self.quantum_network:
+            return {'success': False, 'reason': 'No quantum network available'}
+        
+        try:
+            # Get current entanglement statistics
+            total_seeds = len(self.quantum_network.seeds)
+            total_entanglements = self.quantum_network.total_entanglements
+            
+            # Calculate optimization metrics
+            avg_entanglements_per_seed = total_entanglements / total_seeds if total_seeds > 0 else 0
+            
+            optimization_result = {
+                'success': True,
+                'total_seeds': total_seeds,
+                'total_entanglements': total_entanglements,
+                'avg_entanglements_per_seed': avg_entanglements_per_seed,
+                'network_efficiency': min(1.0, avg_entanglements_per_seed / 5.0)  # Target 5 entanglements per seed
+            }
+            
+            # Report optimization to enhanced network
+            if self.enhanced_network and hasattr(self.enhanced_network, 'metrics'):
+                self.enhanced_network.metrics['quantum_network_efficiency'] = optimization_result['network_efficiency']
+            
+            logger.info(f"Quantum network optimization: {optimization_result['network_efficiency']:.2f} efficiency")
+            
+            return optimization_result
+            
+        except Exception as e:
+            logger.error(f"Quantum network optimization error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_coordinator_status(self) -> Dict[str, Any]:
+        """Get coordinator status."""
+        return {
+            'coordinator_id': self.coordinator_id,
+            'coordination_active': self.coordination_active,
+            'quantum_network_connected': self.quantum_network is not None,
+            'enhanced_network_connected': self.enhanced_network is not None,
+            'quantum_network_state': (
+                self.quantum_network.get_network_state() 
+                if self.quantum_network else None
+            )
+        }
 
 
-# --- Utility Functions ---
+# === Enhanced Mycelial Network Integration ===
 
-def create_field_dynamics(brain_shape: Tuple[int, int, int] = (64, 64, 32)) -> FieldDynamics:
-    """Create field dynamics system."""
-    return FieldDynamics(brain_shape)
-
-
-def demonstrate_field_dynamics():
-    """Demonstrate field dynamics system."""
-    print("\n=== Field Dynamics Demonstration ===")
+def integrate_quantum_coordinator_with_enhanced_network(enhanced_network, quantum_network):
+    """
+    Integrate quantum coordinator with enhanced mycelial network.
     
-    # Create field system
-    field = create_field_dynamics()
+    Args:
+        enhanced_network: Enhanced mycelial network instance
+        quantum_network: Quantum seeds network instance
+        
+    Returns:
+        Configured quantum coordinator
+    """
+    logger.info("Integrating quantum coordinator with enhanced mycelial network")
     
-    # Initialize field
-    init_result = field.initialize_field(soul_frequency=432.0, initial_strength=0.7)
-    print(f"Field initialized: {init_result['success']}")
+    # Create quantum coordinator
+    quantum_coordinator = QuantumSeedsCoordinator(enhanced_network)
+    quantum_coordinator.set_quantum_network(quantum_network)
     
-    # Propagate soul energy
-    soul_props = {
-        'frequency': 440.0,
-        'coherence': 0.8,
-        'stability': 0.7
-    }
+    # Add quantum coordinator to enhanced network
+    enhanced_network.quantum_seeds_coordinator = quantum_coordinator
     
-    prop_result = field.propagate_soul_energy((32, 32, 16), 10.0, soul_props)
-    print(f"Soul energy propagated: {prop_result['success']}")
-    if prop_result['success']:
-        print(f"  Frequency resonance: {prop_result['frequency_resonance']:.3f}")
-        print(f"  Zones affected: {len(prop_result['resonance_zones_affected'])}")
+    # Add quantum coordination method to enhanced network
+    def coordinate_with_quantum_seeds(self, workload_type: str, regions: List[str]):
+        """Use quantum entanglement for efficient cross-region processing."""
+        if hasattr(self, 'quantum_seeds_coordinator'):
+            return self.quantum_seeds_coordinator.coordinate_cross_region_processing(
+                workload_type, regions[0] if regions else 'limbic', regions[1:] if len(regions) > 1 else []
+            )
+        else:
+            return {'success': False, 'reason': 'Quantum coordinator not available'}
     
-    # Evolve field
-    for i in range(5):
-        evolution = field.evolve_field()
-        if evolution['success']:
-            print(f"Evolution step {i+1}: Field strength = {evolution['field_strength']:.4f}")
+    # Bind method to enhanced network
+    import types
+    enhanced_network.coordinate_with_quantum_seeds = types.MethodType(
+        coordinate_with_quantum_seeds, enhanced_network
+    )
     
-    # Get final state
-    state = field.get_field_state()
-    print(f"\nFinal field statistics:")
-    print(f"  Primary field mean: {state['field_statistics']['primary_field_mean']:.4f}")
-    print(f"  Resonance events: {state['metrics']['resonance_events_count']}")
+    logger.info("Quantum coordinator integrated with enhanced mycelial network")
     
-    return field
-
-
-if __name__ == "__main__":
-    demonstrate_field_dynamics()
+    return quantum_coordinator
