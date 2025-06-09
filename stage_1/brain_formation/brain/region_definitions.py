@@ -1,5 +1,5 @@
 """
-Brain Region Definitions
+Brain Region Definitions - FIXED VERSION
 
 Defines the comprehensive properties of brain regions, sub-regions,
 and memory types for the brain formation process.
@@ -9,12 +9,6 @@ These definitions serve as the foundation for creating the 3D brain structure.
 
 import numpy as np
 from enum import Enum
-
-# ---- Hemisphere Definitions ----
-HEMISPHERES = {
-    'left': {'proportion': 0.5, 'bias': 'logical', 'primary_function': 'analytical'},
-    'right': {'proportion': 0.5, 'bias': 'creative', 'primary_function': 'holistic'}
-}
 
 # ---- Color Palette (Specific unique shades) ----
 class ColorShades(Enum):
@@ -92,7 +86,6 @@ class ColorShades(Enum):
 
 
 # ---- Standard Glyphs ----
-# References to glyphs stored elsewhere - for now just placeholders
 class BrainGlyphs(Enum):
     FRONTAL_GLYPH = "frontal_glyph"
     PARIETAL_GLYPH = "parietal_glyph"
@@ -121,6 +114,23 @@ class PlatonicSolids(Enum):
     DODECAHEDRON = "dodecahedron"
     ICOSAHEDRON = "icosahedron"
 
+# ---- Hemispheres - FIXED ----
+HEMISPHERES = {
+    'left_hemisphere': {
+        'function': 'logical_analytical',
+        'default_wave': 'beta',
+        'wave_frequency_hz': 18.5,
+        'color': ColorShades.ROYAL_BLUE_6,
+        'sound_base_note': 'C4',
+    },
+    'right_hemisphere': {
+        'function': 'creative_holistic',
+        'default_wave': 'alpha',
+        'wave_frequency_hz': 10.2,
+        'color': ColorShades.EMERALD_5,
+        'sound_base_note': 'G4',
+    }
+}
 
 # ---- Major Brain Regions ----
 MAJOR_REGIONS = {
@@ -472,107 +482,6 @@ SUB_REGIONS = {
 }
 
 
-# ---- Memory Types ----
-MEMORY_TYPES = {
-    'survival': {
-        'base_frequency_hz': 4.2,
-        'signal_pattern': 'high_amplitude_rapid',
-        'decay_rate': 0.0001,
-        'structure_distribution': 0.7,  # 70% in structure
-        'brain_distribution': 0.3,     # 30% distributed
-        'fullness_threshold': 0.95,    # When to switch to full distribution
-        'color_identifier': ColorShades.RUBY_1,
-        'sound_pattern': 'staccato_low',
-        'primary_structure': 'limbic',
-        'secondary_structures': ['brain_stem', 'frontal']
-    },
-    'emotional': {
-        'base_frequency_hz': 5.8,
-        'signal_pattern': 'oscillating_medium',
-        'decay_rate': 0.0008,
-        'structure_distribution': 0.7,
-        'brain_distribution': 0.3,
-        'fullness_threshold': 0.9,
-        'color_identifier': ColorShades.AMBER_3,
-        'sound_pattern': 'flowing_mid',
-        'primary_structure': 'limbic',
-        'secondary_structures': ['temporal', 'frontal']
-    },
-    'procedural': {
-        'base_frequency_hz': 9.3,
-        'signal_pattern': 'steady_rhythmic',
-        'decay_rate': 0.00005,
-        'structure_distribution': 0.8,
-        'brain_distribution': 0.2,
-        'fullness_threshold': 0.95,
-        'color_identifier': ColorShades.TEAL_4,
-        'sound_pattern': 'rhythmic_sustained',
-        'primary_structure': 'cerebellum',
-        'secondary_structures': ['frontal', 'parietal']
-    },
-    'semantic': {
-        'base_frequency_hz': 11.7,
-        'signal_pattern': 'complex_structured',
-        'decay_rate': 0.0003,
-        'structure_distribution': 0.6,
-        'brain_distribution': 0.4,
-        'fullness_threshold': 0.9,
-        'color_identifier': ColorShades.ROYAL_BLUE_1,
-        'sound_pattern': 'harmonic_complex',
-        'primary_structure': 'temporal',
-        'secondary_structures': ['frontal', 'parietal']
-    },
-    'episodic': {
-        'base_frequency_hz': 7.1,
-        'signal_pattern': 'burst_sequence',
-        'decay_rate': 0.001,
-        'structure_distribution': 0.7,
-        'brain_distribution': 0.3,
-        'fullness_threshold': 0.85,
-        'color_identifier': ColorShades.GOLD_2,
-        'sound_pattern': 'melodic_varied',
-        'primary_structure': 'temporal',
-        'secondary_structures': ['limbic', 'frontal']
-    },
-    'working': {
-        'base_frequency_hz': 14.5,
-        'signal_pattern': 'rapid_changing',
-        'decay_rate': 0.05,
-        'structure_distribution': 0.9,
-        'brain_distribution': 0.1,
-        'fullness_threshold': 0.85,
-        'color_identifier': ColorShades.EMERALD_7,
-        'sound_pattern': 'staccato_high',
-        'primary_structure': 'frontal',
-        'secondary_structures': ['parietal']
-    },
-    'dimensional': {
-        'base_frequency_hz': 18.3,
-        'signal_pattern': 'geometric_harmonic',
-        'decay_rate': 0.0002,
-        'structure_distribution': 0.5,
-        'brain_distribution': 0.5,
-        'fullness_threshold': 0.92,
-        'color_identifier': ColorShades.VIOLET_7,
-        'sound_pattern': 'resonant_complex',
-        'primary_structure': 'parietal',
-        'secondary_structures': ['occipital', 'frontal']
-    },
-    'ephemeral': {
-        'base_frequency_hz': 23.7,
-        'signal_pattern': 'transient_fluctuating',
-        'decay_rate': 0.1,
-        'structure_distribution': 0.4,
-        'brain_distribution': 0.6,
-        'fullness_threshold': 0.8,
-        'color_identifier': ColorShades.SILVER_7,
-        'sound_pattern': 'ethereal_light',
-        'primary_structure': 'frontal',
-        'secondary_structures': ['temporal', 'limbic']
-    }
-}
-
-
 # ---- Sound Modifiers ----
 SOUND_MODIFIERS = {
     'harmonic_fifth': {'interval': 1.5, 'timbre_shift': 0.2, 'amplitude_modifier': 1.1},
@@ -588,7 +497,6 @@ SOUND_MODIFIERS = {
     'octave_down': {'interval': 0.5, 'timbre_shift': -0.3, 'amplitude_modifier': 0.9}
 }
 
-
 # ---- Brain Wave Types ----
 BRAIN_WAVE_TYPES = {
     'delta': {'frequency_range': (0.5, 4.0), 'state': 'deep_sleep'},
@@ -597,59 +505,6 @@ BRAIN_WAVE_TYPES = {
     'beta': {'frequency_range': (13.0, 30.0), 'state': 'alert_focused'},
     'gamma': {'frequency_range': (30.0, 100.0), 'state': 'high_cognition'},
     'lambda': {'frequency_range': (100.0, 200.0), 'state': 'insight_transcendence'}
-}
-
-
-# ---- Signal Patterns for Memory Types ----
-SIGNAL_PATTERNS = {
-    'high_amplitude_rapid': {
-        'amplitude_range': (0.7, 1.0),
-        'frequency_modifier': 1.2,
-        'waveform': 'square_with_noise',
-        'burst_pattern': 'short_intense'
-    },
-    'oscillating_medium': {
-        'amplitude_range': (0.4, 0.8),
-        'frequency_modifier': 0.9,
-        'waveform': 'sine_complex',
-        'burst_pattern': 'rhythmic_varying'
-    },
-    'steady_rhythmic': {
-        'amplitude_range': (0.5, 0.7),
-        'frequency_modifier': 1.0,
-        'waveform': 'triangular',
-        'burst_pattern': 'continuous'
-    },
-    'complex_structured': {
-        'amplitude_range': (0.3, 0.6),
-        'frequency_modifier': 1.1,
-        'waveform': 'composite_harmonic',
-        'burst_pattern': 'organized_complex'
-    },
-    'burst_sequence': {
-        'amplitude_range': (0.5, 0.9),
-        'frequency_modifier': 0.95,
-        'waveform': 'sawtooth_modified',
-        'burst_pattern': 'sequential_bursts'
-    },
-    'rapid_changing': {
-        'amplitude_range': (0.4, 0.7),
-        'frequency_modifier': 1.3,
-        'waveform': 'variable_complex',
-        'burst_pattern': 'chaotic_rapid'
-    },
-    'geometric_harmonic': {
-        'amplitude_range': (0.6, 0.8),
-        'frequency_modifier': 1.15,
-        'waveform': 'golden_ratio_based',
-        'burst_pattern': 'fractal_recurring'
-    },
-    'transient_fluctuating': {
-        'amplitude_range': (0.2, 0.5),
-        'frequency_modifier': 1.4,
-        'waveform': 'ephemeral_noise',
-        'burst_pattern': 'transient_sporadic'
-    }
 }
 
 
@@ -770,8 +625,8 @@ REGION_BOUNDARIES = {
 }
 
 # ---- Global Constants ----
-# Standard 3D Grid Dimensions (Fibonacci-based)
-GRID_DIMENSIONS = (233, 233, 233)
+# Standard 3D Grid Dimensions (Updated to match brain_structure.py)
+GRID_DIMENSIONS = (256, 256, 256)
 
 # Golden Ratio for sacred proportions
 GOLDEN_RATIO = 1.618033988749895
@@ -828,3 +683,81 @@ def get_platonic_solid_for_region(region_name):
             return PlatonicSolids.CUBE  # Default
     return None
 
+def get_region_color(region_name):
+    """Get the color for a region."""
+    if region_name in MAJOR_REGIONS:
+        return MAJOR_REGIONS[region_name]['color']
+    elif region_name in SUB_REGIONS:
+        return SUB_REGIONS[region_name]['color']
+    return ColorShades.SILVER_4  # Default color
+
+def get_region_frequency(region_name):
+    """Get the frequency for a region."""
+    if region_name in MAJOR_REGIONS:
+        return MAJOR_REGIONS[region_name]['wave_frequency_hz']
+    elif region_name in SUB_REGIONS:
+        return SUB_REGIONS[region_name]['wave_frequency_hz']
+    return BASE_BRAIN_FREQUENCY  # Default frequency
+
+def get_region_function(region_name):
+    """Get the function for a region."""
+    if region_name in MAJOR_REGIONS:
+        return MAJOR_REGIONS[region_name]['function']
+    elif region_name in SUB_REGIONS:
+        return SUB_REGIONS[region_name]['function']
+    return 'unknown'  # Default function
+
+def get_region_boundaries(region1, region2):
+    """Get boundary type between two regions."""
+    # Check both orderings
+    boundary_key1 = (region1, region2)
+    boundary_key2 = (region2, region1)
+    
+    if boundary_key1 in REGION_BOUNDARIES:
+        return REGION_BOUNDARIES[boundary_key1]
+    elif boundary_key2 in REGION_BOUNDARIES:
+        return REGION_BOUNDARIES[boundary_key2]
+    else:
+        return REGION_BOUNDARIES['default']
+
+def validate_region_definitions():
+    """Validate that all region definitions are consistent."""
+    errors = []
+    
+    # Check that all sub-regions have valid parents
+    for sub_region, data in SUB_REGIONS.items():
+        parent = data['parent']
+        if parent not in MAJOR_REGIONS:
+            errors.append(f"Sub-region '{sub_region}' has invalid parent '{parent}'")
+    
+    # Check that proportions sum to approximately 1.0 for each major region
+    for major_region in MAJOR_REGIONS.keys():
+        sub_regions = get_sub_regions_for_parent(major_region)
+        total_proportion = sum(SUB_REGIONS[sr]['proportion'] for sr in sub_regions)
+        if abs(total_proportion - 1.0) > 0.01:  # Allow small floating point errors
+            errors.append(f"Region '{major_region}' sub-region proportions sum to {total_proportion:.3f}, not 1.0")
+    
+    # Check that major region proportions sum to approximately 1.0
+    total_major_proportion = sum(data['proportion'] for data in MAJOR_REGIONS.values())
+    if abs(total_major_proportion - 1.0) > 0.01:
+        errors.append(f"Major region proportions sum to {total_major_proportion:.3f}, not 1.0")
+    
+    return errors
+
+# Run validation on import
+_validation_errors = validate_region_definitions()
+if _validation_errors:
+    import warnings
+    for error in _validation_errors:
+        warnings.warn(f"Region definition validation error: {error}")
+
+# Export commonly used items
+__all__ = [
+    'HEMISPHERES', 'MAJOR_REGIONS', 'SUB_REGIONS', 'SOUND_MODIFIERS', 
+    'BRAIN_WAVE_TYPES', 'SOUND_PATTERNS', 'BOUNDARY_TYPES', 'REGION_BOUNDARIES',
+    'GRID_DIMENSIONS', 'GOLDEN_RATIO', 'BASE_BRAIN_FREQUENCY', 'ENERGY_DISTRIBUTION',
+    'ColorShades', 'BrainGlyphs', 'PlatonicSolids',
+    'get_sub_regions_for_parent', 'get_all_region_names', 'get_parent_region',
+    'get_platonic_solid_for_region', 'get_region_color', 'get_region_frequency',
+    'get_region_function', 'get_region_boundaries', 'validate_region_definitions'
+]

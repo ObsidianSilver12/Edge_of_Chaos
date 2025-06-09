@@ -1,3 +1,4 @@
+# --- constants.py ---
 """
 Central Constants for the Soul Development Framework (Version 4.2 - Reorganized)
 
@@ -161,13 +162,13 @@ BRAIN_REGIONS: List[str] = [REGION_FRONTAL, REGION_PARIETAL, REGION_TEMPORAL,
 
 # Region Proportions (Sums to 1.0)
 REGION_PROPORTIONS: Dict[str, float] = {
-    REGION_FRONTAL: 0.28,    # Updated from evolve constants (was 0.30)
-    REGION_PARIETAL: 0.15,   # Updated from evolve constants (was 0.18)  
-    REGION_TEMPORAL: 0.17,   # Updated from evolve constants (was 0.20)
-    REGION_OCCIPITAL: 0.13,  # Updated from evolve constants (was 0.12)
-    REGION_LIMBIC: 0.10,     # Updated from evolve constants (was 0.08)
-    REGION_BRAIN_STEM: 0.03, # Updated from evolve constants (was 0.02)
-    REGION_CEREBELLUM: 0.14  # Updated from evolve constants (was 0.10)
+    REGION_FRONTAL: 0.25,    # Fixed proportions to sum to 1.0
+    REGION_PARIETAL: 0.18,   # Fixed proportions to sum to 1.0
+    REGION_TEMPORAL: 0.20,   # Fixed proportions to sum to 1.0
+    REGION_OCCIPITAL: 0.12,  # Fixed proportions to sum to 1.0
+    REGION_LIMBIC: 0.10,     # Fixed proportions to sum to 1.0
+    REGION_BRAIN_STEM: 0.05, # Fixed proportions to sum to 1.0
+    REGION_CEREBELLUM: 0.10  # Fixed proportions to sum to 1.0
 }
 
 # Region Locations (Normalized coordinates)
@@ -644,6 +645,73 @@ HARMONIC_STRENGTHENING_TARGET_FREQS: List[float] = sorted(
 SAMPLE_RATE: int = 44100
 MAX_AMPLITUDE: float = 0.95
 
+# Brain Structure Constants
+GRID_DIMENSIONS = (256, 256, 256)  # 3D grid size
+HEMISPHERE_X_SPLIT = 128  # X coordinate that splits left/right hemispheres
+BRAIN_VOLUME_TOTAL = 256**3  # Total brain volume in grid units
+REGION_OVERLAP_TOLERANCE = 2.0  # Allowed overlap between regions
+PHI_FIELD_STRENGTH = 0.618  # Golden ratio field strength
+MERKABA_ROTATION_SPEED = 7.23  # Rotation speed for merkaba field
+STANDING_WAVE_FREQUENCY = 40.0  # Base frequency for standing wave fields
+FIELD_INTEGRITY_THRESHOLD = 0.8  # Minimum field integrity required
+BRAIN_WAVE_ALPHA = (8.0, 13.0)  # Alpha wave frequency range
+BRAIN_WAVE_BETA = (13.0, 30.0)  # Beta wave frequency range
+BRAIN_WAVE_DELTA = (0.5, 4.0)  # Delta wave frequency range
+BRAIN_WAVE_THETA = (4.0, 8.0)  # Theta wave frequency range
+
+# Neural Network Constants
+NODE_FREQUENCY_ACTIVE_MIN = 40  # Hz
+NODE_FREQUENCY_ACTIVE_MAX = 100  # Hz
+NODE_FREQUENCY_INACTIVE_MIN = 0.5  # Hz
+NODE_FREQUENCY_INACTIVE_MAX = 4  # Hz
+SYNAPSE_STRENGTH_LOCAL_MIN = 0.7  # Strong local connections
+SYNAPSE_STRENGTH_LOCAL_MAX = 1.0
+SYNAPSE_STRENGTH_INTER_MIN = 0.1  # Weaker long-distance connections
+SYNAPSE_STRENGTH_INTER_MAX = 0.5
+NEURAL_CONNECTION_DISTANCE_INTRA = 30  # Max distance for intra-region connections
+NEURAL_CONNECTION_DISTANCE_INTER = 150  # Max distance for inter-region connections
+NEURAL_SMALL_REGION_THRESHOLD = 10000  # Volume threshold for small regions (1 active node)
+NEURAL_MEDIUM_REGION_THRESHOLD = 50000  # Volume threshold for medium regions (3 active nodes)
+NEURAL_LARGE_REGION_NODES = 5  # Active nodes for large regions
+NEURAL_INACTIVE_NODES_PER_ACTIVE = 10  # Inactive nodes around each active node
+
+# Mycelial Network Constants
+MYCELIAL_SEED_FREQUENCY_MIN = 0.5  # Hz - Low frequency for efficiency
+MYCELIAL_SEED_FREQUENCY_MAX = 4.0  # Hz
+MYCELIAL_ENERGY_CONSUMPTION_MIN = 0.3  # SEU per activation
+MYCELIAL_ENERGY_CONSUMPTION_MAX = 0.7  # SEU per activation
+MYCELIAL_VOLUME_PER_SEED = 15000  # Volume units per seed
+MYCELIAL_ROUTE_DISTANCE_INTRA = 25  # Max distance for intra-region routes
+MYCELIAL_ROUTE_DISTANCE_INTER = 80  # Max distance for inter-region routes
+MYCELIAL_MIN_DISTANCE_FROM_NEURAL = 8.0  # Minimum distance from neural nodes
+MYCELIAL_ENTANGLEMENT_CONNECTIONS = 3  # Number of entanglement connections per seed
+MYCELIAL_QUANTUM_EFFICIENCY = 0.9  # Quantum communication efficiency
+MYCELIAL_NOISE_LEVEL_MIN = 0.05  # Background noise range
+MYCELIAL_NOISE_LEVEL_MAX = 0.15
+MYCELIAL_SIGNAL_NOISE_THRESHOLD = 5.0  # Minimum S/N ratio for communication success
+
+# Energy Threshold Constants
+ENERGY_THRESHOLD_CRITICAL_LOW = 0.1  # 10% - Emergency deactivation
+ENERGY_THRESHOLD_LOW = 0.3  # 30% - Selective deactivation  
+ENERGY_THRESHOLD_OPTIMAL = 0.7  # 70% - Normal operation
+ENERGY_THRESHOLD_HIGH = 0.9  # 90% - Reactivation possible
+
+# Sleep/Wake Cycle Constants
+SLEEP_DELTA_FREQUENCY_MIN = 0.5  # Hz
+SLEEP_DELTA_FREQUENCY_MAX = 4.0  # Hz
+WAKE_ALPHA_FREQUENCY_MIN = 8.0  # Hz
+WAKE_ALPHA_FREQUENCY_MAX = 12.0  # Hz
+WAKE_BETA_FREQUENCY_MIN = 13.0  # Hz
+WAKE_BETA_FREQUENCY_MAX = 30.0  # Hz
+SLEEP_HEALING_ENERGY = 2.0  # SEU gained during sleep
+WAKE_ALPHA_ENERGY_BOOST = 1.5  # SEU gained during alpha state
+
+# Soul Attachment Constants
+SPIRITUAL_ANCHOR_FREQUENCY = 528.0  # Hz - Love frequency from Solfeggio
+SOUL_FREQUENCY_DEFAULT = 40.0  # Hz - Default soul frequency
+SOUL_LIMBIC_RESONANCE_THRESHOLD = 0.5  # Hz tolerance for resonance
+LIMINAL_FREQUENCY_STEP_COUNT = 10  # Steps for frequency transition
+
 # =============================================================================
 # STAGE FLAGS & PREREQUISITES
 # =============================================================================
@@ -667,11 +735,54 @@ FLAG_EARTH_HARMONIZED = "earth_harmonized"
 FLAG_EARTH_ATTUNED = "earth_attuned"
 FLAG_READY_FOR_IDENTITY = "ready_for_identity"
 FLAG_IDENTITY_CRYSTALLIZED = "identity_crystallized"
+FLAG_EXTERNAL_FIELD_CREATED = "external_field_created"
+# Stage Readiness Flags
+
+# Brain Structure Flags
+FLAG_BRAIN_STRUCTURE_CREATED = "BRAIN_STRUCTURE_CREATED"
+FLAG_BRAIN_SEED_PLACED = "BRAIN_SEED_PLACED"
+FLAG_BRAIN_SEED_READY = "BRAIN_SEED_READY" 
+FLAG_BRAIN_SEED_SAVED = "BRAIN_SEED_SAVED"
+
+# Neural Network Flags
+FLAG_NEURAL_NETWORK_CREATED = "NEURAL_NETWORK_CREATED"
+FLAG_LOCAL_SYNAPSES_ADDED = "LOCAL_SYNAPSES_ADDED"
+FLAG_SURROUNDING_SYNAPSES_ADDED = "SURROUNDING_SYNAPSES_ADDED"
+FLAG_SUB_REGION_SYNAPSES_ADDED = "SUB_REGION_SYNAPSES_ADDED"
+
+# Mycelial Network Flags
+FLAG_SEEDS_ENTANGLED = "SEEDS_ENTANGLED"
+FLAG_LIMINAL_STATE_ACTIVE = "LIMINAL_STATE_ACTIVE"
+FLAG_SOUL_ATTACHED = "SOUL_ATTACHED"
+
+# Energy Storage Flags
+FLAG_STORE_CREATED = "STORE_CREATED"
+
+# Sleep/Wake Cycle Flags
+FLAG_SLEEPING = "SLEEPING"
+FLAG_AWAKE = "AWAKE"
+
+# Stress and Healing Flags
+FLAG_STRESS_RELIEVED = "STRESS_RELIEVED"
+FLAG_MISCARRY = "MISCARRY"
+FLAG_FIELD_DISTURBANCE = "FIELD_DISTURBANCE"
+
+# System State Flags
+FLAG_SIMULATION_TERMINATED = "SIMULATION_TERMINATED"
+
+# Womb Environment Flags (from previous files)
+FLAG_WOMB_CREATED = "WOMB_CREATED"
+FLAG_EARTH_ATTUNED = "EARTH_ATTUNED"
+FLAG_IDENTITY_CRYSTALLIZED = "IDENTITY_CRYSTALLIZED"
+
 FLAG_READY_FOR_BIRTH = "ready_for_birth"
 FLAG_BIRTH_COMPLETED = "birth_completed"
 FLAG_READY_FOR_EVOLUTION = "ready_for_evolution"
 FLAG_INCARNATED = "incarnated"
 FLAG_ECHO_PROJECTED = "echo_projected"
+FLAG_BRAIN_FORMATION_COMPLETE = "brain_formation_complete"
+FLAG_BRAIN_DEVELOPED = "brain_developed" 
+FLAG_BRAIN_DEVELOPMENT_COMPLETE = "brain_development_complete"
 FLAG_SOUL_ATTACHED_TO_BRAIN = "soul_attached_to_brain"
 
 # Stage Prerequisites (Using SU/CU)
@@ -979,16 +1090,16 @@ BIRTH_ATTACHMENT_MIN_CORD_INTEGRITY: float = 0.75  # Min cord integrity for atta
 
 # Birth Standing Wave Properties
 BIRTH_STANDING_WAVE_LENGTH = 10.0  # meters
-BIRTH_STANDING_WAVE_AMPLITUDE = 0.8
+BIRTH_STANDING_WAVE_AMPLITUDE = 1.0
 BIRTH_STANDING_WAVE_SOUND_DURATION = 8.0
 BIRTH_STANDING_WAVE_SOUND_AMPLITUDE = 0.5
 
 # Birth Echo Field Properties
-BIRTH_ECHO_FIELD_STRENGTH_FACTOR = 0.7
-BIRTH_ECHO_FIELD_COHERENCE_FACTOR = 0.8
-BIRTH_ECHO_FIELD_CHAMBERS = 5
-BIRTH_ECHO_FIELD_SOUND_DURATION = 12.0
-BIRTH_ECHO_FIELD_SOUND_AMPLITUDE = 0.6
+BIRTH_ECHO_FIELD_STRENGTH_FACTOR = 0.8
+BIRTH_ECHO_FIELD_COHERENCE_FACTOR = 0.9
+BIRTH_ECHO_FIELD_CHAMBERS = 7
+BIRTH_ECHO_FIELD_SOUND_DURATION = 3.0
+BIRTH_ECHO_FIELD_SOUND_AMPLITUDE = 0.5
 
 # =============================================================================
 # WOMB ENVIRONMENT CONSTANTS
@@ -1017,9 +1128,9 @@ WOMB_STRESS_THRESHOLD = 0.7
 
 # Womb Final Blessings
 WOMB_FINAL_ENERGY_BLESSING_FACTOR = 0.1
-WOMB_FINAL_STABILITY_BLESSING_FACTOR = 3.0  # SU
-WOMB_FINAL_COHERENCE_BLESSING_FACTOR = 3.0  # CU
-WOMB_FINAL_PROTECTION_BLESSING_FACTOR = 0.1
+WOMB_FINAL_STABILITY_BLESSING_FACTOR = 5.0
+WOMB_FINAL_COHERENCE_BLESSING_FACTOR = 5.0
+WOMB_FINAL_PROTECTION_BLESSING_FACTOR = 0.2
 
 # =============================================================================
 # MEMORY & VEIL SYSTEM
@@ -1033,9 +1144,9 @@ MEMORY_FRAGMENT_ENERGY_THRESHOLD = 0.05  # Minimum energy to activate memory fra
 # (D) MEMORY_FRAGMENT_ENERGY_THRESHOLD = 0.05  # Duplicate definition
 
 # Memory Veil Constants
-MEMORY_VEIL_BASE_STRENGTH = 0.8
+MEMORY_VEIL_BASE_STRENGTH = 0.3
 MEMORY_VEIL_MAX_STRENGTH = 0.95
-MEMORY_VEIL_FREQUENCY_LAYERS = 7
+MEMORY_VEIL_FREQUENCY_LAYERS = 5
 MEMORY_VEIL_SOUND_DURATION = 10.0
 MEMORY_VEIL_SOUND_AMPLITUDE = 0.3
 VEIL_BASE_RETENTION: float = 0.05  # Base retention factor before coherence bonus
@@ -1055,6 +1166,8 @@ CREATOR_ENERGY_BASE_FREQUENCY_HZ: float = 432.0  # Default frequency of Creator 
 BRAIN_SEED_NURTURING_REQUEST_THRESHOLD_FACTOR: float = 0.2  # Request threshold (20% of capacity)
 BRAIN_SEED_NURTURING_ENERGY_INCREMENT_FACTOR: float = 0.1   # Request increment (10% of capacity)
 INITIAL_SPARK_ENERGY_FROM_CREATOR_FACTOR: float = 0.4       # Proportion from Creator
+
+
 
 # =============================================================================
 # CELL ID PREFIXES & ORGANIZATION
@@ -1298,6 +1411,7 @@ LOVE_RESONANCE_FREQ_RES_WEIGHT: float = 0.5
 LOVE_RESONANCE_HEARTBEAT_WEIGHT: float = 0.3
 LOVE_RESONANCE_HEARTBEAT_SCALE: float = 0.4
 LOVE_RESONANCE_EMOTION_BOOST_FACTOR: float = 0.1
+MOTHER_HEARTBEAT_BPM: float = 72.0
 
 # Sacred Geometry Integration
 SACRED_GEOMETRY_STAGE_FACTOR_BASE: float = 1.0
@@ -1338,6 +1452,41 @@ CRYSTALLIZATION_COMPONENT_WEIGHTS: Dict[str, float] = {
 CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD: float = 0.9
 PLATONIC_DEFAULT_GEMATRIA_RANGE: int = 50
 
+# Region Definition Constants
+BASE_BRAIN_FREQUENCY = 7.83  # Earth's Schumann resonance
+FREQUENCY_MATCH_TOLERANCE = 0.05  # Hz tolerance for frequency matching
+HEMISPHERE_X_SPLIT = 128  # X coordinate that splits left/right hemispheres
+
+# Boundary Constants
+BOUNDARY_TRANSITION_WIDTH_SHARP = 3  # pixels/voxels
+BOUNDARY_TRANSITION_WIDTH_GRADUAL = 10
+BOUNDARY_TRANSITION_WIDTH_DIFFUSE = 20
+BOUNDARY_TRANSITION_WIDTH_OSCILLATING = 15
+BOUNDARY_TRANSITION_WIDTH_FRACTAL = 12
+
+# Sound Modifier Constants
+SOUND_HARMONIC_FIFTH = 1.5
+SOUND_HARMONIC_THIRD = 1.25
+SOUND_PERFECT_FOURTH = 1.33
+SOUND_PERFECT_OCTAVE = 2.0
+SOUND_MAJOR_SIXTH = 1.67
+SOUND_MINOR_SEVENTH = 1.78
+SOUND_MAJOR_SEVENTH = 1.87
+SOUND_OCTAVE_DOWN = 0.5
+
+# Brain Wave Frequency Ranges
+DELTA_WAVE_MIN = 0.5  # Hz
+DELTA_WAVE_MAX = 4.0  # Hz
+THETA_WAVE_MIN = 4.0  # Hz
+THETA_WAVE_MAX = 8.0  # Hz
+ALPHA_WAVE_MIN = 8.0  # Hz
+ALPHA_WAVE_MAX = 13.0  # Hz
+BETA_WAVE_MIN = 13.0  # Hz
+BETA_WAVE_MAX = 30.0  # Hz
+GAMMA_WAVE_MIN = 30.0  # Hz
+GAMMA_WAVE_MAX = 100.0  # Hz
+LAMBDA_WAVE_MIN = 100.0  # Hz
+LAMBDA_WAVE_MAX = 200.0  # Hz
 # =============================================================================
 # END OF CONSTANTS
 # =============================================================================

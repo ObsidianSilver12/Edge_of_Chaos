@@ -5,6 +5,9 @@ This module provides visualization tools for the brain seed, hemisphere structur
 brain regions, and soul connections.
 """
 
+# we need to refactor this based on changes in the brain formation process. I like the general look
+# and feel and the graphs but the code needs to be updated to match the new brain formation process.
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Ellipse, Rectangle, FancyBboxPatch

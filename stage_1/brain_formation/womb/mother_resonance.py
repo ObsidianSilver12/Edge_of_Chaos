@@ -1,3 +1,5 @@
+# --- mother_resonance.py V7 ---
+
 import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 import datetime

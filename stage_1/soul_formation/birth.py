@@ -1,14 +1,13 @@
 """
-Birth Module (V4.6.0 - Complete Womb Integration & Brain Development)
+Birth Module (V6.0.0 - Integrated with Brain Formation)
 
-Handles the birth process with full womb environment integration.
-Creates brain seed within womb, develops brain structure with mother resonance,
-attaches soul to brain, and completes the birth process.
+Handles the birth process using existing conception + development systems.
+Birth-specific processes only: memory veil, standing waves, echo field, finalization.
+Uses dict-based womb environment from conception system.
 Hard fails only - no graceful fallbacks.
 """
 
 import logging
-from venv import logger
 import numpy as np
 import os
 import sys
@@ -18,13 +17,12 @@ import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Tuple, Optional
 from math import sqrt, exp, sin, cos, pi as PI, atan2, tanh
-from constants.constants import *
-from stage_1.brain_formation.conception import Conception, create_conception_system
-from stage_1.brain_formation.development import BrainDevelopment
-from stage_1.brain_formation.memory import Memory3DClassification
-from stage_1.brain_formation.processing import SynapticProcessing
-from stage_1.brain_formation.state import BrainState
 
+# Import constants
+from constants.constants import *
+
+# Import SoulSpark from correct path
+from stage_1.soul_spark.soul_spark import SoulSpark
 
 # --- Sound Module Dependencies ---
 try:
@@ -32,6 +30,7 @@ try:
     from sound.sounds_of_universe import UniverseSounds
     SOUND_MODULES_AVAILABLE = True
 except ImportError:
+    logger = logging.getLogger(__name__)
     logger.critical("Sound modules required for birth process.")
     SOUND_MODULES_AVAILABLE = False
     raise ImportError("Critical sound modules missing for birth.")
@@ -41,11 +40,23 @@ try:
     import metrics_tracking as metrics
     METRICS_AVAILABLE = True
 except ImportError:
+    logger = logging.getLogger(__name__)
     logger.critical("Metrics tracking required for birth process.")
     METRICS_AVAILABLE = False
     raise ImportError("Critical metrics module missing for birth.")
 
-# --- Helper Functions ---
+# --- Logging Setup ---
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+
+# === HELPER FUNCTIONS ===
+
 def _check_birth_prerequisites(soul_spark: SoulSpark) -> bool:
     """Check prerequisites for birth process. Hard fails on missing requirements."""
     logger.debug(f"Checking birth prerequisites for soul {soul_spark.spark_id}...")
@@ -59,6 +70,17 @@ def _check_birth_prerequisites(soul_spark: SoulSpark) -> bool:
     
     if not getattr(soul_spark, FLAG_READY_FOR_BIRTH, False):
         raise ValueError(f"Soul not marked {FLAG_READY_FOR_BIRTH}.")
+    
+    # Check brain formation completion
+    if not (hasattr(soul_spark, 'conception_system') and 
+            hasattr(soul_spark, 'brain_development') and
+            hasattr(soul_spark, 'memory_system') and
+            hasattr(soul_spark, 'brain_state')):
+        raise ValueError("Brain formation not complete - missing brain systems.")
+    
+    # Check brain development readiness
+    if not soul_spark.brain_development.birth_ready:
+        raise ValueError("Brain development not ready for birth.")
     
     # Check required attributes
     required_attrs = ['name', 'stability', 'coherence', 'energy', 'frequency', 
@@ -81,6 +103,7 @@ def _check_birth_prerequisites(soul_spark: SoulSpark) -> bool:
     logger.debug("Birth prerequisites met.")
     return True
 
+
 def _ensure_birth_properties(soul_spark: SoulSpark) -> None:
     """Ensure soul has all properties needed for birth. Hard fails if missing."""
     logger.debug(f"Ensuring birth properties for soul {soul_spark.spark_id}...")
@@ -99,9 +122,8 @@ def _ensure_birth_properties(soul_spark: SoulSpark) -> None:
         'memory_veil_strength': 0.0,
         'echo_field_birth': None,
         'standing_wave_pattern': None,
-        'brain_seed_id': None,
-        'brain_structure_id': None,
-        'womb_environment_id': None
+        'birth_datetime': None,
+        'birth_energy_signature': None
     }
     
     for attr, default in birth_attrs.items():
@@ -110,37 +132,72 @@ def _ensure_birth_properties(soul_spark: SoulSpark) -> None:
     
     logger.debug("Birth properties ensured.")
 
-def _create_womb_environment_for_soul(soul_spark: SoulSpark, mother_profile: Dict[str, Any]) -> WombEnvironment:
-    """Get womb environment from conception system."""
+# notes for the rest of the functions
+# this function must be replaced with the womb environment function from the womb environment file. it no longer includes
+# the mother profile as that is triggered by other events.just import the womb dictionary from the womb environment file
+# so that it can be used. soul spark has no involvement here???? the brain seed, brain with neural netork and mycelial
+# network is also missing so we seem to be birthing a womb - no formed baby. as the functions are happening in own files. I
+# think the final formed baby will be birthed in the birth process and its just the checks for birth, field changes for 
+# the birth process and the perform birth function covering the stages that need to be here. most of those stages are in the
+# refactored files. so this file must just output the end results of the processes happening n the other files when doing the 
+# perform birth function.
+def _get_womb_environment_from_soul(soul_spark: SoulSpark, mother_profile: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Get womb environment dict from conception system."""
     logger.debug("Getting womb environment from conception...")
+    
     try:
-        if hasattr(soul_spark, 'conception_system') and soul_spark.conception_system.womb_environment:
-            # Use existing womb from conception
-            conception = soul_spark.conception_system
-            womb_env = WombEnvironment(
-                soul_id=soul_spark.spark_id,
-                mother_profile=conception.womb_environment['mother_profile']
-            )
-            womb_env.configure_environment()
-            womb_env.initialize_resonance_fields()
+        if (hasattr(soul_spark, 'conception_system') and 
+            soul_spark.conception_system and 
+            soul_spark.conception_system.womb_environment):
+            # Use existing womb from conception (it's already a dict)
+            womb_env = soul_spark.conception_system.womb_environment
+            logger.debug(f"Using existing womb environment: {womb_env.get('womb_id')}")
             return womb_env
         else:
-            # Fallback - create new womb
-            womb_env = WombEnvironment(soul_id=soul_spark.spark_id, mother_profile=mother_profile)
-            womb_env.configure_environment() 
-            womb_env.initialize_resonance_fields()
+            # Fallback - create new womb dict (not class)
+            if not mother_profile:
+                mother_profile = {
+                    'love_frequency': 528.0,  # Hz - love frequency
+                    'voice_frequency': 220.0,  # Hz - fundamental voice
+                    'heartbeat_bpm': 72.0,     # Beats per minute
+                    'comfort_level': 0.8,      # Comfort factor
+                    'protection_level': 0.9,   # Protection factor
+                    'nurturing_strength': 0.7  # Nurturing factor
+                }
+            
+            womb_env = {
+                'womb_id': str(uuid.uuid4()),
+                'creation_time': datetime.now().isoformat(),
+                'type': 'protective_womb',
+                'mother_profile': mother_profile,
+                'temperature': 37.0,  # Celsius
+                'humidity': 0.95,     # 95% humidity
+                'ph_level': 7.4,      # Slightly alkaline
+                'nutrients': 1.0,     # Full nutrients
+                'protection_level': mother_profile['protection_level'],
+                'nurturing_strength': mother_profile['nurturing_strength'],
+                'comfort_level': mother_profile['comfort_level'],
+                'love_resonance': mother_profile['love_frequency'],
+                'active': True
+            }
+            logger.debug(f"Created fallback womb environment: {womb_env['womb_id']}")
             return womb_env
+            
     except Exception as e:
         logger.error(f"Failed to get womb environment: {e}")
         raise RuntimeError(f"Womb environment creation failed: {e}")
-def _create_memory_veil_in_womb(soul_spark: SoulSpark, womb_env: WombEnvironment) -> Dict[str, Any]:
-    """Create memory veil within womb environment. Hard fails on creation failure."""
+
+
+# update this function to use the womb environment function from the womb environment file and any dictionaries
+# from the memory definitions file
+def _create_memory_veil_in_womb(soul_spark: SoulSpark, womb_env: Dict[str, Any]) -> Dict[str, Any]:
+    """Create memory veil within womb environment - use dict keys."""
     logger.info("Creating memory veil within womb environment...")
     
     try:
-        # Get womb protection parameters
-        protection_level = womb_env.get_protection_level()
-        nurturing_strength = womb_env.get_nurturing_strength()
+        # Get womb protection parameters from dict
+        protection_level = womb_env.get('protection_level', 0.9)
+        nurturing_strength = womb_env.get('nurturing_strength', 0.7)
         
         # Calculate memory veil strength based on womb protection
         base_veil_strength = MEMORY_VEIL_BASE_STRENGTH
@@ -206,6 +263,7 @@ def _create_memory_veil_in_womb(soul_spark: SoulSpark, womb_env: WombEnvironment
         logger.error(f"Failed to create memory veil in womb: {e}")
         raise RuntimeError(f"Memory veil creation in womb failed: {e}")
 
+
 def _generate_memory_veil_sound(memory_veil: Dict[str, Any], soul_spark: SoulSpark) -> Dict[str, Any]:
     """Generate sound for memory veil. Hard fails on sound generation failure."""
     logger.debug("Generating memory veil sound...")
@@ -253,14 +311,17 @@ def _generate_memory_veil_sound(memory_veil: Dict[str, Any], soul_spark: SoulSpa
     except Exception as e:
         logger.error(f"Failed to generate memory veil sound: {e}")
         raise RuntimeError(f"Memory veil sound generation failed: {e}")
-def _create_birth_standing_waves(soul_spark: SoulSpark, womb_env: WombEnvironment) -> Dict[str, Any]:
-    """Create standing wave patterns for birth process. Hard fails on creation failure."""
+
+# this is not a duplicate of the standing waves in womb environment - purpose is different it just needs to be refactored
+# according to code you write for womb environment.
+def _create_birth_standing_waves(soul_spark: SoulSpark, womb_env: Dict[str, Any]) -> Dict[str, Any]:
+    """Create standing wave patterns - use dict keys."""
     logger.info("Creating birth standing wave patterns...")
     
     try:
         # Get soul and womb parameters
         soul_freq = soul_spark.frequency
-        womb_resonance_freq = womb_env.get_resonance_frequency()
+        womb_resonance_freq = womb_env.get('love_resonance', 528.0)
         
         # Calculate birth frequency as harmonic mean
         if womb_resonance_freq > 0:
@@ -342,6 +403,7 @@ def _create_birth_standing_waves(soul_spark: SoulSpark, womb_env: WombEnvironmen
         logger.error(f"Failed to create birth standing waves: {e}")
         raise RuntimeError(f"Birth standing wave creation failed: {e}")
 
+
 def _generate_standing_wave_sound(standing_wave_pattern: Dict[str, Any], soul_spark: SoulSpark) -> Dict[str, Any]:
     """Generate sound for standing wave pattern. Hard fails on sound generation failure."""
     logger.debug("Generating standing wave sound...")
@@ -400,8 +462,12 @@ def _generate_standing_wave_sound(standing_wave_pattern: Dict[str, Any], soul_sp
     except Exception as e:
         logger.error(f"Failed to generate standing wave sound: {e}")
         raise RuntimeError(f"Standing wave sound generation failed: {e}")
-def _project_birth_echo_field(soul_spark: SoulSpark, womb_env: WombEnvironment) -> Dict[str, Any]:
-    """Project echo field for birth transition. Hard fails on projection failure."""
+
+
+# update to use womb environment functions and constants from womb environment file. this is different
+# even though it seems similar ie womb_env might not exist in new file
+def _project_birth_echo_field(soul_spark: SoulSpark, womb_env: Dict[str, Any]) -> Dict[str, Any]:
+    """Project echo field - use dict keys."""
     logger.info("Projecting birth echo field...")
     
     try:
@@ -411,7 +477,7 @@ def _project_birth_echo_field(soul_spark: SoulSpark, womb_env: WombEnvironment) 
         birth_frequency = standing_wave_pattern['birth_frequency']
         
         # Calculate echo field strength
-        womb_support = womb_env.get_nurturing_strength()
+        womb_support = womb_env.get('nurturing_strength', 0.7)
         soul_coherence = soul_spark.coherence / MAX_COHERENCE_CU
         
         echo_field_strength = (womb_support + soul_coherence) / 2.0 * BIRTH_ECHO_FIELD_STRENGTH_FACTOR
@@ -488,6 +554,7 @@ def _project_birth_echo_field(soul_spark: SoulSpark, womb_env: WombEnvironment) 
         logger.error(f"Failed to project birth echo field: {e}")
         raise RuntimeError(f"Birth echo field projection failed: {e}")
 
+
 def _generate_echo_field_sound(echo_field: Dict[str, Any], soul_spark: SoulSpark) -> Dict[str, Any]:
     """Generate sound for echo field. Hard fails on sound generation failure."""
     logger.debug("Generating echo field sound...")
@@ -530,7 +597,8 @@ def _generate_echo_field_sound(echo_field: Dict[str, Any], soul_spark: SoulSpark
         logger.error(f"Failed to generate echo field sound: {e}")
         raise RuntimeError(f"Echo field sound generation failed: {e}")
 
-def _finalize_birth_process(soul_spark: SoulSpark, womb_env: WombEnvironment, 
+
+def _finalize_birth_process(soul_spark: SoulSpark, womb_env: Dict[str, Any], 
                            birth_metrics: Dict[str, Any]) -> Dict[str, Any]:
     """Finalize birth process and set completion flags. Hard fails on finalization failure."""
     logger.info("Finalizing birth process...")
@@ -553,9 +621,9 @@ def _finalize_birth_process(soul_spark: SoulSpark, womb_env: WombEnvironment,
             'coherence': float(soul_spark.coherence),
             'crystallization_level': float(soul_spark.crystallization_level),
             'memory_veil_strength': float(soul_spark.memory_veil_strength),
-            'womb_environment_id': womb_env.environment_id,
-            'brain_seed_id': soul_spark.brain_seed_id,
-            'brain_structure_id': soul_spark.brain_structure_id
+            'womb_environment_id': womb_env.get('womb_id'),
+            'conception_system_id': soul_spark.conception_system.conception_id if soul_spark.conception_system else None,
+            'brain_development_id': soul_spark.brain_development.development_id if soul_spark.brain_development else None
         }
         
         soul_spark.birth_energy_signature = birth_energy_signature
@@ -563,6 +631,7 @@ def _finalize_birth_process(soul_spark: SoulSpark, womb_env: WombEnvironment,
         # Set completion flags
         setattr(soul_spark, FLAG_BIRTH_COMPLETED, True)
         setattr(soul_spark, FLAG_READY_FOR_EVOLUTION, True)
+        
         # Update soul state
         if hasattr(soul_spark, 'update_state'):
             soul_spark.update_state()
@@ -585,8 +654,8 @@ def _finalize_birth_process(soul_spark: SoulSpark, womb_env: WombEnvironment,
         # Add memory echo
         if hasattr(soul_spark, 'add_memory_echo'):
             soul_spark.add_memory_echo(
-                f"Birth completed in womb environment {womb_env.environment_id}. "
-                f"Brain seed: {soul_spark.brain_seed_id}, "
+                f"Birth completed in womb environment {womb_env.get('womb_id')}. "
+                f"Brain development: {soul_spark.brain_development.development_id if soul_spark.brain_development else 'None'}, "
                 f"Memory veil: {soul_spark.memory_veil_strength:.3f}"
             )
         
@@ -597,15 +666,16 @@ def _finalize_birth_process(soul_spark: SoulSpark, womb_env: WombEnvironment,
         logger.error(f"Failed to finalize birth process: {e}")
         raise RuntimeError(f"Birth process finalization failed: {e}")
 
-def _apply_final_womb_blessing(soul_spark: SoulSpark, womb_env: WombEnvironment) -> Dict[str, Any]:
-    """Apply final womb blessing before birth completion. Hard fails on blessing failure."""
+
+def _apply_final_womb_blessing(soul_spark: SoulSpark, womb_env: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply final womb blessing - use dict keys."""
     logger.debug("Applying final womb blessing...")
     
     try:
-        # Get final womb blessing parameters
-        protection_level = womb_env.get_protection_level()
-        nurturing_strength = womb_env.get_nurturing_strength()
-        growth_support = womb_env.get_growth_support()
+        # Get final womb blessing parameters from dict
+        protection_level = womb_env.get('protection_level', 0.9)
+        nurturing_strength = womb_env.get('nurturing_strength', 0.7)
+        growth_support = womb_env.get('comfort_level', 0.8)
         
         # Calculate blessing strength
         blessing_strength = (protection_level + nurturing_strength + growth_support) / 3.0
@@ -647,15 +717,38 @@ def _apply_final_womb_blessing(soul_spark: SoulSpark, womb_env: WombEnvironment)
         raise RuntimeError(f"Final womb blessing failed: {e}")
 
 
-# --- Main Birth Function ---
+def _record_birth_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
+    """Helper to record failure metrics consistently."""
+    if METRICS_AVAILABLE:
+        try:
+            end_time = datetime.now().isoformat()
+            duration = (datetime.fromisoformat(end_time) - datetime.fromisoformat(start_time_iso)).total_seconds()
+            metrics.record_metrics('birth_process_summary', {
+                'action': 'birth_process',
+                'soul_id': spark_id,
+                'start_time': start_time_iso,
+                'end_time': end_time,
+                'duration_seconds': duration,
+                'success': False,
+                'error': error_msg,
+                'failed_step': failed_step
+            })
+        except Exception as metric_e:
+            logger.error(f"Failed to record Birth failure metrics for {spark_id}: {metric_e}")
+
+
+# === MAIN BIRTH FUNCTION ===
+# Update with all the new data from womb environment, neural network, mycelial network checking for the
+# new flag statuses to trigger each stage of birth.make sure you comment each stage and what file its from so i can check
 def perform_birth(soul_spark: SoulSpark, 
                  mother_profile: Optional[Dict[str, Any]] = None,
                  womb_development_cycles: int = BIRTH_WOMB_DEVELOPMENT_CYCLES,
                  enable_sound_generation: bool = True) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
-    Performs birth process using conception + development + birth transition.
+    Performs birth process using existing conception + development systems.
+    Birth-specific processes only: memory veil, standing waves, echo field, finalization.
     """
-    # Input validation (keep existing)
+    # Input validation
     if not isinstance(soul_spark, SoulSpark):
         raise TypeError("soul_spark must be SoulSpark instance.")
     
@@ -667,11 +760,11 @@ def perform_birth(soul_spark: SoulSpark,
     process_metrics_summary = {'steps_completed': []}
     
     try:
-        # Check prerequisites (keep existing)
+        # Check prerequisites
         _check_birth_prerequisites(soul_spark)
         _ensure_birth_properties(soul_spark)
         
-        # Get initial state (keep existing)
+        # Get initial state
         initial_state = {
             'stability_su': soul_spark.stability,
             'coherence_cu': soul_spark.coherence,
@@ -680,65 +773,26 @@ def perform_birth(soul_spark: SoulSpark,
             'crystallization_level': soul_spark.crystallization_level
         }
         
-        # --- NEW: Use Conception + Development for Brain Formation ---
-        logger.info("Birth Step 1: Brain Formation (Conception + Development)")
+        # === VERIFY BRAIN FORMATION COMPLETE ===
+        logger.info("Birth Step 1: Verify Brain Formation Complete")
         
-        # Check if brain already formed
-        if not (hasattr(soul_spark, 'conception_system') and hasattr(soul_spark, 'brain_development')):
-            # Import brain formation systems
-            from stage_1.brain_formation.conception import Conception
-            from stage_1.brain_formation.development import BrainDevelopment
-            from stage_1.brain_formation.memory import Memory3DClassification
-            from stage_1.brain_formation.processing import SynapticProcessing
-            from stage_1.brain_formation.state import BrainState
-            
-            # Run conception
-            conception = Conception()
-            conception.create_brain_seed()
-            conception.add_creator_energy(soul_spark.energy * 0.1)
-            conception.create_womb(mother_profile)
-            conception.place_brain_seed()
-            conception.ying_yang_womb_energy()
-            conception.mother_womb_energy(dysfunction_level=0.1)
-            conception.strengthen_brain_seed()
-            conception.create_mycelial_network_storage_area()
-            
-            # Run development
-            brain_dev = BrainDevelopment()
-            brain_dev.create_brain_region_grid()
-            brain_dev.create_brain_standing_waves()
-            brain_dev.develop_neural_network()
-            brain_dev.develop_mycelial_network()
-            brain_dev.create_mycelial_network_storage_area()
-            brain_dev.test_synaptic_firing()
-            brain_dev.test_mycelial_seeds()
-            brain_dev.validate_field_integrity()
-            brain_dev.apply_mother_resonance_calming()
-            
-            # Check and perform soul attachment
-            ready, limbic_pos = brain_dev.check_soul_attachment_readiness()
-            if ready and limbic_pos:
-                brain_dev.attach_soul_to_brain(limbic_pos)
-                
-                # Initialize processing systems
-                memory_system = Memory3DClassification(brain_dev.brain_structure)
-                brain_state = BrainState(brain_dev.brain_structure, memory_system)
-                
-                # Store in soul
-                soul_spark.conception_system = conception
-                soul_spark.brain_development = brain_dev
-                soul_spark.memory_system = memory_system
-                soul_spark.brain_state = brain_state
-                soul_spark.soul_attachment_position = limbic_pos
-            else:
-                raise RuntimeError("Brain not ready for soul attachment")
+        # Check if brain formation already complete
+        if not (hasattr(soul_spark, 'conception_system') and 
+                hasattr(soul_spark, 'brain_development') and
+                hasattr(soul_spark, 'memory_system') and
+                hasattr(soul_spark, 'brain_state')):
+            raise RuntimeError("Brain formation not complete - conception and development must be run first")
         
-        # Get womb environment
-        womb_env = _create_womb_environment_for_soul(soul_spark, mother_profile)
-        process_metrics_summary['brain_formation'] = {'success': True}
-        process_metrics_summary['steps_completed'].append('brain_formation')
+        # Verify brain development is complete
+        if not soul_spark.brain_development.birth_ready:
+            raise RuntimeError("Brain development not ready for birth")
         
-        # --- KEEP: Birth-specific processes ---
+        # Get womb environment from existing conception (returns dict)
+        womb_env = _get_womb_environment_from_soul(soul_spark, mother_profile)
+        process_metrics_summary['brain_formation'] = {'success': True, 'used_existing': True}
+        process_metrics_summary['steps_completed'].append('brain_formation_verified')
+        
+        # === BIRTH-SPECIFIC PROCESSES ===
         logger.info("Birth Step 2: Creating Memory Veil...")
         memory_veil_metrics = _create_memory_veil_in_womb(soul_spark, womb_env)
         process_metrics_summary['memory_veil'] = memory_veil_metrics
@@ -759,7 +813,7 @@ def perform_birth(soul_spark: SoulSpark,
         process_metrics_summary['finalization'] = finalization_metrics
         process_metrics_summary['steps_completed'].append('finalization')
         
-        # Compile final metrics (keep existing logic)
+        # Compile final metrics
         end_time_iso = datetime.now().isoformat()
         end_time_dt = datetime.fromisoformat(end_time_iso)
         
@@ -771,9 +825,7 @@ def perform_birth(soul_spark: SoulSpark,
             'crystallization_level': soul_spark.crystallization_level,
             'memory_veil_strength': soul_spark.memory_veil_strength,
             'birth_datetime': soul_spark.birth_datetime,
-            'brain_seed_id': soul_spark.brain_seed_id,
-            'brain_structure_id': soul_spark.brain_structure_id,
-            'womb_environment_id': soul_spark.womb_environment_id,
+            'womb_environment_id': womb_env.get('womb_id'),
             FLAG_BIRTH_COMPLETED: getattr(soul_spark, FLAG_BIRTH_COMPLETED, False),
             FLAG_READY_FOR_EVOLUTION: getattr(soul_spark, FLAG_READY_FOR_EVOLUTION, False)
         }
@@ -793,11 +845,11 @@ def perform_birth(soul_spark: SoulSpark,
             'coherence_change_cu': final_state['coherence_cu'] - initial_state['coherence_cu'],
             'energy_change_seu': final_state['energy_seu'] - initial_state['energy_seu'],
             'steps_completed': process_metrics_summary['steps_completed'],
-            'womb_environment_id': womb_env.environment_id,
-            'brain_seed_id': soul_spark.brain_seed_id,
-            'brain_structure_id': soul_spark.brain_structure_id,
+            'womb_environment_id': womb_env.get('womb_id'),
+            'conception_system_id': soul_spark.conception_system.conception_id if soul_spark.conception_system else None,
+            'brain_development_id': soul_spark.brain_development.development_id if soul_spark.brain_development else None,
             'memory_veil_strength': soul_spark.memory_veil_strength,
-            'success': True
+            'birth_ready_from_brain': True
         }
         
         # Record metrics
@@ -839,6 +891,8 @@ def perform_birth(soul_spark: SoulSpark,
         setattr(soul_spark, FLAG_READY_FOR_EVOLUTION, False)
         
         raise RuntimeError(f"Unexpected Birth Process failure: {e}") from e
+
+# update with info from miscarriage as well - so that this includes miscarriage metrics as well
 def _record_birth_failure(spark_id: str, start_time_iso: str, failed_step: str, error_msg: str):
     """Helper to record failure metrics consistently."""
     if METRICS_AVAILABLE:

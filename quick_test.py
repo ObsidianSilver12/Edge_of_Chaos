@@ -14,7 +14,7 @@ def test_imports():
         
         # Test brain seed
         print("2. Testing brain seed import...")
-        from stage_1.evolve.brain_structure.brain_seed import create_brain_seed
+        from stage_1.brain_formation.brain.brain_seed import create_brain_seed
         print("   ✓ create_brain_seed imported successfully")
         
         # Test birth module import

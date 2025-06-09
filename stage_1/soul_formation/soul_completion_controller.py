@@ -1,5 +1,14 @@
 # --- START OF FILE src/stage_1/soul_completion_controller.py ---
 
+
+# whole file is now wrong - rewrite from scratch do not include any fallbacks only hard fails. this was refactored
+# to try match the stage functions for evolve. that whole refactor was abandoned as it was grossly incomplete
+# you will need to check that each part of the controller from soul spark to birth matches the refactored files from soul
+# spark to birth and includes all the new files that have been created for the brain formation process.
+# birth has to be refactored to match the new birth process as well and the new refactored files include reference to
+# the life cord so that needs to be checked to see if it matches. new process is soul is passed through the life cord which
+# must be attached to the brain stem and then the soul is guided to its new home in the brain.
+
 """
 Soul Completion Controller (Refactored V4.3.11 - Full Soul Formation, Comp. Report)
 
@@ -19,22 +28,7 @@ import time
 import random
 from datetime import datetime, timedelta # Added timedelta
 from typing import Optional, Tuple, Dict, Any, List # type: ignore
-from stage_1.evolve.mycelial.mycelial_functions import (
-    initialize_basic_network,
-    establish_primary_pathways, 
-    setup_energy_distribution_channels,
-    prepare_for_soul_attachment,
-    create_soul_connection_channel,
-    connect_soul_to_limbic_region
-)
-from stage_1.evolve.mycelial.memory_fragment_system import (
-    MemoryFragmentSystem,
-    add_soul_aspect_as_fragment,
-    distribute_soul_aspects
-)
-from stage_1.evolve.mycelial.mycelial_quantum_seeds import (
-    create_mycelial_quantum_network
-)
+
 # --- Logging ---
 logger = logging.getLogger(__name__)
 

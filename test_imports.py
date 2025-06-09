@@ -14,7 +14,7 @@ try:
     # Test brain_seed import
     import sys
     sys.path.append('.')
-    from stage_1.evolve.brain_structure.brain_seed import BrainSeed, create_brain_seed
+    from stage_1.brain_formation.brain.brain_seed import BrainSeed, create_brain_seed
     print(f"✓ BrainSeed module imported successfully")
     
     # Test basic functionality
