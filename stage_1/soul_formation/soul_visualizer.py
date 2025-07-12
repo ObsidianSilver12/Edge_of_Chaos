@@ -40,7 +40,7 @@ if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
     # Attempt to get LOG_FORMAT from constants, else use a default
     try:
-        from constants.constants import LOG_FORMAT
+        from shared.constants.constants import LOG_FORMAT
         formatter = logging.Formatter(LOG_FORMAT)
     except ImportError:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -117,7 +117,10 @@ def get_soul_color_spectrum(soul_spark) -> List[Tuple[float, float, float, float
             colors_rgba.append((0.5, 0.5, 0.5, 0.5)) # Default grey
     return colors_rgba
 
-def create_soul_colormap(soul_spark) -> LinearSegmentedColormap:
+from matplotlib.colors import LinearSegmentedColormap, Colormap
+import matplotlib.pyplot as plt
+
+def create_soul_colormap(soul_spark) -> Colormap:
     """Create a beautiful colormap based on soul's energy spectrum."""
     try:
         color_spectrum_rgba = get_soul_color_spectrum(soul_spark)
@@ -366,7 +369,7 @@ def visualize_aspects_radar(soul_spark, ax) -> None:
         cmap = create_soul_colormap(soul_spark)
         ax.plot(theta, values, 'o-', linewidth=2, color=cmap(0.7))
         ax.fill(theta, values, alpha=0.3, color=cmap(0.5))
-        for level in [0.25, 0.5, 0.75]: ax.add_patch(plt.Circle((0,0),level,fill=False,color=GRID_LINE_COLOR,alpha=0.3,ls='--',lw=0.5))
+        for level in [0.25, 0.5, 0.75]: ax.add_patch(plt.patches.Circle((0,0),level,fill=False,color=GRID_LINE_COLOR,alpha=0.3,ls='--',lw=0.5))
         ax.set_xticks(theta[:-1]); ax.set_xticklabels(categories[:-1], color=LIGHT_TEXT_COLOR, fontsize=8) # Adjusted xticks and labels
         ax.set_ylim(0,1); ax.set_title('Soul Aspect Categories', fontsize=12, color=LIGHT_TEXT_COLOR)
         ax.tick_params(axis='y', colors=LIGHT_TEXT_COLOR) # Color y-axis ticks
@@ -593,7 +596,7 @@ def visualize_state_comparison(
         density_field = generate_soul_density_field(soul_state_obj, resolution=density_grid_res)
         composite_density[:, i*density_grid_res:(i+1)*density_grid_res] = density_field
 
-    im_density = ax_density_evo.imshow(composite_density, cmap=cmap, origin='lower', extent=[0, num_states_to_show, 0, 1], aspect='auto')
+    im_density = ax_density_evo.imshow(composite_density, cmap=cmap, origin='lower', extent=(0, float(num_states_to_show), 0, 1), aspect='auto')
     cbar_density = plt.colorbar(im_density, ax=ax_density_evo, label='Normalized Density', fraction=0.046, pad=0.04)
     cbar_density.ax.yaxis.set_tick_params(color=LIGHT_TEXT_COLOR); plt.setp(plt.getp(cbar_density.ax.axes, 'yticklabels'), color=LIGHT_TEXT_COLOR)
     cbar_density.set_label('Normalized Density', color=LIGHT_TEXT_COLOR)
@@ -605,7 +608,7 @@ def visualize_state_comparison(
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     title_text = f"Soul Development Comparison: {soul_id}\n({timestamp})"
     fig.suptitle(title_text, fontsize=16, color='white', y=0.98) # Adjusted y
-    plt.tight_layout(rect=[0,0,1,0.95]) # Adjusted rect
+    plt.tight_layout(rect=(0, 0, 1, 0.95)) # Adjusted rect to be a tuple
     timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"{soul_id}_Development_Comparison_{timestamp_str}.png"
     filepath = os.path.join(final_output_dir, filename)
@@ -663,9 +666,9 @@ def visualize_soul_signature(soul_spark, ax=None, with_title=True):
         cmap_sig = create_soul_colormap(soul_spark); colors_sig = cmap_sig(np.linspace(0,1,len(t_sig))) # Renamed cmap, colors
         points = np.array([x_sig,y_sig]).T.reshape((-1,1,2)); segments=np.concatenate([points[:-1],points[1:]],axis=1)
         from matplotlib.collections import LineCollection # Import here if not global
-        lc = LineCollection(segments,colors=colors_sig,linewidth=2,alpha=0.8); ax_sig.add_collection(lc)
+        lc = LineCollection(segments.tolist(),colors=colors_sig,linewidth=2,alpha=0.8); ax_sig.add_collection(lc)
         for alpha_val, width_val in zip([0.1,0.05,0.02],[4,6,8]): # Renamed alpha, width
-            lc_glow=LineCollection(segments,colors=colors_sig,linewidth=width_val,alpha=alpha_val); ax_sig.add_collection(lc_glow)
+            lc_glow=LineCollection(segments.tolist(),colors=colors_sig,linewidth=width_val,alpha=alpha_val); ax_sig.add_collection(lc_glow)
         ax_sig.scatter(0,0,color='white',s=50,alpha=0.8,zorder=10,edgecolor=DARK_BACKGROUND_COLOR) # Edgecolor for contrast
         ax_sig.set_xlim(-1.1,1.1); ax_sig.set_ylim(-1.1,1.1); ax_sig.set_aspect('equal'); ax_sig.axis('off')
         if with_title:
@@ -693,7 +696,8 @@ def create_comprehensive_soul_report(
 
         fig = plt.figure(figsize=(20, 18), dpi=DEFAULT_DPI) # Adjusted size for more plots
         fig.patch.set_facecolor(DARK_BACKGROUND_COLOR)
-        gs = plt.GridSpec(4, 3, figure=fig, hspace=0.45, wspace=0.3, left=0.05,right=0.95,top=0.92,bottom=0.05)
+        from matplotlib.gridspec import GridSpec
+        gs = GridSpec(4, 3, figure=fig, hspace=0.45, wspace=0.3, left=0.05,right=0.95,top=0.92,bottom=0.05)
 
         axs_map = {
             '2d_density': fig.add_subplot(gs[0, 0]),

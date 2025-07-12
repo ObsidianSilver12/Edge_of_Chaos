@@ -17,14 +17,14 @@ from datetime import datetime
 import time
 from typing import Dict, List, Any, Tuple, Optional
 from math import sqrt, pi as PI, exp, atan2, tanh, log
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.critical(f"CRITICAL ERROR: Could not import constants: {e}. Harmonic Strengthening cannot function.")
@@ -103,8 +103,8 @@ def _calculate_harmonic_deviation(harmonics: List[float], base_freq: float) -> f
         deviations.append(normalized_deviation)
 
     # Return average deviation, capped at 1.0
-    avg_dev = np.mean(deviations) if deviations else 1.0
-    return min(1.0, avg_dev)
+    avg_dev = float(np.mean(deviations)) if deviations else 1.0
+    return min(1.0, float(avg_dev))
 
 def _identify_energy_distribution(soul_spark: SoulSpark) -> Dict[str, float]:
     """
@@ -513,8 +513,8 @@ def _develop_harmony(soul_spark: SoulSpark, energy_available: float) -> Dict[str
    # Factor in synergistic effects from other components
    # In natural systems, harmony emerges from the balanced interaction of all parts
    phases = np.array(soul_spark.frequency_signature.get('phases', []))
-   phase_coherence = 1.0 - _calculate_circular_variance(phases)
-   harmonic_purity = 1.0 - _calculate_harmonic_deviation(soul_spark.harmonics, soul_spark.frequency)
+   phase_coherence = float(1.0 - _calculate_circular_variance(phases))
+   harmonic_purity = float(1.0 - _calculate_harmonic_deviation(soul_spark.harmonics, soul_spark.frequency))
    
    # Multiple components contribute to harmony
    synergy_factors = [
@@ -525,7 +525,7 @@ def _develop_harmony(soul_spark: SoulSpark, energy_available: float) -> Dict[str
    ]
    
    # Natural synergy - geometric mean of contributing factors
-   synergy_product = np.prod([max(0.1, f) for f in synergy_factors])
+   synergy_product = float(np.prod([max(0.1, f) for f in synergy_factors]))
    synergy_mean = synergy_product ** (1.0 / len(synergy_factors))
    synergy_multiplier = 0.5 + synergy_mean / 2.0  # Scale to 0.5-1.0 range
    

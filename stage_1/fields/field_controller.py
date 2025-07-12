@@ -14,7 +14,7 @@ from typing import Dict, Any, Tuple, Optional, List, Union
 import json
 from datetime import datetime
 import os # Added os import
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logger Initialization ---
 logger = logging.getLogger(__name__)
@@ -30,10 +30,10 @@ except ImportError:
 
 # --- Constants Import (using alias 'const') ---
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
     # Import sound generator and set availability flag
     try:
-        from sound.sound_generator import SoundGenerator
+        from shared.sound.sound_generator import SoundGenerator
         SOUND_GENERATOR_AVAILABLE = True
     except ImportError:
         SOUND_GENERATOR_AVAILABLE = False
@@ -91,7 +91,7 @@ class FieldController:
 
         self._sound_saver: Optional['SoundGenerator'] = None # Forward reference if SoundGenerator defined later
         try:
-            from sound.sound_generator import SoundGenerator # Local import is fine
+            from shared.sound.sound_generator import SoundGenerator # Local import is fine
             fc_sound_output_dir = os.path.join(DATA_DIR_BASE, "sounds", "field_controller_events")
             os.makedirs(fc_sound_output_dir, exist_ok=True)
             self._sound_saver = SoundGenerator(output_dir=fc_sound_output_dir)

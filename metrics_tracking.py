@@ -21,7 +21,7 @@ from typing import Dict, List, Any, Union, Optional
 # --- Constants ---
 try:
     # Import necessary constants
-    from constants.constants import LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE, PERSIST_INTERVAL_SECONDS
+    from shared.constants.constants import LOG_LEVEL, LOG_FORMAT, DATA_DIR_BASE, PERSIST_INTERVAL_SECONDS
     METRICS_DIR = os.path.join(DATA_DIR_BASE, "metrics")
     METRICS_FILE = os.path.join(METRICS_DIR, "soul_metrics.json")
 except ImportError as e:

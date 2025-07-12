@@ -112,8 +112,8 @@ class FieldVisualizer:
             
             # Create the slice view
             slices = [slice(None)] * 3
-            slices[slice_axis] = slice_idx
-            slice_data = grid_data[tuple(slices)]
+            slices[slice_axis] = slice(slice_idx, slice_idx + 1)
+            slice_data = grid_data[tuple(slices)].squeeze()
             
             # Apply Gaussian smoothing for better visualization
             smoothed_data = gaussian_filter(slice_data, sigma=1.0)
@@ -133,7 +133,7 @@ class FieldVisualizer:
             # Set title
             ax.set_title(f"Void Field {property_name.capitalize()} (Slice at {axis_labels[slice_axis]}={slice_idx})")
             
-            self._save_or_show(fig, f"void_field_{property_name}_slice_{axis_labels[slice_axis]}{slice_idx}.png", show, save)
+            self._save_or_show(fig, f"void_field_{property_name}_slice_{axis_labels[slice_axis]}{str(slice_idx)}.png", show, save)
             return fig
         except Exception as e:
             logger.error(f"Error generating void field slice visualization: {e}", exc_info=True)

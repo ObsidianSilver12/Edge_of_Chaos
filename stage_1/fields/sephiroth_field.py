@@ -16,7 +16,7 @@ from typing import Dict, Any, Tuple, Optional, List
 logger = logging.getLogger(__name__)
 # Ensure logger level is set appropriately
 try:
-    import constants.constants as const # Use alias
+    import shared.constants.constants as const # Use alias
     logger.setLevel(const.LOG_LEVEL)
 except ImportError:
     logger.warning(
@@ -26,7 +26,7 @@ except ImportError:
 
 # --- Constants Import (using alias 'const') ---
 try:
-    import constants.constants as const
+    import shared.constants.constants as const
 except ImportError as e:
     logger.critical(
         "CRITICAL ERROR: constants.py failed import in sephiroth_field.py"

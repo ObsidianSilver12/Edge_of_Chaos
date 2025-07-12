@@ -1,23 +1,29 @@
 """
-brain_visualization.py - Module for visualizing brain structure and soul connection.
+brain_visualization.py V8 - Module for visualizing brain structure and soul connection.
 
-This module provides visualization tools for the brain seed, hemisphere structure,
-brain regions, and soul connections.
+This module provides visualization tools for the new brain formation system including:
+- Brain structure with hierarchical regions and energy systems
+- Mycelial network distribution and energy flows
+- Memory distribution and sephiroth aspects
+- Stress monitoring and mother resonance
+- Neural network connections and development
+
+Updated for V8 brain formation architecture.
 """
-
-# we need to refactor this based on changes in the brain formation process. I like the general look
-# and feel and the graphs but the code needs to be updated to match the new brain formation process.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Ellipse, Rectangle, FancyBboxPatch
-from matplotlib.collections import PatchCollection
+from matplotlib.patches import Circle, Ellipse, Rectangle, FancyBboxPatch, Polygon
+from matplotlib.collections import PatchCollection, LineCollection
 import matplotlib.colors as mcolors
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # Needed for 3D plotting
 import matplotlib.cm as cm
+from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.pyplot import cm
 from matplotlib.font_manager import FontProperties
+import matplotlib.colors as mcolors
+color = mcolors.to_hex(cm.get_cmap('YlOrRd')(0.5))
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 import random
@@ -27,7 +33,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger('BrainVisualization')
+logger = logging.getLogger('BrainVisualizationV8')
 
 # Color maps for different visualization aspects
 COLOR_MAPS = {
@@ -35,681 +41,147 @@ COLOR_MAPS = {
     'frequency': cm.get_cmap('plasma'),
     'resonance': cm.get_cmap('inferno'),
     'connection': cm.get_cmap('Blues'),
-    'soul': cm.get_cmap('magma')
+    'soul': cm.get_cmap('magma'),
+    'mycelial': cm.get_cmap('YlOrRd'),
+    'stress': cm.get_cmap('Reds'),
+    'memory': cm.get_cmap('coolwarm')
 }
 
-# Define sephiroth aspects with their frequencies
+# Sephiroth aspects with colors and frequencies
 SEPHIROTH_ASPECTS = {
-    'kether': {'frequency': 1000.0},    
-    'chokmah': {'frequency': 900.0},
-    'binah': {'frequency': 800.0},
-    'chesed': {'frequency': 700.0},
-    'geburah': {'frequency': 600.0},
-    'tiphareth': {'frequency': 500.0},
-    'netzach': {'frequency': 400.0},
-    'hod': {'frequency': 300.0},
-    'yesod': {'frequency': 200.0},
-    'malkuth': {'frequency': 100.0}
+    'kether': {'frequency': 1000.0, 'color': '#FFFFFF'},    
+    'chokmah': {'frequency': 900.0, 'color': '#C8C8FF'},
+    'binah': {'frequency': 800.0, 'color': '#7F00FF'},
+    'chesed': {'frequency': 700.0, 'color': '#0000FF'},
+    'geburah': {'frequency': 600.0, 'color': '#FF0000'},
+    'tiphareth': {'frequency': 500.0, 'color': '#FFD700'},
+    'netzach': {'frequency': 400.0, 'color': '#00FF00'},
+    'hod': {'frequency': 300.0, 'color': '#FFA500'},
+    'yesod': {'frequency': 200.0, 'color': '#8200FF'},
+    'malkuth': {'frequency': 100.0, 'color': '#8B4513'}
 }
 
-def visualize_brain_seed(brain_seed, save_path=None, show=True):
-    """
-    Generate a basic visualization of the brain seed structure.
+# Brain region positions for visualization
+REGION_POSITIONS = {
+    # Major regions
+    'frontal_lobe': (-2.5, 2.0),
+    'parietal_lobe': (0, 2.5),
+    'temporal_lobe': (-3.0, 0),
+    'occipital_lobe': (2.5, 0.5),
+    'limbic_system': (0, 0),
+    'cerebellum': (0, -2.5),
+    'brainstem': (0, -3.5),
     
-    Parameters:
-        brain_seed: The brain seed object to visualize
-        save_path (str, optional): Path to save the visualization image
-        show (bool): Whether to display the visualization
-        
-    Returns:
-        matplotlib.figure.Figure: The figure object
-    """
-    logger.info("Generating brain seed visualization")
-    
-    # Create figure
-    fig = plt.figure(figsize=(12, 10))
-    ax = fig.add_subplot(111, projection='3d')
-    
-    # Visualize seed core
-    if hasattr(brain_seed, 'seed_core') and brain_seed.seed_core:
-        # Extract seed core properties
-        position = brain_seed.seed_core.get('position', np.array([0, 0, 0]))
-        radius = brain_seed.seed_core.get('radius', 0.1)
-        energy_density = brain_seed.seed_core.get('energy_density', 50)
-        
-        color_intensity = min(1.0, energy_density / 200)
-        core_color = cm.get_cmap('Blues')(color_intensity)
-        core_color = cm.get_cmap('viridis')(color_intensity)
-        
-        # Plot seed core as a sphere
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-        x = position[0] + radius * np.cos(u) * np.sin(v)
-        y = position[1] + radius * np.sin(u) * np.sin(v)
-        z = position[2] + radius * np.cos(v)
-        ax.plot_surface(x, y, z, color=core_color, alpha=0.7)
-    
-    # Visualize energy generators
-    if hasattr(brain_seed, 'energy_generators') and brain_seed.energy_generators:
-        # Define color mapping for generator types
-        type_colors = {
-            'resonant_field': 'blue',
-            'vortex_node': 'green',
-            'scalar_amplifier': 'red',
-            'harmonic_oscillator': 'purple',
-            'quantum_field_stabilizer': 'orange'
-        }
-        
-        for i, generator in enumerate(brain_seed.energy_generators):
-            position = generator.get('position', np.array([0, 0, 0]))
-            output = generator.get('output', 10)
-            g_type = generator.get('type', 'unknown')
-            
-            # Size based on output
-            size = output / 10
-            
-            # Color based on type
-            color = type_colors.get(g_type, 'gray')
-            
-            # Plot generator as a point
-            ax.scatter(position[0], position[1], position[2], color=color, s=size*100, 
-                      label=f"{g_type}" if i == 0 else "", alpha=0.8)
-            
-            # Add energy lines from generator to core
-            if hasattr(brain_seed, 'seed_core') and brain_seed.seed_core:
-                core_pos = brain_seed.seed_core.get('position', np.array([0, 0, 0]))
-                ax.plot([position[0], core_pos[0]], 
-                        [position[1], core_pos[1]], 
-                        [position[2], core_pos[2]], 
-                        color=color, alpha=0.3, linestyle='--')
-    
-    # Set up axes
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Brain Seed Structure')
-    
-    # Add legend
-    if hasattr(brain_seed, 'energy_generators') and brain_seed.energy_generators:
-        types = set(g.get('type', 'unknown') for g in brain_seed.energy_generators)
-        type_patches = []
-        for g_type in types:
-            color = type_colors.get(g_type, 'gray')
-            type_patches.append(plt.Line2D([0], [0], marker='o', color='w', 
-                              markerfacecolor=color, markersize=10, label=g_type))
-        
-        ax.legend(handles=type_patches, loc='upper right')
-    
-    # Add metrics text
-    if hasattr(brain_seed, 'get_metrics'):
-        metrics = brain_seed.get_metrics()
-        metrics_text = (
-            f"Energy: {metrics.get('energy_level', 0):.1f}/{metrics.get('energy_capacity', 0):.1f}\n"
-            f"Complexity: {metrics.get('complexity', 0):.1f}\n"
-            f"Progress: {metrics.get('formation_progress', 0)*100:.1f}%\n"
-            f"Integrity: {metrics.get('structural_integrity', 0)*100:.1f}%\n"
-            f"Stability: {metrics.get('stability', 0)*100:.1f}%"
-        )
-        plt.figtext(0.02, 0.02, metrics_text, fontsize=10, 
-                   bbox=dict(facecolor='white', alpha=0.7))
-    
-    # Save if requested
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
-    
-    # Show if requested
-    if show:
-        plt.show()
-    else:
-        plt.close()
-    
-    return fig
+    # Sub-regions
+    'prefrontal_cortex': (-3.0, 2.5),
+    'motor_cortex': (-1.5, 2.8),
+    'somatosensory_cortex': (1.0, 2.8),
+    'visual_cortex': (3.0, 0.5),
+    'auditory_cortex': (-3.5, 0.5),
+    'hippocampus': (-0.5, 0),
+    'amygdala': (0.5, 0),
+    'thalamus': (0, 0.5),
+    'hypothalamus': (0, -0.5),
+    'pons': (0, -3.0),
+    'medulla': (0, -4.0)
+}
 
-def visualize_soul_distribution(brain_seed, save_path=None, show=True):
-    """
-    Visualize the distribution of soul aspects throughout the brain.
+REGION_SIZES = {
+    # Major regions
+    'frontal_lobe': (2.5, 1.5),
+    'parietal_lobe': (2.0, 1.5),
+    'temporal_lobe': (2.0, 2.0),
+    'occipital_lobe': (1.5, 1.5),
+    'limbic_system': (1.8, 1.5),
+    'cerebellum': (2.5, 1.2),
+    'brainstem': (0.8, 1.5),
     
-    Parameters:
-        brain_seed: The brain seed object to visualize
-        save_path (str, optional): Path to save the visualization image
-        show (bool): Whether to display the visualization
-        
-    Returns:
-        matplotlib.figure.Figure: The figure object
-    """
-    logger.info("Generating soul distribution visualization")
-    
-    # Check if soul distribution is present
-    if not hasattr(brain_seed, 'soul_aspect_distribution'):
-        logger.warning("Soul aspects not distributed in brain, cannot visualize")
-        return None
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=(14, 10))
-    
-    # Get distribution data
-    distribution = brain_seed.soul_aspect_distribution
-    
-    # Region positions (approximate based on real brain)
-    region_positions = {
-        'frontal': (-2, 2.5),
-        'parietal': (0, 2.5),
-        'temporal': (-2.5, 0),
-        'occipital': (2.5, 0),
-        'limbic': (0, 0.5),
-        'cerebellum': (0, -2),
-        'brainstem': (0, -3)
-    }
-    
-    # Region sizes
-    region_sizes = {
-        'frontal': (3, 2),
-        'parietal': (3, 2),
-        'temporal': (2, 2.5),
-        'occipital': (2, 2.5),
-        'limbic': (1.5, 1.5),
-        'cerebellum': (3, 1.5),
-        'brainstem': (1, 2)
-    }
-    
-    # Draw brain outline
-    brain_outline = Ellipse((0, 0), width=9, height=8, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2, alpha=0.5)
-    ax.add_patch(brain_outline)
-    
-    # Draw hemispheres dividing line
-    ax.plot([0, 0], [-4, 4], 'k--', linewidth=1, alpha=0.5)
-    
-    # Draw regions with soul aspects
-    for region_name, mappings in distribution.get('region_mappings', {}).items():
-        if not mappings:
-            continue
-            
-        # Get region position and size
-        pos = region_positions.get(region_name, (0, 0))
-        size = region_sizes.get(region_name, (1, 1))
-        
-        # Create base region shape
-        if region_name == 'limbic':
-            # Limbic as a circle
-            base_patch = Circle(pos, size[0]/2, fill=True, alpha=0.1,
-                              edgecolor='black', linewidth=1, facecolor='gray')
-        elif region_name in ['cerebellum', 'brainstem']:
-            # Cerebellum and brainstem as rectangles
-            base_patch = Rectangle((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                                 fill=True, alpha=0.1, edgecolor='black', linewidth=1,
-                                 facecolor='gray')
-        else:
-            # Others as fancy rounded rectangles
-            base_patch = FancyBboxPatch((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                                      boxstyle="round,pad=0.3",
-                                      fill=True, alpha=0.1, edgecolor='black', linewidth=1,
-                                      facecolor='gray')
-        
-        # Add base patch
-        ax.add_patch(base_patch)
-        
-        # Add region label
-        ax.text(pos[0], pos[1] + 0.3, region_name.title(), fontsize=10, ha='center', va='center',
-               bbox=dict(facecolor='white', alpha=0.7))
-        
-        # Calculate total influence
-        total_influence = sum(m.get('influence', 0) for m in mappings)
-        
-        # Draw pie chart of aspects
-        aspect_colors = {
-            'kether': '#FFFFFF',    # White
-            'chokmah': '#C8C8FF',   # Light blue
-            'binah': '#7F00FF',     # Purple
-            'chesed': '#0000FF',    # Blue
-            'geburah': '#FF0000',   # Red
-            'tiphareth': '#FFD700',  # Gold
-            'netzach': '#00FF00',   # Green
-            'hod': '#FFA500',       # Orange
-            'yesod': '#8200FF',     # Violet
-            'malkuth': '#8B4513'    # Brown
-        }
-        
-        # Create wedges
-        wedges = []
-        colors = []
-        labels = []
-        sizes = []
-        
-        for mapping in mappings:
-            aspect = mapping.get('aspect', 'unknown')
-            influence = mapping.get('influence', 0)
-            
-            # Normalized influence for pie
-            if total_influence > 0:
-                size = influence / total_influence
-            else:
-                size = 0
-                
-            # Add to lists
-            wedges.append(aspect)
-            colors.append(aspect_colors.get(aspect, '#808080'))
-            labels.append(f"{aspect}\n{influence:.2f}")
-            sizes.append(size)
-        
-        # Draw pie chart
-        if sizes:
-            # Position slightly offset from center
-            pie_pos = (pos[0], pos[1] - 0.5)
-            pie_size = min(size[0], size[1]) * 0.6
-            
-            wedges, texts = ax.pie(sizes, colors=colors, startangle=90, radius=pie_size,
-                                 center=pie_pos, wedgeprops=dict(width=pie_size*0.5, alpha=0.7))
-            
-            # Add influence text
-            ax.text(pos[0], pos[1] - 0.1, f"Aspects: {len(mappings)}", 
-                   fontsize=8, ha='center', va='center')
-        
-        # Draw some soul aspect pockets
-        if 'soul_field' in distribution and 'regions' in distribution['soul_field']:
-            field = distribution['soul_field']['regions'].get(region_name, {})
-            
-            # Draw pockets
-            for pocket in field.get('pockets', []):
-                pocket_pos = pocket.get('position', np.array([0, 0, 0]))
-                aspect = pocket.get('aspect', 'unknown')
-                intensity = pocket.get('intensity', 0.5)
-                
-                # Map to 2D position
-                pocket_2d = (
-                    pos[0] + pocket_pos[0] * size[0] * 0.3,
-                    pos[1] + pocket_pos[1] * size[1] * 0.3
-                )
-                
-                # Color from aspect
-                color = aspect_colors.get(aspect, '#808080')
-                
-                # Size and alpha based on intensity
-                pocket_size = 20 + 50 * intensity
-                alpha = 0.3 + 0.7 * intensity
-                
-                # Plot pocket
-                ax.scatter(pocket_2d[0], pocket_2d[1], s=pocket_size, color=color, 
-                          alpha=alpha, edgecolor='white', linewidth=0.5)
-    
-    # Draw hemisphere mappings
-    for hemi, mappings in distribution.get('hemisphere_mappings', {}).items():
-        if not mappings:
-            continue
-            
-        # Position for hemisphere label
-        pos = (-3, 1.5) if hemi == 'left' else (3, 1.5)
-        
-        # Add hemisphere label
-        ax.text(pos[0], pos[1], f"{hemi.title()} Hemisphere", fontsize=12, ha='center', va='center',
-               bbox=dict(facecolor='white', alpha=0.7))
-        
-        # List aspects
-        aspect_text = "Soul Aspects:\n" + "\n".join(f"- {m.get('aspect', 'unknown')}" for m in mappings)
-        
-        # Add aspect list
-        ax.text(pos[0], pos[1] - 1, aspect_text, fontsize=9, ha='center', va='center',
-               bbox=dict(facecolor='white', alpha=0.5))
-        
-        # Draw aspect fields in hemisphere
-        if 'soul_field' in distribution and 'hemispheres' in distribution['soul_field']:
-            field = distribution['soul_field']['hemispheres'].get(hemi, {})
-            
-            # For each aspect, draw some representative points
-            for aspect_name, intensity in field.get('aspect_intensities', {}).items():
-                # Get aspect color
-                color = aspect_colors.get(aspect_name, '#808080')
-                
-                # Draw points
-                n_points = int(10 * intensity)
-                
-                for _ in range(n_points):
-                    # Random position in hemisphere
-                    x = np.random.random() * 3 * (-1 if hemi == 'left' else 1)
-                    y = (np.random.random() - 0.5) * 5
-                    
-                    # Skip if outside the ellipse
-                    if (x/4.5)**2 + (y/4)**2 > 1:
-                        continue
-                        
-                    # Size and alpha
-                    size = 30 + 70 * np.random.random() * intensity
-                    alpha = 0.2 + 0.7 * np.random.random() * intensity
-                    
-                    # Plot point
-                    ax.scatter(x, y, s=size, color=color, alpha=alpha, edgecolor=None)
-    
-    # Create legend for sephiroth aspects
-    aspect_patches = []
-    for aspect, color in aspect_colors.items():
-        if aspect in distribution.get('aspects', {}):
-            aspect_patches.append(plt.Line2D([0], [0], marker='o', color='w', 
-                                          markerfacecolor=color, markersize=10, 
-                                          label=f"{aspect} - {distribution['aspects'][aspect].get('quality', '')}"))
-    
-    # Add legend
-    if aspect_patches:
-        ax.legend(handles=aspect_patches, title="Soul Aspects", 
-                loc='upper right', bbox_to_anchor=(1.15, 1))
-    
-    # Add integration level
-    integration = distribution.get('integration_level', 0)
-    integration_text = f"Soul Integration: {integration*100:.1f}%"
-    integration_color = cm.get_cmap('RdYlGn')(integration)
-    
-    ax.text(0, -4.5, integration_text, fontsize=14, ha='center', va='center',
-           bbox=dict(facecolor=integration_color, alpha=0.7))
-    
-    # Set up axes
-    ax.set_xlim(-6, 6)
-    ax.set_ylim(-5, 5)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Soul Aspects Distribution in Brain', fontsize=16)
-    
-    # Save if requested
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
-    
-    # Show if requested
-    if show:
-        plt.show()
-    else:
-        plt.close()
-    
-    return fig
+    # Sub-regions
+    'prefrontal_cortex': (1.5, 1.0),
+    'motor_cortex': (1.0, 0.8),
+    'somatosensory_cortex': (1.0, 0.8),
+    'visual_cortex': (1.0, 1.0),
+    'auditory_cortex': (0.8, 0.8),
+    'hippocampus': (0.6, 0.4),
+    'amygdala': (0.4, 0.3),
+    'thalamus': (0.5, 0.4),
+    'hypothalamus': (0.4, 0.3),
+    'pons': (0.6, 0.5),
+    'medulla': (0.5, 0.4)
+}
 
-def create_combined_visualization(brain_seed, save_path=None, show=True):
+def visualize_complete_brain_system(brain_structure=None, mycelial_network=None, 
+                                   energy_storage=None, memory_distribution=None,
+                                   stress_monitoring=None, neural_network=None,
+                                   save_path=None, show=True):
     """
-    Create a combined visualization showing brain structure, soul attachment,
-    and soul distribution.
+    Create comprehensive visualization of the complete brain formation system.
     
     Parameters:
-        brain_seed: The brain seed object to visualize
+        brain_structure: BrainStructure instance
+        mycelial_network: MycelialNetwork instance
+        energy_storage: EnergyStorage instance
+        memory_distribution: MemoryDistribution instance
+        stress_monitoring: StressMonitoring instance
+        neural_network: NeuralNetwork instance
         save_path (str, optional): Path to save the visualization image
         show (bool): Whether to display the visualization
         
     Returns:
         matplotlib.figure.Figure: The figure object
     """
-    logger.info("Generating combined visualization")
+    logger.info("Generating complete brain system visualization")
     
-    # Check if we have enough data to visualize
-    if not hasattr(brain_seed, 'region_structure') or not brain_seed.region_structure:
-        logger.warning("Brain regions not developed, cannot create combined visualization")
-        return None
+    # Create figure with multiple subplots
+    fig = plt.figure(figsize=(20, 16))
     
-    if not hasattr(brain_seed, 'soul_connection'):
-        logger.warning("Soul not attached to brain, cannot create combined visualization")
-        return None
+    # 1. Brain Structure Overview (top left)
+    ax1 = fig.add_subplot(2, 3, 1)
+    _plot_brain_structure(ax1, brain_structure)
+    ax1.set_title('Brain Structure & Regions', fontsize=14, fontweight='bold')
     
-    # Create figure with subfigures
-    fig = plt.figure(figsize=(18, 12))
+    # 2. Mycelial Network (top center)
+    ax2 = fig.add_subplot(2, 3, 2)
+    _plot_mycelial_network(ax2, mycelial_network, brain_structure)
+    ax2.set_title('Mycelial Network & Energy', fontsize=14, fontweight='bold')
     
-    # Brain regions subplot
-    ax1 = fig.add_subplot(2, 2, 1)
+    # 3. Memory Distribution (top right)
+    ax3 = fig.add_subplot(2, 3, 3)
+    _plot_memory_distribution(ax3, memory_distribution, brain_structure)
+    ax3.set_title('Memory & Soul Aspects', fontsize=14, fontweight='bold')
     
-    # Region positions and sizes (simplified for combined view)
-    region_positions = {
-        'frontal': (-2, 2.5),
-        'parietal': (0, 2.5),
-        'temporal': (-2.5, 0),
-        'occipital': (2.5, 0),
-        'limbic': (0, 0.5),
-        'cerebellum': (0, -2),
-        'brainstem': (0, -3)
-    }
+    # 4. Neural Network (bottom left)
+    ax4 = fig.add_subplot(2, 3, 4)
+    _plot_neural_network(ax4, neural_network, brain_structure)
+    ax4.set_title('Neural Network & Synapses', fontsize=14, fontweight='bold')
     
-    region_sizes = {
-        'frontal': (3, 2),
-        'parietal': (3, 2),
-        'temporal': (2, 2.5),
-        'occipital': (2, 2.5),
-        'limbic': (1.5, 1.5),
-        'cerebellum': (3, 1.5),
-        'brainstem': (1, 2)
-    }
+    # 5. Energy & Stress Monitoring (bottom center)
+    ax5 = fig.add_subplot(2, 3, 5)
+    _plot_energy_and_stress(ax5, energy_storage, stress_monitoring)
+    ax5.set_title('Energy Storage & Stress', fontsize=14, fontweight='bold')
     
-    # Draw regions
-    for region_name, region in brain_seed.region_structure.items():
-        # Get position and size
-        pos = region_positions.get(region_name, (0, 0))
-        size = region_sizes.get(region_name, (1, 1))
-        
-        # Create region shape
-        if region_name == 'limbic':
-            patch = Circle(pos, size[0]/2, fill=True, alpha=0.5,
-                         edgecolor='black', linewidth=1,
-                         facecolor='lightblue')
-        elif region_name in ['cerebellum', 'brainstem']:
-            patch = Rectangle((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                            fill=True, alpha=0.5, edgecolor='black', linewidth=1,
-                            facecolor='lightblue')
-        else:
-            patch = FancyBboxPatch((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                                 boxstyle="round,pad=0.3",
-                                 fill=True, alpha=0.5, edgecolor='black', linewidth=1,
-                                 facecolor='lightblue')
-        
-        # Add patch
-        ax1.add_patch(patch)
-        
-        # Add label
-        ax1.text(pos[0], pos[1], region_name.title(), fontsize=8, ha='center', va='center')
+    # 6. System Metrics (bottom right)
+    ax6 = fig.add_subplot(2, 3, 6)
+    _plot_system_metrics(ax6, brain_structure, mycelial_network, energy_storage, 
+                        memory_distribution, stress_monitoring, neural_network)
+    ax6.set_title('System Metrics & Status', fontsize=14, fontweight='bold')
     
-    # Draw brain outline
-    brain_outline = Ellipse((0, 0), width=9, height=8, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2, alpha=0.5)
-    ax1.add_patch(brain_outline)
+    # Add overall title with formation status
+    formation_status = "Unknown"
+    if brain_structure and hasattr(brain_structure, 'formation_complete'):
+        formation_status = "Complete" if brain_structure.formation_complete else "In Progress"
     
-    # Set up axes for brain regions
-    ax1.set_xlim(-5, 5)
-    ax1.set_ylim(-5, 5)
-    ax1.set_aspect('equal')
-    ax1.axis('off')
-    ax1.set_title('Brain Structure', fontsize=14)
-    
-    # Soul attachment subplot
-    ax2 = fig.add_subplot(2, 2, 2)
-    
-    # Draw brain
-    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2)
-    ax2.add_patch(brain_outline)
-    
-    # Draw soul
-    soul_pos = (0, 5)
-    soul_size = 50
-    ax2.scatter(soul_pos[0], soul_pos[1], s=soul_size*5, color='purple', alpha=0.7, 
-              edgecolor='white', linewidth=1)
-    
-    # Draw connection cord
-    connection_strength = brain_seed.soul_connection.get('connection_strength', 0.5)
-    ax2.plot([0, 0], [0, soul_pos[1]], color='gold', linewidth=2, alpha=connection_strength)
-    
-    # Draw attachment points
-    for point in brain_seed.soul_connection.get('brain_attachment_points', [])[:5]:  # limit to 5 for clarity
-        # Get position and properties
-        point_pos = point.get('position', np.array([0, 0, 0]))
-        strength = point.get('strength', 0.5)
-        purpose = point.get('purpose', 'unknown')
-        
-        # Map to 2D
-        pos_2d = (point_pos[0], point_pos[1] * 0.8)
-        
-        # Skip if outside visualization area
-        if abs(pos_2d[0]) > 4 or abs(pos_2d[1]) > 3:
-            continue
-        
-        # Purpose-based color
-        color = 'gold' if purpose == 'primary_connection' else 'cyan'
-        
-        # Draw point
-        ax2.scatter(pos_2d[0], pos_2d[1], s=strength*100, color=color, alpha=strength)
-        
-        # Connect to cord
-        ax2.plot([pos_2d[0], 0], [pos_2d[1], pos_2d[1]], color=color, 
-               alpha=0.5*strength, linestyle='--')
-    
-    # Set up axes for soul attachment
-    ax2.set_xlim(-5, 5)
-    ax2.set_ylim(-4, 6)
-    ax2.set_aspect('equal')
-    ax2.axis('off')
-    ax2.set_title('Soul Attachment', fontsize=14)
-    
-    # Soul distribution subplot
-    ax3 = fig.add_subplot(2, 2, 3)
-    
-    # Draw brain
-    brain_outline = Ellipse((0, 0), width=9, height=8, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2, alpha=0.5)
-    ax3.add_patch(brain_outline)
-    
-    # Define colors for aspects
-    aspect_colors = {
-        'kether': '#FFFFFF',    # White
-        'chokmah': '#C8C8FF',   # Light blue
-        'binah': '#7F00FF',     # Purple
-        'chesed': '#0000FF',    # Blue
-        'geburah': '#FF0000',   # Red
-        'tiphareth': '#FFD700',  # Gold
-        'netzach': '#00FF00',   # Green
-        'hod': '#FFA500',       # Orange
-        'yesod': '#8200FF',     # Violet
-        'malkuth': '#8B4513'    # Brown
-    }
-    
-    # Draw distributions if available
-    if hasattr(brain_seed, 'soul_aspect_distribution'):
-        distribution = brain_seed.soul_aspect_distribution
-        
-        # Draw aspects by region
-        for region_name, mappings in distribution.get('region_mappings', {}).items():
-            if not mappings:
-                continue
-                
-            # Get region position
-            pos = region_positions.get(region_name, (0, 0))
-            
-            # Get primary aspect (highest influence)
-            primary_aspect = None
-            max_influence = 0
-            
-            for mapping in mappings:
-                aspect = mapping.get('aspect', 'unknown')
-                influence = mapping.get('influence', 0)
-                
-                if influence > max_influence:
-                    max_influence = influence
-                    primary_aspect = aspect
-            
-            if primary_aspect:
-                # Get color
-                color = aspect_colors.get(primary_aspect, '#808080')
-                
-                # Draw region with this color
-                if region_name == 'limbic':
-                    patch = Circle(pos, region_sizes[region_name][0]/2, fill=True, alpha=0.7,
-                                 edgecolor='black', linewidth=1, facecolor=color)
-                elif region_name in ['cerebellum', 'brainstem']:
-                    patch = Rectangle((pos[0]-region_sizes[region_name][0]/2, 
-                                     pos[1]-region_sizes[region_name][1]/2), 
-                                    region_sizes[region_name][0], region_sizes[region_name][1], 
-                                    fill=True, alpha=0.7, edgecolor='black', linewidth=1,
-                                    facecolor=color)
-                else:
-                    patch = FancyBboxPatch((pos[0]-region_sizes[region_name][0]/2, 
-                                          pos[1]-region_sizes[region_name][1]/2), 
-                                         region_sizes[region_name][0], region_sizes[region_name][1], 
-                                         boxstyle="round,pad=0.3",
-                                         fill=True, alpha=0.7, edgecolor='black', linewidth=1,
-                                         facecolor=color)
-                
-                # Add patch
-                ax3.add_patch(patch)
-                
-                # Add label
-                ax3.text(pos[0], pos[1], f"{region_name}\n({primary_aspect})", 
-                       fontsize=8, ha='center', va='center')
-    
-    # Set up axes for soul distribution
-    ax3.set_xlim(-5, 5)
-    ax3.set_ylim(-5, 5)
-    ax3.set_aspect('equal')
-    ax3.axis('off')
-    ax3.set_title('Soul Aspect Distribution', fontsize=14)
-    
-    # Combined metrics subplot
-    ax4 = fig.add_subplot(2, 2, 4)
-    
-    # Turn off axes
-    ax4.axis('off')
-    
-    # Get metrics for display
-    metrics = {}
-    
-    # Brain formation metrics
-    if hasattr(brain_seed, 'formation_progress'):
-        metrics['Brain Formation'] = f"{brain_seed.formation_progress * 100:.1f}%"
-    
-    if hasattr(brain_seed, 'structural_integrity'):
-        metrics['Structural Integrity'] = f"{brain_seed.structural_integrity * 100:.1f}%"
-    
-    if hasattr(brain_seed, 'stability'):
-        metrics['Brain Stability'] = f"{brain_seed.stability * 100:.1f}%"
-    
-    # Connection metrics
-    if hasattr(brain_seed, 'soul_connection'):
-        metrics['Connection Strength'] = f"{brain_seed.soul_connection.get('connection_strength', 0) * 100:.1f}%"
-        metrics['Resonance Coherence'] = f"{brain_seed.soul_connection.get('resonance_coherence', 0) * 100:.1f}%"
-        metrics['Attachment Points'] = str(len(brain_seed.soul_connection.get('brain_attachment_points', [])))
-    
-    # Distribution metrics
-    if hasattr(brain_seed, 'soul_aspect_distribution'):
-        dist = brain_seed.soul_aspect_distribution
-        metrics['Soul Integration'] = f"{dist.get('integration_level', 0) * 100:.1f}%"
-        metrics['Soul Aspects'] = str(len(dist.get('aspects', {})))
-        
-        # Count total mappings
-        total_mappings = sum(len(mappings) for mappings in dist.get('region_mappings', {}).values())
-        metrics['Aspect Mappings'] = str(total_mappings)
-    
-    # Create metrics table
-    cells = []
-    for label, value in metrics.items():
-        cells.append([label, value])
-    
-    # Add table
-    table = ax4.table(cellText=cells, loc='center', cellLoc='left', colWidths=[0.6, 0.4])
-    table.auto_set_font_size(False)
-    table.set_fontsize(12)
-    table.scale(1, 1.5)
-    
-    for (i, j), cell in table.get_celld().items():
-        if i == 0:  # Header
-            cell.set_text_props(fontproperties=FontProperties(weight='bold'))
-        
-        # Color code some values
-        if j == 1 and "%" in cell.get_text().get_text():
-            value = float(cell.get_text().get_text().strip('%'))
-            color = cm.get_cmap('RdYlGn')(value / 100)
-            cell.set_facecolor(color)
-    
-    ax4.set_title('Combined Metrics', fontsize=14)
+    plt.suptitle(f'Complete Brain Formation System - Status: {formation_status}', 
+                fontsize=18, fontweight='bold', y=0.98)
     
     # Adjust layout
     plt.tight_layout()
-    
-    # Add overall title
-    plt.suptitle(f"Brain-Soul System: {brain_seed.formation_progress * 100:.1f}% Formed", 
-               fontsize=18, y=0.98)
+    plt.subplots_adjust(top=0.93)
     
     # Save if requested
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
+        logger.info(f"Complete brain system visualization saved to {save_path}")
     
     # Show if requested
     if show:
@@ -719,36 +191,676 @@ def create_combined_visualization(brain_seed, save_path=None, show=True):
     
     return fig
 
-def visualize_brain_development_timeline(brain_seed, save_path=None, show=True):
+def _plot_brain_structure(ax, brain_structure):
+    """Plot brain structure with hierarchical regions."""
+    # Draw brain outline
+    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
+                          edgecolor='black', linestyle='-', linewidth=2, alpha=0.7)
+    ax.add_patch(brain_outline)
+    
+    # Draw hemisphere divider
+    ax.plot([0, 0], [-3, 3], 'k--', linewidth=1, alpha=0.5)
+    
+    if not brain_structure:
+        ax.text(0, 0, 'Brain Structure\nNot Available', ha='center', va='center', 
+                fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-4, 4)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        return
+    
+    # Get brain regions if available
+    regions = getattr(brain_structure, 'regions', {})
+    active_cells = getattr(brain_structure, 'active_cells', {})
+    
+    # Plot major regions
+    for region_name in ['frontal_lobe', 'parietal_lobe', 'temporal_lobe', 
+                       'occipital_lobe', 'limbic_system', 'cerebellum', 'brainstem']:
+        if region_name in REGION_POSITIONS:
+            pos = REGION_POSITIONS[region_name]
+            size = REGION_SIZES.get(region_name, (1.0, 1.0))
+            
+            # Get region activity level
+            activity = 0.5  # Default
+            if regions and region_name in regions:
+                region_data = regions[region_name]
+                activity = region_data.get('activity_level', 0.5)
+            
+            # Color based on activity
+            color = COLOR_MAPS['energy'](activity)
+            
+            # Create region shape
+            if region_name == 'limbic_system':
+                patch = Circle(pos, size[0]/2, fill=True, alpha=0.6,
+                             facecolor=color, edgecolor='black', linewidth=1)
+            elif region_name in ['brainstem']:
+                patch = Rectangle((pos[0]-size[0]/2, pos[1]-size[1]/2), 
+                                size[0], size[1], fill=True, alpha=0.6,
+                                facecolor=color, edgecolor='black', linewidth=1)
+            else:
+                patch = FancyBboxPatch((pos[0]-size[0]/2, pos[1]-size[1]/2), 
+                                     size[0], size[1], boxstyle="round,pad=0.1",
+                                     fill=True, alpha=0.6, facecolor=color, 
+                                     edgecolor='black', linewidth=1)
+            
+            ax.add_patch(patch)
+            
+            # Add label
+            display_name = region_name.replace('_', ' ').title()
+            ax.text(pos[0], pos[1], display_name, ha='center', va='center', 
+                   fontsize=8, fontweight='bold')
+    
+    # Plot active cells as small dots
+    if active_cells:
+        cell_count = 0
+        for coord, cell_data in active_cells.items():
+            if cell_count > 100:  # Limit display for performance
+                break
+            
+            # Convert 3D coordinates to 2D for display
+            if isinstance(coord, tuple) and len(coord) >= 2:
+                x, y = coord[0] * 0.03, coord[1] * 0.03  # Scale down
+                
+                # Skip if outside brain outline
+                if x*x/16 + y*y/9 > 1:
+                    continue
+                
+                # Get cell type and activity
+                cell_type = cell_data.get('type', 'unknown')
+                activity = cell_data.get('activity', 0.5)
+                
+                # Color based on cell type
+                type_colors = {
+                    'neuron': 'blue',
+                    'memory': 'purple',
+                    'energy': 'red',
+                    'mycelial': 'orange'
+                }
+                color = type_colors.get(cell_type, 'gray')
+                
+                # Plot cell
+                ax.scatter(x, y, s=20*activity, c=color, alpha=0.7, edgecolors=None)
+                cell_count += 1
+    
+    # Add formation progress if available
+    if hasattr(brain_structure, 'formation_complete'):
+        progress_text = "Formation: Complete" if brain_structure.formation_complete else "Formation: In Progress"
+        ax.text(-4, -3.5, progress_text, fontsize=10, 
+               bbox=dict(facecolor='lightgreen' if brain_structure.formation_complete else 'lightyellow', 
+                        alpha=0.8))
+    
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-4, 4)
+    ax.set_aspect('equal')
+    ax.axis('off')
+
+def _plot_mycelial_network(ax, mycelial_network, brain_structure):
+    """Plot mycelial network distribution and energy flows."""
+    # Draw brain outline
+    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
+                          edgecolor='black', linestyle='-', linewidth=1, alpha=0.3)
+    ax.add_patch(brain_outline)
+    
+    if not mycelial_network:
+        ax.text(0, 0, 'Mycelial Network\nNot Available', ha='center', va='center', 
+                fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-4, 4)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        return
+    
+    # Get mycelial network data
+    network_nodes = getattr(mycelial_network, 'network_nodes', {})
+    energy_flows = getattr(mycelial_network, 'energy_flows', [])
+    processing_hubs = getattr(mycelial_network, 'processing_hubs', {})
+    
+    # Plot network nodes
+    for node_id, node_data in network_nodes.items():
+        coord = node_data.get('coordinate', (0, 0, 0))
+        energy_level = node_data.get('energy_level', 0.5)
+        node_type = node_data.get('type', 'standard')
+        
+        # Convert to 2D
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        
+        # Skip if outside brain
+        if x*x/16 + y*y/9 > 1:
+            continue
+        
+        # Size and color based on energy and type
+        size = 30 + 50 * energy_level
+        if node_type == 'hub':
+            color = 'red'
+            size *= 1.5
+        elif node_type == 'seed':
+            color = 'gold'
+        else:
+            color = COLOR_MAPS['mycelial'](energy_level)
+        
+        ax.scatter(x, y, s=size, c=color, alpha=0.8, edgecolors='white', linewidth=0.5)
+    
+    # Plot energy flows as lines
+    node_positions = {}
+    for node_id, node_data in network_nodes.items():
+        coord = node_data.get('coordinate', (0, 0, 0))
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        node_positions[node_id] = (x, y)
+    
+    for flow in energy_flows:
+        source_id = flow.get('source')
+        target_id = flow.get('target')
+        flow_rate = flow.get('flow_rate', 0.5)
+        
+        if source_id in node_positions and target_id in node_positions:
+            source_pos = node_positions[source_id]
+            target_pos = node_positions[target_id]
+            
+            # Skip if either position is outside brain
+            if (source_pos[0]**2/16 + source_pos[1]**2/9 > 1 or 
+                target_pos[0]**2/16 + target_pos[1]**2/9 > 1):
+                continue
+            
+            # Draw flow line
+            ax.plot([source_pos[0], target_pos[0]], [source_pos[1], target_pos[1]],
+                   color='orange', alpha=0.3 + 0.5*flow_rate, linewidth=1 + 2*flow_rate)
+    
+    # Plot processing hubs with special markers
+    for hub_id, hub_data in processing_hubs.items():
+        coord = hub_data.get('coordinate', (0, 0, 0))
+        processing_capacity = hub_data.get('processing_capacity', 0.5)
+        
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        
+        # Skip if outside brain
+        if x*x/16 + y*y/9 > 1:
+            continue
+        
+        # Draw hub with special symbol
+        size = 100 + 100 * processing_capacity
+        ax.scatter(x, y, s=size, c='none', edgecolors='red', linewidth=3, marker='s')
+        ax.scatter(x, y, s=size*0.5, c='red', alpha=0.3)
+    
+    # Add network stats
+    node_count = len(network_nodes)
+    flow_count = len(energy_flows)
+    hub_count = len(processing_hubs)
+    
+    stats_text = f"Nodes: {node_count}\nFlows: {flow_count}\nHubs: {hub_count}"
+    ax.text(-4.5, 3, stats_text, fontsize=10, 
+           bbox=dict(facecolor='lightyellow', alpha=0.8))
+    
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-4, 4)
+    ax.set_aspect('equal')
+    ax.axis('off')
+
+def _plot_memory_distribution(ax, memory_distribution, brain_structure):
+    """Plot memory distribution and sephiroth aspects."""
+    # Draw brain outline
+    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
+                          edgecolor='black', linestyle='-', linewidth=1, alpha=0.3)
+    ax.add_patch(brain_outline)
+    
+    if not memory_distribution:
+        ax.text(0, 0, 'Memory Distribution\nNot Available', ha='center', va='center', 
+                fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-4, 4)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        return
+    
+    # Get memory data
+    sephiroth_memories = getattr(memory_distribution, 'sephiroth_memories', {})
+    identity_aspects = getattr(memory_distribution, 'identity_aspects', {})
+    memory_coordinates = getattr(memory_distribution, 'memory_coordinates', {})
+    
+    # Plot sephiroth aspects
+    for aspect_name, aspect_data in sephiroth_memories.items():
+        if aspect_name in SEPHIROTH_ASPECTS:
+            coord = aspect_data.get('coordinate', (0, 0, 0))
+            intensity = aspect_data.get('intensity', 0.5)
+            
+            # Convert to 2D
+            x, y = coord[0] * 0.03, coord[1] * 0.03
+            
+            # Skip if outside brain
+            if x*x/16 + y*y/9 > 1:
+                continue
+            
+            # Get aspect color and properties
+            aspect_info = SEPHIROTH_ASPECTS[aspect_name]
+            color = aspect_info['color']
+            
+            # Plot aspect
+            size = 50 + 100 * intensity
+            ax.scatter(x, y, s=size, c=color, alpha=0.7, 
+                      edgecolors='white', linewidth=1)
+            
+            # Add label for larger aspects
+            if intensity > 0.7:
+                ax.text(x, y-0.3, aspect_name, ha='center', va='top', 
+                       fontsize=8, fontweight='bold')
+    
+    # Plot identity aspects
+    for aspect_name, aspect_data in identity_aspects.items():
+        coord = aspect_data.get('coordinate', (0, 0, 0))
+        strength = aspect_data.get('strength', 0.5)
+        
+        # Convert to 2D
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        
+        # Skip if outside brain
+        if x*x/16 + y*y/9 > 1:
+            continue
+        
+        # Plot identity aspect
+        size = 30 + 60 * strength
+        ax.scatter(x, y, s=size, c='cyan', alpha=0.5, 
+                  edgecolors='blue', linewidth=1, marker='d')
+    
+    # Plot memory coordinates as small points
+    coord_count = 0
+    for memory_id, coord in memory_coordinates.items():
+        if coord_count > 50:  # Limit display
+            break
+        
+        # Convert to 2D
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        
+        # Skip if outside brain
+        if x*x/16 + y*y/9 > 1:
+            continue
+        
+        # Plot memory point
+        ax.scatter(x, y, s=10, c='purple', alpha=0.3)
+        coord_count += 1
+    
+    # Add memory stats
+    seph_count = len(sephiroth_memories)
+    identity_count = len(identity_aspects)
+    coord_count = len(memory_coordinates)
+    
+    stats_text = f"Sephiroth: {seph_count}\nIdentity: {identity_count}\nCoords: {coord_count}"
+    ax.text(3, 3, stats_text, fontsize=10, 
+           bbox=dict(facecolor='lightcyan', alpha=0.8))
+    
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-4, 4)
+    ax.set_aspect('equal')
+    ax.axis('off')
+
+def _plot_neural_network(ax, neural_network, brain_structure):
+    """Plot neural network nodes and synaptic connections."""
+    # Draw brain outline
+    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
+                          edgecolor='black', linestyle='-', linewidth=1, alpha=0.3)
+    ax.add_patch(brain_outline)
+    
+    if not neural_network:
+        ax.text(0, 0, 'Neural Network\nNot Available', ha='center', va='center', 
+                fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-4, 4)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        return
+    
+    # Get neural data
+    nodes = getattr(neural_network, 'nodes', {})
+    synapses = getattr(neural_network, 'synapses', {})
+    
+    # Plot neural nodes
+    node_positions = {}
+    for node_id, node_data in nodes.items():
+        coord = node_data.get('coordinate', (0, 0, 0))
+        activation = node_data.get('activation_level', 0.5)
+        node_type = node_data.get('type', 'standard')
+        
+        # Convert to 2D
+        x, y = coord[0] * 0.03, coord[1] * 0.03
+        
+        # Skip if outside brain
+        if x*x/16 + y*y/9 > 1:
+            continue
+        
+        node_positions[node_id] = (x, y)
+        
+        # Size and color based on activation and type
+        size = 20 + 40 * activation
+        if node_type == 'motor':
+            color = 'red'
+        elif node_type == 'sensory':
+            color = 'blue'
+        elif node_type == 'memory':
+            color = 'purple'
+        else:
+            color = COLOR_MAPS['connection'](activation)
+        
+        ax.scatter(x, y, s=size, c=color, alpha=0.7, edgecolors='white', linewidth=0.5)
+    
+    # Plot synapses as connections
+    synapse_count = 0
+    for synapse_id, synapse_data in synapses.items():
+        if synapse_count > 100:  # Limit display for performance
+            break
+        
+        source_id = synapse_data.get('source_node')
+        target_id = synapse_data.get('target_node')
+        strength = synapse_data.get('strength', 0.5)
+        
+        if source_id in node_positions and target_id in node_positions:
+            source_pos = node_positions[source_id]
+            target_pos = node_positions[target_id]
+            
+            # Draw synapse
+            ax.plot([source_pos[0], target_pos[0]], [source_pos[1], target_pos[1]],
+                   color='gray', alpha=0.2 + 0.6*strength, linewidth=0.5 + 1.5*strength)
+            synapse_count += 1
+    
+    # Add neural stats
+    node_count = len(nodes)
+    synapse_count = len(synapses)
+    
+    # Calculate average activation
+    if nodes:
+        avg_activation = np.mean([n.get('activation_level', 0.5) for n in nodes.values()])
+    else:
+        avg_activation = 0.0
+    
+    stats_text = f"Nodes: {node_count}\nSynapses: {synapse_count}\nAvg Act: {avg_activation:.2f}"
+    ax.text(-4.5, -3, stats_text, fontsize=10, 
+           bbox=dict(facecolor='lightblue', alpha=0.8))
+    
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-4, 4)
+    ax.set_aspect('equal')
+    ax.axis('off')
+
+def _plot_energy_and_stress(ax, energy_storage, stress_monitoring):
+    """Plot energy storage and stress monitoring systems."""
+    if not energy_storage and not stress_monitoring:
+        ax.text(0.5, 0.5, 'Energy & Stress\nSystems\nNot Available', ha='center', va='center', 
+                fontsize=12, bbox=dict(facecolor='white', alpha=0.8),
+                transform=ax.transAxes)
+        ax.axis('off')
+        return
+    
+    # Energy storage visualization
+    if energy_storage:
+        # Get energy data
+        energy_pools = getattr(energy_storage, 'energy_pools', {})
+        total_capacity = getattr(energy_storage, 'total_capacity', 1000)
+        current_energy = getattr(energy_storage, 'current_total_energy', 500)
+        
+        # Energy gauge
+        energy_ratio = current_energy / total_capacity if total_capacity > 0 else 0
+        
+        # Draw energy gauge
+        theta = np.linspace(0, 2*np.pi*energy_ratio, 50)
+        x_gauge = 0.5 + 0.3 * np.cos(theta)
+        y_gauge = 0.8 + 0.3 * np.sin(theta)
+        
+        ax.fill_between(x_gauge, y_gauge, 0.8, alpha=0.6, 
+                       color=COLOR_MAPS['energy'](energy_ratio), 
+                       transform=ax.transAxes)
+        
+        # Energy gauge outline
+        theta_full = np.linspace(0, 2*np.pi, 100)
+        x_outline = 0.5 + 0.3 * np.cos(theta_full)
+        y_outline = 0.8 + 0.3 * np.sin(theta_full)
+        ax.plot(x_outline, y_outline, 'k-', linewidth=2, transform=ax.transAxes)
+        
+        # Energy text
+        ax.text(0.5, 0.8, f'{current_energy:.0f}/{total_capacity:.0f}', 
+               ha='center', va='center', fontsize=12, fontweight='bold',
+               transform=ax.transAxes)
+        
+        ax.text(0.5, 0.65, 'Energy Level', ha='center', va='center', 
+               fontsize=10, transform=ax.transAxes)
+        
+        # Energy pool breakdown
+        pool_text = "Energy Pools:\n"
+        for pool_name, pool_data in energy_pools.items():
+            current = pool_data.get('current_energy', 0)
+            capacity = pool_data.get('capacity', 100)
+            pool_text += f"{pool_name}: {current:.0f}/{capacity:.0f}\n"
+        
+        ax.text(0.05, 0.5, pool_text, ha='left', va='top', fontsize=8,
+               bbox=dict(facecolor='lightyellow', alpha=0.8),
+               transform=ax.transAxes)
+    
+    # Stress monitoring visualization
+    if stress_monitoring:
+        # Get stress data
+        stress_level = getattr(stress_monitoring, 'current_stress_level', 0.3)
+        stress_threshold = getattr(stress_monitoring, 'stress_threshold', 0.8)
+        mother_resonance = getattr(stress_monitoring, 'mother_resonance_active', False)
+        
+        # Stress gauge
+        stress_ratio = stress_level / stress_threshold if stress_threshold > 0 else 0
+        
+        # Draw stress gauge (bottom half circle)
+        theta = np.linspace(np.pi, 2*np.pi, 50)
+        theta_stress = np.linspace(np.pi, np.pi + np.pi*stress_ratio, int(50*stress_ratio))
+        
+        x_stress_outline = 0.5 + 0.25 * np.cos(theta)
+        y_stress_outline = 0.3 + 0.25 * np.sin(theta)
+        ax.plot(x_stress_outline, y_stress_outline, 'k-', linewidth=2, transform=ax.transAxes)
+        
+        if len(theta_stress) > 0:
+            x_stress = 0.5 + 0.25 * np.cos(theta_stress)
+            y_stress = 0.3 + 0.25 * np.sin(theta_stress)
+            
+            # Color based on stress level
+            if stress_ratio > 0.8:
+                stress_color = 'red'
+            elif stress_ratio > 0.5:
+                stress_color = 'orange'
+            else:
+                stress_color = 'green'
+            
+            ax.fill_between(x_stress, y_stress, 0.3, alpha=0.7, color=stress_color,
+                           transform=ax.transAxes)
+        
+        # Stress text
+        ax.text(0.5, 0.3, f'{stress_level:.2f}/{stress_threshold:.2f}', 
+               ha='center', va='center', fontsize=12, fontweight='bold',
+               transform=ax.transAxes)
+        
+        ax.text(0.5, 0.15, 'Stress Level', ha='center', va='center', 
+               fontsize=10, transform=ax.transAxes)
+        
+        # Mother resonance indicator
+        resonance_color = 'lightgreen' if mother_resonance else 'lightgray'
+        resonance_text = 'Mother Resonance: ' + ('ACTIVE' if mother_resonance else 'INACTIVE')
+        ax.text(0.95, 0.5, resonance_text, ha='right', va='center', fontsize=9,
+               bbox=dict(facecolor=resonance_color, alpha=0.8),
+               transform=ax.transAxes)
+        
+        # Stress monitoring events (if available)
+        monitoring_events = getattr(stress_monitoring, 'monitoring_events', [])
+        if monitoring_events:
+            recent_events = monitoring_events[-3:]  # Last 3 events
+            events_text = "Recent Events:\n"
+            for event in recent_events:
+                event_type = event.get('event_type', 'unknown')
+                stress_change = event.get('stress_change', 0)
+                events_text += f"• {event_type}: {stress_change:+.2f}\n"
+            
+            ax.text(0.95, 0.15, events_text, ha='right', va='top', fontsize=8,
+                   bbox=dict(facecolor='lightcyan', alpha=0.8),
+                   transform=ax.transAxes)
+    
+    ax.axis('off')
+
+def _plot_system_metrics(ax, brain_structure, mycelial_network, energy_storage, 
+                        memory_distribution, stress_monitoring, neural_network):
+    """Plot overall system metrics and status."""
+    ax.axis('off')
+    
+    # Collect metrics from all systems
+    metrics = {}
+    
+    # Brain structure metrics
+    if brain_structure:
+        metrics['Brain Formation'] = 'Complete' if getattr(brain_structure, 'formation_complete', False) else 'In Progress'
+        metrics['Active Cells'] = len(getattr(brain_structure, 'active_cells', {}))
+        metrics['Regions'] = len(getattr(brain_structure, 'regions', {}))
+    
+    # Mycelial network metrics
+    if mycelial_network:
+        metrics['Network Nodes'] = len(getattr(mycelial_network, 'network_nodes', {}))
+        metrics['Energy Flows'] = len(getattr(mycelial_network, 'energy_flows', []))
+        metrics['Processing Hubs'] = len(getattr(mycelial_network, 'processing_hubs', {}))
+    
+    # Energy storage metrics
+    if energy_storage:
+        total_capacity = getattr(energy_storage, 'total_capacity', 1000)
+        current_energy = getattr(energy_storage, 'current_total_energy', 500)
+        energy_ratio = current_energy / total_capacity if total_capacity > 0 else 0
+        metrics['Energy Level'] = f'{energy_ratio*100:.1f}%'
+        metrics['Energy Pools'] = len(getattr(energy_storage, 'energy_pools', {}))
+    
+    # Memory distribution metrics
+    if memory_distribution:
+        metrics['Sephiroth Aspects'] = len(getattr(memory_distribution, 'sephiroth_memories', {}))
+        metrics['Identity Aspects'] = len(getattr(memory_distribution, 'identity_aspects', {}))
+        metrics['Memory Coordinates'] = len(getattr(memory_distribution, 'memory_coordinates', {}))
+    
+    # Stress monitoring metrics
+    if stress_monitoring:
+        stress_level = getattr(stress_monitoring, 'current_stress_level', 0.3)
+        metrics['Stress Level'] = f'{stress_level:.2f}'
+        metrics['Mother Resonance'] = 'Active' if getattr(stress_monitoring, 'mother_resonance_active', False) else 'Inactive'
+    
+    # Neural network metrics
+    if neural_network:
+        metrics['Neural Nodes'] = len(getattr(neural_network, 'nodes', {}))
+        metrics['Synapses'] = len(getattr(neural_network, 'synapses', {}))
+    
+    # Create metrics table
+    if metrics:
+        y_pos = 0.95
+        ax.text(0.5, y_pos, 'System Metrics', ha='center', va='top', 
+               fontsize=14, fontweight='bold', transform=ax.transAxes)
+        
+        y_pos -= 0.08
+        
+        for label, value in metrics.items():
+            # Color code certain values
+            color = 'black'
+            if 'Complete' in str(value):
+                color = 'green'
+            elif 'In Progress' in str(value):
+                color = 'orange'
+            elif 'Active' in str(value):
+                color = 'green'
+            elif 'Inactive' in str(value):
+                color = 'red'
+            
+            ax.text(0.05, y_pos, f'{label}:', ha='left', va='top', 
+                   fontsize=10, fontweight='bold', transform=ax.transAxes)
+            ax.text(0.95, y_pos, str(value), ha='right', va='top', 
+                   fontsize=10, color=color, transform=ax.transAxes)
+            y_pos -= 0.06
+    
+    # Add overall system status
+    status_y = 0.15
+    ax.text(0.5, status_y, 'Overall System Status', ha='center', va='center', 
+           fontsize=12, fontweight='bold', transform=ax.transAxes)
+    
+    # Determine overall status
+    formation_complete = brain_structure and getattr(brain_structure, 'formation_complete', False)
+    has_energy = energy_storage and getattr(energy_storage, 'current_total_energy', 0) > 0
+    has_network = mycelial_network and len(getattr(mycelial_network, 'network_nodes', {})) > 0
+    has_memory = memory_distribution and len(getattr(memory_distribution, 'sephiroth_memories', {})) > 0
+    
+    if formation_complete and has_energy and has_network and has_memory:
+        status = "FULLY OPERATIONAL"
+        status_color = 'green'
+    elif formation_complete:
+        status = "FORMATION COMPLETE"
+        status_color = 'lightgreen'
+    elif has_network and has_energy:
+        status = "DEVELOPING"
+        status_color = 'orange'
+    else:
+        status = "INITIALIZING"
+        status_color = 'yellow'
+    
+    ax.text(0.5, status_y - 0.05, status, ha='center', va='center', 
+           fontsize=14, fontweight='bold', color='white',
+           bbox=dict(facecolor=status_color, alpha=0.8, pad=10),
+           transform=ax.transAxes)
+
+def visualize_brain_development_progress(brain_structure=None, mycelial_network=None, 
+                                       energy_storage=None, memory_distribution=None,
+                                       stress_monitoring=None, neural_network=None,
+                                       save_path=None, show=True):
     """
-    Visualize the development timeline of the brain seed.
+    Visualize the development progress of the brain formation system.
     
     Parameters:
-        brain_seed: The brain seed object to visualize
+        brain_structure: BrainStructure instance
+        mycelial_network: MycelialNetwork instance
+        energy_storage: EnergyStorage instance
+        memory_distribution: MemoryDistribution instance
+        stress_monitoring: StressMonitoring instance
+        neural_network: NeuralNetwork instance
         save_path (str, optional): Path to save the visualization image
         show (bool): Whether to display the visualization
         
     Returns:
         matplotlib.figure.Figure: The figure object
     """
-    logger.info("Generating brain development timeline visualization")
+    logger.info("Generating brain development progress visualization")
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(14, 8))
     
     # Define development stages
     stages = [
-        {'name': 'Seed Core Formation', 'progress': 0.1, 'description': 'Formation of the energetic seed core'},
-        {'name': 'Hemisphere Development', 'progress': 0.3, 'description': 'Development of left & right hemispheres'},
-        {'name': 'Region Formation', 'progress': 0.6, 'description': 'Formation of specialized brain regions'},
-        {'name': 'White Noise Application', 'progress': 0.7, 'description': 'Application of white noise to unstructured areas'},
-        {'name': 'Soul Attachment Preparation', 'progress': 0.9, 'description': 'Preparation for soul attachment'},
-        {'name': 'Soul Connection', 'progress': 0.95, 'description': 'Connection of soul via life cord'},
-        {'name': 'Soul Distribution', 'progress': 1.0, 'description': 'Distribution of soul aspects through brain'}
+        {'name': 'Brain Seed', 'progress': 0.1, 'description': 'Initial energy spark creation'},
+        {'name': 'Brain Structure', 'progress': 0.25, 'description': 'Hierarchical brain regions formation'},
+        {'name': 'Neural Network', 'progress': 0.4, 'description': 'Neural nodes and synaptic connections'},
+        {'name': 'Mycelial Network', 'progress': 0.6, 'description': 'Energy management and processing system'},
+        {'name': 'Energy Storage', 'progress': 0.75, 'description': 'Limbic energy pools and distribution'},
+        {'name': 'Memory Distribution', 'progress': 0.85, 'description': 'Sephiroth aspects and identity mapping'},
+        {'name': 'Stress Monitoring', 'progress': 0.95, 'description': 'Mother resonance and protection systems'},
+        {'name': 'System Integration', 'progress': 1.0, 'description': 'Complete brain formation ready for birth'}
     ]
     
-    # Get current progress
-    current_progress = getattr(brain_seed, 'formation_progress', 0)
+    # Determine current progress based on available systems
+    current_progress = 0.0
+    
+    if brain_structure:
+        current_progress = max(current_progress, 0.25)
+        if getattr(brain_structure, 'formation_complete', False):
+            current_progress = max(current_progress, 0.3)
+    
+    if neural_network and len(getattr(neural_network, 'nodes', {})) > 0:
+        current_progress = max(current_progress, 0.4)
+        if len(getattr(neural_network, 'synapses', {})) > 0:
+            current_progress = max(current_progress, 0.5)
+    
+    if mycelial_network and len(getattr(mycelial_network, 'network_nodes', {})) > 0:
+        current_progress = max(current_progress, 0.6)
+        if len(getattr(mycelial_network, 'processing_hubs', {})) > 0:
+            current_progress = max(current_progress, 0.65)
+    
+    if energy_storage and getattr(energy_storage, 'current_total_energy', 0) > 0:
+        current_progress = max(current_progress, 0.75)
+    
+    if memory_distribution and len(getattr(memory_distribution, 'sephiroth_memories', {})) > 0:
+        current_progress = max(current_progress, 0.85)
+    
+    if stress_monitoring:
+        current_progress = max(current_progress, 0.95)
+        if getattr(stress_monitoring, 'mother_resonance_active', False):
+            current_progress = max(current_progress, 1.0)
     
     # Plot timeline
     y_pos = 0
@@ -772,210 +884,49 @@ def visualize_brain_development_timeline(brain_seed, save_path=None, show=True):
             alpha = 0.3
         
         # Plot stage point
-        ax.scatter(progress, y_pos, s=100, color=color, alpha=alpha, zorder=3)
+        ax.scatter(progress, y_pos, s=150, color=color, alpha=alpha, zorder=3, edgecolors='white', linewidth=2)
         
         # Add stage name
-        ax.text(progress, y_pos + 0.1, name, ha='center', va='bottom', fontsize=10,
-               bbox=dict(facecolor='white', alpha=0.7), rotation=45)
+        ax.text(progress, y_pos + 0.15, name, ha='center', va='bottom', fontsize=11,
+               fontweight='bold', bbox=dict(facecolor='white', alpha=0.8))
         
         # Add description
         status_text = f"[{status.upper()}]" if status != 'pending' else ""
-        ax.text(progress, y_pos - 0.1, f"{description} {status_text}", ha='center', va='top', 
-               fontsize=8, alpha=0.7 if status != 'pending' else 0.5)
+        ax.text(progress, y_pos - 0.15, f"{description}\n{status_text}", ha='center', va='top', 
+               fontsize=9, alpha=0.8 if status != 'pending' else 0.5,
+               bbox=dict(facecolor='white', alpha=0.6))
         
         # Connect stages with line
         if i > 0:
             prev_progress = stages[i-1]['progress']
-            ax.plot([prev_progress, progress], [y_pos, y_pos], color=color, 
-                   alpha=alpha, linestyle='-', linewidth=2, zorder=2)
+            line_color = color if current_progress >= prev_progress else 'lightgray'
+            ax.plot([prev_progress, progress], [y_pos, y_pos], color=line_color, 
+                   alpha=alpha, linestyle='-', linewidth=3, zorder=2)
     
     # Add current progress marker
-    ax.axvline(x=current_progress, color='red', linestyle='--', alpha=0.7, zorder=1)
-    ax.text(current_progress, -0.3, f"Current: {current_progress*100:.1f}%", 
-           color='red', ha='center', va='top', fontsize=12,
-           bbox=dict(facecolor='white', alpha=0.9))
+    ax.axvline(x=current_progress, color='red', linestyle='--', linewidth=3, alpha=0.8, zorder=1)
+    ax.text(current_progress, -0.4, f"Current Progress: {current_progress*100:.1f}%", 
+           color='red', ha='center', va='top', fontsize=14, fontweight='bold',
+           bbox=dict(facecolor='white', alpha=0.9, edgecolor='red', linewidth=2))
     
     # Set up axes
     ax.set_xlim(0, 1.05)
-    ax.set_ylim(-0.5, 0.5)
-    ax.set_xlabel('Progress')
+    ax.set_ylim(-0.6, 0.4)
+    ax.set_xlabel('Development Progress', fontsize=12, fontweight='bold')
     ax.yaxis.set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    ax.set_title('Brain Development Timeline', fontsize=16)
+    ax.set_title('Brain Formation Development Timeline', fontsize=16, fontweight='bold')
     
     # Add progress ticks
     ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_xticklabels(['0%', '25%', '50%', '75%', '100%'])
     
-    # Add soul-brain system metrics if available
-    y_text_pos = -0.4
-    if hasattr(brain_seed, 'get_metrics'):
-        metrics = brain_seed.get_metrics()
-        
-        metrics_text = []
-        
-        if 'complexity' in metrics:
-            metrics_text.append(f"Complexity: {metrics['complexity']:.1f}")
-        
-        if 'energy_level' in metrics and 'energy_capacity' in metrics:
-            metrics_text.append(f"Energy: {metrics['energy_level']:.1f}/{metrics['energy_capacity']:.1f}")
-        
-        if 'structural_integrity' in metrics:
-            metrics_text.append(f"Integrity: {metrics['structural_integrity']*100:.1f}%")
-        
-        if 'stability' in metrics:
-            metrics_text.append(f"Stability: {metrics['stability']*100:.1f}%")
-        
-        if hasattr(brain_seed, 'soul_connection'):
-            metrics_text.append(f"Soul Connection: {brain_seed.soul_connection.get('connection_strength', 0)*100:.1f}%")
-    
-    # Show if requested
-    if show:
-        plt.show()
-    else:
-        plt.close()
-    
-    return fig
-
-def visualize_hemispheres(brain_seed, save_path=None, show=True):
-    """
-    Visualize the hemisphere structure of the brain.
-    
-    Parameters:
-        brain_seed: The brain seed object to visualize
-        save_path (str, optional): Path to save the visualization image
-        show (bool): Whether to display the visualization
-        
-    Returns:
-        matplotlib.figure.Figure: The figure object
-    """
-    logger.info("Generating hemisphere visualization")
-    
-    # Check if hemispheres are developed
-    if not hasattr(brain_seed, 'hemisphere_structure') or not (
-        brain_seed.hemisphere_structure.get('left', {}).get('developed', False) and 
-        brain_seed.hemisphere_structure.get('right', {}).get('developed', False)
-    ):
-        logger.warning("Hemispheres not developed, cannot visualize")
-        return None
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=(12, 10))
-    
-    # Draw brain outline
-    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2)
-    ax.add_patch(brain_outline)
-    
-    # Draw dividing line
-    ax.plot([0, 0], [-4, 4], 'k--', linewidth=1, alpha=0.5)
-    
-    # Get hemisphere data
-    left_hemi = brain_seed.hemisphere_structure['left']
-    right_hemi = brain_seed.hemisphere_structure['right']
-    
-    # Calculate properties
-    left_complexity = left_hemi.get('complexity', 5)
-    right_complexity = right_hemi.get('complexity', 5)
-    left_energy = left_hemi.get('energy', 50)
-    right_energy = right_hemi.get('energy', 50)
-    
-    # Map to visual properties
-    left_dots = int(20 + left_complexity * 5)
-    right_dots = int(20 + right_complexity * 5)
-    left_color = cm.get_cmap('Blues')(min(1.0, left_energy / 100))
-    right_color = cm.get_cmap('Reds')(min(1.0, right_energy / 100))
-    
-    # Generate random points for left hemisphere
-    for _ in range(left_dots):
-        # Random position within the left hemisphere
-        x = -np.random.random() * 3.5
-        y = (np.random.random() - 0.5) * 5
-        
-        # Skip if outside the ellipse
-        if (x/4)**2 + (y/3)**2 > 1:
-            continue
-            
-        # Plot dot
-        size = np.random.random() * 50 + 10
-        alpha = np.random.random() * 0.8 + 0.2
-        ax.scatter(x, y, s=size, color=left_color, alpha=alpha, edgecolor=None)
-    
-    # Generate random points for right hemisphere
-    for _ in range(right_dots):
-        # Random position within the right hemisphere
-        x = np.random.random() * 3.5
-        y = (np.random.random() - 0.5) * 5
-        
-        # Skip if outside the ellipse
-        if (x/4)**2 + (y/3)**2 > 1:
-            continue
-            
-        # Plot dot
-        size = np.random.random() * 50 + 10
-        alpha = np.random.random() * 0.8 + 0.2
-        ax.scatter(x, y, s=size, color=right_color, alpha=alpha, edgecolor=None)
-    
-    # Draw energy channels
-    left_channels = left_hemi.get('energy_channels', 3)
-    right_channels = right_hemi.get('energy_channels', 3)
-    
-    # Draw left channels
-    for i in range(left_channels):
-        angle = (np.pi/2) - (np.pi * i / (left_channels * 2))
-        length = 3 + np.random.random()
-        x = -length * np.cos(angle)
-        y = length * np.sin(angle)
-        
-        ax.plot([0, x], [0, y], color='blue', linewidth=2, alpha=0.6)
-        ax.scatter(x, y, color='blue', s=50, alpha=0.8)
-    
-    # Draw right channels
-    for i in range(right_channels):
-        angle = (np.pi/2) - (np.pi * i / (right_channels * 2))
-        length = 3 + np.random.random()
-        x = length * np.cos(angle)
-        y = length * np.sin(angle)
-        
-        ax.plot([0, x], [0, y], color='red', linewidth=2, alpha=0.6)
-        ax.scatter(x, y, color='red', s=50, alpha=0.8)
-    
-    # Add function labels
-    left_functions = "\n".join(left_hemi.get('primary_function', 'analytical').split('_'))
-    right_functions = "\n".join(right_hemi.get('primary_function', 'creative').split('_'))
-    
-    ax.text(-3, 0, left_functions, fontsize=14, ha='center', va='center',
-           bbox=dict(facecolor='white', alpha=0.7))
-    ax.text(3, 0, right_functions, fontsize=14, ha='center', va='center',
-           bbox=dict(facecolor='white', alpha=0.7))
-    
-    # Set up axes
-    ax.set_xlim(-5, 5)
-    ax.set_ylim(-4, 4)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Brain Hemisphere Structure', fontsize=16)
-    
-    # Add labels
-    ax.text(-3, -3.5, f"Left Hemisphere\nComplexity: {left_complexity:.1f}\nEnergy: {left_energy:.1f}", 
-           fontsize=10, ha='center', va='center', bbox=dict(facecolor='white', alpha=0.7))
-    ax.text(3, -3.5, f"Right Hemisphere\nComplexity: {right_complexity:.1f}\nEnergy: {right_energy:.1f}", 
-           fontsize=10, ha='center', va='center', bbox=dict(facecolor='white', alpha=0.7))
-    
-    # Add balance indicator
-    balance = 1.0 - abs(left_complexity - right_complexity) / (left_complexity + right_complexity)
-    balance_text = f"Hemisphere Balance: {balance*100:.1f}%"
-    balance_color = cm.get_cmap('RdYlGn')(balance)
-    
-    ax.text(0, 3.5, balance_text, fontsize=12, ha='center', va='center',
-           bbox=dict(facecolor=balance_color, alpha=0.7))
-    
     # Save if requested
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
+        logger.info(f"Brain development progress visualization saved to {save_path}")
     
     # Show if requested
     if show:
@@ -985,162 +936,172 @@ def visualize_hemispheres(brain_seed, save_path=None, show=True):
     
     return fig
 
-def visualize_brain_regions(brain_seed, save_path=None, show=True):
+def visualize_3d_brain_structure(brain_structure=None, mycelial_network=None,
+                                memory_distribution=None, save_path=None, show=True):
     """
-    Visualize the brain regions and their connections.
+    Create a 3D visualization of the brain structure with mycelial network and memory distribution.
     
     Parameters:
-        brain_seed: The brain seed object to visualize
+        brain_structure: BrainStructure instance
+        mycelial_network: MycelialNetwork instance
+        memory_distribution: MemoryDistribution instance
         save_path (str, optional): Path to save the visualization image
         show (bool): Whether to display the visualization
         
     Returns:
         matplotlib.figure.Figure: The figure object
     """
-    logger.info("Generating brain regions visualization")
+    logger.info("Generating 3D brain structure visualization")
     
-    # Check if regions are developed
-    if not hasattr(brain_seed, 'region_structure') or not brain_seed.region_structure:
-        logger.warning("Brain regions not developed, cannot visualize")
-        return None
+    # Create 3D figure
+    fig = plt.figure(figsize=(16, 12))
+    ax = fig.add_subplot(111, projection='3d')  # Ensure 3D axes
     
-    # Create figure
-    fig, ax = plt.subplots(figsize=(12, 12))
+    # Brain outline as wireframe sphere
+    u = np.linspace(0, 2 * np.pi, 20)
+    v = np.linspace(0, np.pi, 20)
+    x_brain = 4 * np.outer(np.cos(u), np.sin(v))
+    y_brain = 3 * np.outer(np.sin(u), np.sin(v))
+    z_brain = 2.5 * np.outer(np.ones(np.size(u)), np.cos(v))
     
-    # Region positions (approximate based on real brain)
-    region_positions = {
-        'frontal': (-2, 2.5),
-        'parietal': (0, 2.5),
-        'temporal': (-2.5, 0),
-        'occipital': (2.5, 0),
-        'limbic': (0, 0.5),
-        'cerebellum': (0, -2),
-        'brainstem': (0, -3)
-    }
+    # Plot wireframe brain outline
+    if hasattr(ax, 'plot_wireframe'):
+        ax.plot_wireframe(x_brain, y_brain, z_brain, alpha=0.1, color='gray')
+    else:
+        logger.warning("3D plotting is not available on this axes object.")
     
-    # Region sizes
-    region_sizes = {
-        'frontal': (3, 2),
-        'parietal': (3, 2),
-        'temporal': (2, 2.5),
-        'occipital': (2, 2.5),
-        'limbic': (1.5, 1.5),
-        'cerebellum': (3, 1.5),
-        'brainstem': (1, 2)
-    }
-    
-    # Draw regions
-    region_patches = {}
-    region_centers = {}
-    
-    for region_name, region in brain_seed.region_structure.items():
-        # Get position and size
-        pos = region_positions.get(region_name, (0, 0))
-        size = region_sizes.get(region_name, (1, 1))
+    # Plot active brain cells
+    if brain_structure:
+        active_cells = getattr(brain_structure, 'active_cells', {})
         
-        # Get region properties
-        complexity = region.get('complexity', 5)
-        development = region.get('development_level', 0.5)
-        energy = region.get('energy', 50)
-        
-        # Calculate visual properties
-        color_intensity = min(1.0, energy / 100)
-        alpha = 0.3 + (0.7 * development)
-        linewidth = 1 + complexity / 5
-        
-        # Create region shape
-        if region_name == 'limbic':
-            # Limbic as a circle
-            patch = Circle(pos, size[0]/2, fill=True, alpha=alpha,
-                         edgecolor='black', linewidth=linewidth,
-                         facecolor=cm.get_cmap('viridis')(color_intensity))
-        elif region_name in ['cerebellum', 'brainstem']:
-            # Cerebellum and brainstem as rectangles
-            patch = Rectangle((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                            fill=True, alpha=alpha, edgecolor='black', linewidth=linewidth,
-                            facecolor=cm.get_cmap('viridis')(color_intensity))
-        else:
-            # Others as fancy rounded rectangles
-            patch = FancyBboxPatch((pos[0]-size[0]/2, pos[1]-size[1]/2), size[0], size[1], 
-                                 boxstyle=f"round,pad=0.3,rounding_size={0.2+0.3*development}",
-                                 fill=True, alpha=alpha, edgecolor='black', linewidth=linewidth,
-                                 facecolor=cm.get_cmap('viridis')(color_intensity))
-        
-        # Add patch
-        ax.add_patch(patch)
-        
-        # Store for connections
-        region_patches[region_name] = patch
-        region_centers[region_name] = pos
-        
-        # Add label
-        ax.text(pos[0], pos[1], region_name.title(), fontsize=10, ha='center', va='center')
-        
-        # Add complexity indicator
-        ax.text(pos[0], pos[1] - 0.3, f"C: {complexity:.1f}", fontsize=8, ha='center', va='center')
-    
-    # Draw connections
-    for region_name, region in brain_seed.region_structure.items():
-        if 'connections' not in region:
-            continue
+        cell_count = 0
+        for coord, cell_data in active_cells.items():
+            if cell_count > 200:  # Limit for performance
+                break
             
-        # Get source position
-        source_pos = region_centers.get(region_name, (0, 0))
+            if isinstance(coord, tuple) and len(coord) >= 3:
+                x, y, z = coord[0] * 0.03, coord[1] * 0.03, coord[2] * 0.03
+                
+                # Skip if outside brain ellipsoid
+                if (x*x/16 + y*y/9 + z*z/6.25) > 1:
+                    continue
+                
+                cell_type = cell_data.get('type', 'unknown')
+                activity = cell_data.get('activity', 0.5)
+                
+                # Color based on cell type
+                type_colors = {
+                    'neuron': 'blue',
+                    'memory': 'purple',
+                    'energy': 'red',
+                    'mycelial': 'orange'
+                }
+                color = type_colors.get(cell_type, 'gray')
+                
+                ax.scatter(x, y, z, s=20*activity, c=color, alpha=0.6)
+                cell_count += 1
+    
+    # Plot mycelial network nodes
+    if mycelial_network:
+        network_nodes = getattr(mycelial_network, 'network_nodes', {})
         
-        for connection in region.get('connections', []):
-            target_name = connection.get('target', '')
-            if target_name not in region_centers:
+        node_positions = {}
+        for node_id, node_data in network_nodes.items():
+            coord = node_data.get('coordinate', (0, 0, 0))
+            energy_level = node_data.get('energy_level', 0.5)
+            node_type = node_data.get('type', 'standard')
+            
+            x, y, z = coord[0] * 0.03, coord[1] * 0.03, coord[2] * 0.03
+            
+            # Skip if outside brain
+            if (x*x/16 + y*y/9 + z*z/6.25) > 1:
                 continue
-                
-            # Get target position
-            target_pos = region_centers.get(target_name, (0, 0))
             
-            # Get connection properties
-            strength = connection.get('strength', 0.5)
-            pathways = connection.get('pathways', 1)
+            node_positions[node_id] = (x, y, z)
             
-            # Draw connection lines
-            for i in range(pathways):
-                # Add slight offset for multiple pathways
-                if pathways > 1:
-                    offset = (i / (pathways - 1) - 0.5) * 0.2
-                    modified_source = (source_pos[0] + offset, source_pos[1] + offset)
-                    modified_target = (target_pos[0] + offset, target_pos[1] + offset)
-                else:
-                    modified_source = source_pos
-                    modified_target = target_pos
-                
-                # Draw line with properties based on strength
-                ax.plot([modified_source[0], modified_target[0]], 
-                        [modified_source[1], modified_target[1]], 
-                        color='blue', alpha=0.2 + 0.7 * strength, 
-                        linewidth=0.5 + 2 * strength)
-    
-    # Set up axes
-    ax.set_xlim(-5, 5)
-    ax.set_ylim(-5, 5)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Brain Regions and Connections', fontsize=16)
-    
-    # Draw brain outline
-    brain_outline = Ellipse((0, 0), width=9, height=8, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2, alpha=0.5)
-    ax.add_patch(brain_outline)
-    
-    # Add formation progress indicator
-    if hasattr(brain_seed, 'formation_progress'):
-        progress = brain_seed.formation_progress
-        progress_text = f"Brain Formation: {progress*100:.1f}%"
-        progress_color = cm.get_cmap('RdYlGn')(progress)
+            # Size and color based on energy and type
+            node_size = 50 + 100 * energy_level
+            if node_type == 'hub':
+                color = 'red'
+                node_size *= 1.5
+            elif node_type == 'seed':
+                color = 'gold'
+            else:
+                color = COLOR_MAPS['mycelial'](energy_level)
+            
+            ax.scatter(x, y, z, s=node_size, c=color, alpha=0.8, edgecolors='white')
         
-        ax.text(0, -4.5, progress_text, fontsize=12, ha='center', va='center',
-               bbox=dict(facecolor=progress_color, alpha=0.7))
+        # Plot energy flows
+        energy_flows = getattr(mycelial_network, 'energy_flows', [])
+        for flow in energy_flows[:50]:  # Limit for performance
+            source_id = flow.get('source')
+            target_id = flow.get('target')
+            flow_rate = flow.get('flow_rate', 0.5)
+            
+            if source_id in node_positions and target_id in node_positions:
+                source_pos = node_positions[source_id]
+                target_pos = node_positions[target_id]
+                
+                ax.plot([source_pos[0], target_pos[0]], 
+                       [source_pos[1], target_pos[1]],
+                       [source_pos[2], target_pos[2]],
+                       color='orange', alpha=0.3 + 0.5*flow_rate, 
+                       linewidth=1 + 2*flow_rate)
+    
+    # Plot memory aspects
+    if memory_distribution:
+        sephiroth_memories = getattr(memory_distribution, 'sephiroth_memories', {})
+        
+        for aspect_name, aspect_data in sephiroth_memories.items():
+            if aspect_name in SEPHIROTH_ASPECTS:
+                coord = aspect_data.get('coordinate', (0, 0, 0))
+                intensity = aspect_data.get('intensity', 0.5)
+                
+                x, y, z = coord[0] * 0.03, coord[1] * 0.03, coord[2] * 0.03
+                
+                # Skip if outside brain
+                if (x*x/16 + y*y/9 + z*z/6.25) > 1:
+                    continue
+                
+                # Get aspect color
+                aspect_info = SEPHIROTH_ASPECTS[aspect_name]
+                color = aspect_info['color']
+                
+                # Plot with size based on intensity
+                aspect_size = 100 + 200 * intensity
+                ax.scatter(x, y, z, s=aspect_size, c=color, alpha=0.7, 
+                          edgecolors='white', linewidth=1, marker='D')
+    
+    # Set up 3D plot
+    ax.set_xlabel('X', fontsize=12)
+    ax.set_ylabel('Y', fontsize=12)
+    ax.set_zlabel('Z', fontsize=12)
+    ax.set_title('3D Brain Structure with Networks', fontsize=16, fontweight='bold')
+    
+    # Set equal aspect ratio
+    max_range = 5
+    ax.set_xlim((-max_range, max_range))
+    ax.set_ylim((-max_range, max_range))
+    ax.set_zlim3d((-max_range, max_range))
+    
+    # Add legend
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', 
+                   markersize=8, label='Neural Cells'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='orange', 
+                   markersize=8, label='Mycelial Nodes'),
+        Line2D([0], [0], marker='D', color='w', markerfacecolor='purple', 
+                   markersize=8, label='Memory Aspects'),
+        Line2D([0], [0], color='orange', linewidth=2, alpha=0.7, 
+                   label='Energy Flows')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right')
     
     # Save if requested
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
+        logger.info(f"3D brain structure visualization saved to {save_path}")
     
     # Show if requested
     if show:
@@ -1149,391 +1110,3 @@ def visualize_brain_regions(brain_seed, save_path=None, show=True):
         plt.close()
     
     return fig
-
-def visualize_soul_attachment(brain_seed, life_cord=None, save_path=None, show=True):
-    """
-    Visualize the soul attachment to the brain.
-    
-    Parameters:
-        brain_seed: The brain seed object to visualize
-        life_cord (optional): The life cord connecting to the soul
-        save_path (str, optional): Path to save the visualization image
-        show (bool): Whether to display the visualization
-        
-    Returns:
-        matplotlib.figure.Figure: The figure object
-    """
-    logger.info("Generating soul attachment visualization")
-    
-    # Check if soul connection is present
-    if not hasattr(brain_seed, 'soul_connection'):
-        logger.warning("Soul not attached to brain, cannot visualize connection")
-        return None
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=(12, 12))
-    
-    # Draw brain outline
-    brain_outline = Ellipse((0, 0), width=8, height=6, fill=False, 
-                          edgecolor='black', linestyle='-', linewidth=2)
-    ax.add_patch(brain_outline)
-    
-    # Draw soul representation
-    soul_pos = (0, 5)
-    soul_size = 3
-    
-    # Gradient representing soul
-    n_points = 300
-    soul_points_x = np.random.normal(soul_pos[0], 0.8, n_points)
-    soul_points_y = np.random.normal(soul_pos[1], 0.8, n_points)
-    soul_colors = np.zeros((n_points, 4))
-    
-    for i in range(n_points):
-        # Distance from center
-        dist = np.sqrt((soul_points_x[i] - soul_pos[0])**2 + (soul_points_y[i] - soul_pos[1])**2)
-        
-        # Color based on distance
-        color_val = max(0, 1 - dist/soul_size)
-        
-        # Get a color from a colormap
-        cmap_color = cm.get_cmap('magma')(color_val)
-        
-        # Store color
-        soul_colors[i] = cmap_color
-    
-    # Plot soul points
-    ax.scatter(soul_points_x, soul_points_y, c=soul_colors, s=50, edgecolor=None)
-    
-    # Draw life cord
-    life_cord_points_x = []
-    life_cord_points_y = []
-    
-    # Create points along curve from soul to brain
-    steps = 50
-    for i in range(steps):
-        t = i / (steps - 1)
-        
-        # Parameterized curve (bezier-like)
-        x = 0  # Centerline
-        y = soul_pos[1] - t * (soul_pos[1])
-        
-        # Add some oscillation
-        period = 10
-        amplitude = 0.4 * (1 - t)  # Decreases as it approaches the brain
-        x += amplitude * np.sin(period * t * np.pi)
-        
-        life_cord_points_x.append(x)
-        life_cord_points_y.append(y)
-    
-    # Plot life cord
-    connection_strength = brain_seed.soul_connection.get('connection_strength', 0.5)
-    ax.plot(life_cord_points_x, life_cord_points_y, 'white', linewidth=10, alpha=0.1, zorder=1)
-    ax.plot(life_cord_points_x, life_cord_points_y, 'gold', linewidth=5, alpha=0.2, zorder=2)
-    ax.plot(life_cord_points_x, life_cord_points_y, 'white', linewidth=2, alpha=connection_strength, zorder=3)
-    
-    # Draw attachment points
-    for point in brain_seed.soul_connection.get('brain_attachment_points', []):
-        # Get point properties
-        point_pos = point.get('position', np.array([0, 0, 0]))
-        strength = point.get('strength', 0.5)
-        purpose = point.get('purpose', 'unknown')
-        
-        # Map to 2D position (simple mapping)
-        pos_2d = (point_pos[0], point_pos[1] * 0.8)
-        
-        # Skip if outside visualization area
-        if abs(pos_2d[0]) > 4 or abs(pos_2d[1]) > 3:
-            continue
-        
-        # Color based on purpose
-        purpose_colors = {
-            'primary_connection': 'gold',
-            'region_connection': 'cyan',
-            'hemisphere_connection': 'magenta',
-            'auxiliary': 'silver'
-        }
-        color = purpose_colors.get(purpose, 'white')
-        
-        # Size based on strength
-        size = 50 + 100 * strength
-        
-        # Plot point
-        ax.scatter(pos_2d[0], pos_2d[1], s=size, color=color, alpha=strength, 
-                  edgecolor='white', linewidth=1, zorder=4)
-        
-        # Draw connection to life cord
-        # Find closest point on life cord
-        distances = [(x - pos_2d[0])**2 + (y - pos_2d[1])**2 
-                    for x, y in zip(life_cord_points_x, life_cord_points_y)]
-        closest_idx = np.argmin(distances)
-        closest_point = (life_cord_points_x[closest_idx], life_cord_points_y[closest_idx])
-        
-        # Draw connection line
-        ax.plot([pos_2d[0], closest_point[0]], [pos_2d[1], closest_point[1]], 
-               color=color, linewidth=1, alpha=0.7*strength, zorder=3, 
-               linestyle='--' if purpose != 'primary_connection' else '-')
-    
-    # Draw resonance field if present
-    if 'resonance_field' in brain_seed.soul_connection:
-        resonance_field = brain_seed.soul_connection['resonance_field']
-        coherence = resonance_field.get('coherence', 0.5)
-        intensity = resonance_field.get('intensity', 0.5)
-        
-        # Draw field indication
-        field_radius = 4.5
-        field_circle = Circle((0, 0), field_radius, fill=True, 
-                            facecolor='blue', alpha=0.05 + 0.1 * intensity, 
-                            edgecolor=None, zorder=0)
-        ax.add_patch(field_circle)
-        
-        # Draw harmonic nodes
-        for node in resonance_field.get('harmonic_nodes', []):
-            # Calculate position based on frequencies
-            brain_freq = node.get('brain_frequency', 10)
-            soul_freq = node.get('soul_frequency', 10)
-            band = node.get('band', 'alpha')
-            resonance = node.get('resonance', 0.5)
-            
-            # Map frequency to position
-            # Higher brain_freq = closer to brain
-            # Higher soul_freq = closer to soul
-            rel_pos = brain_freq / (brain_freq + soul_freq)
-            y_pos = soul_pos[1] * (1 - rel_pos)
-            
-            # Map band to x position
-            band_positions = {
-                'delta': -2.5,
-                'theta': -1.5,
-                'alpha': -0.5,
-                'beta': 0.5,
-                'gamma': 1.5,
-                'lambda': 2.5
-            }
-            x_pos = band_positions.get(band, 0) * (1 - rel_pos)  # Closer to center as it approaches brain
-            
-            # Add some randomness
-            x_pos += np.random.normal(0, 0.3)
-            y_pos += np.random.normal(0, 0.3)
-            
-            # Color based on band
-            band_colors = {
-                'delta': 'purple',
-                'theta': 'blue',
-                'alpha': 'teal',
-                'beta': 'green',
-                'gamma': 'orange',
-                'lambda': 'red'
-            }
-            color = band_colors.get(band, 'white')
-            
-            # Size and alpha based on resonance and energy
-            size = 30 + 100 * resonance
-            alpha = 0.3 + 0.7 * resonance
-            
-            # Plot harmonic node
-            ax.scatter(x_pos, y_pos, s=size, color=color, alpha=alpha, 
-                      edgecolor='white', linewidth=0.5, zorder=2)
-    
-    # Add connection metrics
-    metrics_text = (
-        f"Connection Strength: {connection_strength*100:.1f}%\n"
-        f"Resonance Coherence: {brain_seed.soul_connection.get('resonance_coherence', 0)*100:.1f}%\n"
-        f"Attachment Points: {len(brain_seed.soul_connection.get('brain_attachment_points', []))}\n"
-        f"Soul Connection Points: {len(brain_seed.soul_connection.get('soul_connection_points', []))}"
-    )
-    
-    ax.text(4, -3, metrics_text, fontsize=10, ha='left', va='center',
-           bbox=dict(facecolor='white', alpha=0.7))
-    
-    # Set up axes
-    ax.set_xlim(-6, 6)
-    ax.set_ylim(-4, 7)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Soul-Brain Connection via Life Cord', fontsize=16)
-    
-    # Add labels
-    ax.text(0, 5.5, "Soul", fontsize=14, ha='center', va='center',
-           color='white', bbox=dict(facecolor='purple', alpha=0.7))
-    
-    ax.text(0, -3.5, "Brain", fontsize=14, ha='center', va='center',
-           bbox=dict(facecolor='white', alpha=0.7))
-    
-    # Save if requested
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        logger.info(f"Visualization saved to {save_path}")
-    
-    # Show if requested
-    if show:
-        plt.show()
-    else:
-        plt.close()
-    
-    return fig
-
-def _create_distributed_soul_field(distribution, resonant_soul, brain_seed):
-    """
-    Create distributed soul field throughout brain.
-    
-    Parameters:
-        distribution: The distribution structure
-        resonant_soul: The resonant soul
-        brain_seed: The brain seed
-        
-    Returns:
-        dict: Updated distribution structure
-    """
-    # Create soul field
-    soul_field = {
-        'overall_intensity': 0.0,
-        'overall_coherence': 0.0,
-        'regions': {},
-        'hemispheres': {}
-    }
-    
-    # Create field in each mapped region
-    for region_name, mappings in distribution['region_mappings'].items():
-        # Skip empty mappings
-        if not mappings:
-            continue
-        
-        # Get region
-        region = brain_seed.region_structure.get(region_name, {})
-        
-        # Create field
-        field = {
-            'intensity': 0.0,
-            'coherence': 0.0,
-            'aspect_intensities': {},
-            'pockets': []
-        }
-        
-        # Calculate aspect intensities
-        total_influence = sum(m['influence'] for m in mappings)
-        
-        for mapping in mappings:
-            aspect_name = mapping['aspect']
-            influence = mapping['influence']
-            
-            # Normalize influence
-            normalized_influence = influence / total_influence if total_influence > 0 else 0
-            
-            # Store aspect intensity
-            field['aspect_intensities'][aspect_name] = normalized_influence
-            
-            # Create soul pockets in region pockets
-            if 'pockets' in region:
-                for i, pocket in enumerate(region['pockets']):
-                    # Only create soul pocket in some brain pockets
-                    if np.random.random() < normalized_influence:
-                        soul_pocket = {
-                            'aspect': aspect_name,
-                            'intensity': normalized_influence * (0.7 + 0.3 * np.random.random()),
-                            'position': pocket['position'],
-                            'frequency': SEPHIROTH_ASPECTS[aspect_name]['frequency'],
-                            'color': _get_aspect_color(aspect_name),
-                            'brain_pocket_id': pocket.get('id', f'unknown_{i}')
-                        }
-                        field['pockets'].append(soul_pocket)
-        
-        # Calculate field properties
-        field['intensity'] = 0.3 + (0.7 * min(1.0, total_influence))
-        field['coherence'] = 0.5 + (0.3 * np.random.random())
-        
-        # Store field
-        soul_field['regions'][region_name] = field
-    
-    # Create field in each mapped hemisphere
-    for hemi, mappings in distribution['hemisphere_mappings'].items():
-        # Skip empty mappings
-        if not mappings:
-            continue
-        
-        # Create field
-        field = {
-            'intensity': 0.0,
-            'coherence': 0.0,
-            'aspect_intensities': {}
-        }
-        
-        # Calculate aspect intensities
-        total_influence = sum(m['influence'] for m in mappings)
-        
-        for mapping in mappings:
-            aspect_name = mapping['aspect']
-            influence = mapping['influence']
-            
-            # Normalize influence
-            normalized_influence = influence / total_influence if total_influence > 0 else 0
-            
-            # Store aspect intensity
-            field['aspect_intensities'][aspect_name] = normalized_influence
-        
-        # Calculate field properties
-        field['intensity'] = 0.4 + (0.6 * min(1.0, total_influence))
-        field['coherence'] = 0.6 + (0.3 * np.random.random())
-        
-        # Store field
-        soul_field['hemispheres'][hemi] = field
-    
-    # Calculate overall field properties
-    region_intensities = [r['intensity'] for r in soul_field['regions'].values()]
-    hemisphere_intensities = [h['intensity'] for h in soul_field['hemispheres'].values()]
-    
-    # Overall intensity is weighted average of region and hemisphere intensities
-    if region_intensities and hemisphere_intensities:
-        region_avg = np.mean(region_intensities)
-        hemi_avg = np.mean(hemisphere_intensities)
-        
-        soul_field['overall_intensity'] = 0.4 * region_avg + 0.6 * hemi_avg
-    elif region_intensities:
-        soul_field['overall_intensity'] = np.mean(region_intensities)
-    elif hemisphere_intensities:
-        soul_field['overall_intensity'] = np.mean(hemisphere_intensities)
-    else:
-        soul_field['overall_intensity'] = 0.0
-    
-    # Calculate coherence
-    region_coherences = [r['coherence'] for r in soul_field['regions'].values()]
-    hemisphere_coherences = [h['coherence'] for h in soul_field['hemispheres'].values()]
-    
-    if region_coherences and hemisphere_coherences:
-        region_avg = np.mean(region_coherences)
-        hemi_avg = np.mean(hemisphere_coherences)
-        
-        soul_field['overall_coherence'] = 0.3 * region_avg + 0.7 * hemi_avg
-    elif region_coherences:
-        soul_field['overall_coherence'] = np.mean(region_coherences)
-    elif hemisphere_coherences:
-        soul_field['overall_coherence'] = np.mean(hemisphere_coherences)
-    else:
-        soul_field['overall_coherence'] = 0.0
-    
-    # Store soul field
-    distribution['soul_field'] = soul_field
-    
-    logger.info(f"Created distributed soul field with intensity {soul_field['overall_intensity']:.2f} "
-               f"and coherence {soul_field['overall_coherence']:.2f}")
-    
-    return distribution
-
-def _get_aspect_color(aspect_name):
-    """Generate a color for a soul aspect."""
-    # Define colors for each sephiroth aspect
-    aspect_colors = {
-        'kether': {'r': 255, 'g': 255, 'b': 255},  # White
-        'chokmah': {'r': 200, 'g': 200, 'b': 255},  # Light blue
-        'binah': {'r': 127, 'g': 0, 'b': 255},  # Purple
-        'chesed': {'r': 0, 'g': 0, 'b': 255},  # Blue
-        'geburah': {'r': 255, 'g': 0, 'b': 0},  # Red
-        'tiphareth': {'r': 255, 'g': 215, 'b': 0},  # Gold
-        'netzach': {'r': 0, 'g': 255, 'b': 0},  # Green
-        'hod': {'r': 255, 'g': 165, 'b': 0},  # Orange
-        'yesod': {'r': 130, 'g': 0, 'b': 255},  # Violet
-        'malkuth': {'r': 139, 'g': 69, 'b': 19}   # Brown
-    }
-    
-    # Return color for aspect or a default color
-    return aspect_colors.get(aspect_name, {'r': 128, 'g': 128, 'b': 128})
-

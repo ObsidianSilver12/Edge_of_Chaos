@@ -23,7 +23,7 @@ import time
 import random
 import uuid
 from typing import Dict, List, Any, Tuple, Optional
-from constants.constants import *
+from shared.constants.constants import *  # type: ignore
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
@@ -38,9 +38,9 @@ except ImportError as e:
     
 # --- Sound Module Imports ---
 try:
-    from sound.sound_generator import SoundGenerator
-    from sound.sounds_of_universe import UniverseSounds
-    from sound.noise_generator import NoiseGenerator
+    from shared.sound.sound_generator import SoundGenerator
+    from shared.sound.sounds_of_universe import UniverseSounds
+    from shared.sound.noise_generator import NoiseGenerator
     SOUND_MODULES_AVAILABLE = True
 except ImportError as e:
     logging.warning(f"Sound modules not available: {e}. Earth harmonization will use simulated sound.")
@@ -1483,6 +1483,7 @@ def _project_echo_field(soul_spark: SoulSpark, echo_state: Dict[str, Any]) -> Di
     # Generate sound for echo field projection
     if SOUND_MODULES_AVAILABLE:
         try:
+            from shared.sound.sounds_of_universe import UniverseSounds
             # Initialize universe sounds generator
             universe_sounds = UniverseSounds()
             
@@ -1796,11 +1797,10 @@ def _enhance_natural_earth_resonance(soul_spark: SoulSpark) -> Dict[str, Any]:
     logger.info("Actively tuning aura frequencies to Earth resonance...")
     
     enhancement_metrics = {}
+    tuning_adjustments = 0
     
     # ACTIVE: Tune existing layer frequencies toward Earth frequencies
     if hasattr(soul_spark, 'layers') and soul_spark.layers:
-        tuning_adjustments = 0
-        
         # Target Earth frequencies for tuning
         earth_targets = [
             SCHUMANN_FREQUENCY,      # 7.83 Hz

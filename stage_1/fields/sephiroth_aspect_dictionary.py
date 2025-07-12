@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # --- Data Import ---
 try:
     # Import the data structure directly
-    from shared.sephiroth_data import SEPHIROTH_ASPECT_DATA
+    from shared.sephiroth.sephiroth_data import SEPHIROTH_ASPECT_DATA
     DATA_LOADED = True
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Could not import SEPHIROTH_ASPECT_DATA from sephiroth_data.py: {e}")

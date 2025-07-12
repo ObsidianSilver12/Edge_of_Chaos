@@ -1,0 +1,7 @@
+source_types = ["spoken", "written", "typed"]
+fragment_types = ["character", "word", "phrase", "sentence", "paragraph"]
+input_devices = ["mic", "keyboard", "ocr", "handwriting"]
+intonation_types = ["neutral", "rising", "falling", "mixed"]
+tone_qualities = ["nasal", "breathy", "clear", "tense"]
+phonetic_transcriptions = ["IPA", "X-SAMPA", "ARPAbet"]
+data_source = ["user_input", "self_generated", "academic_source", "social_media", "news_source", "generally_available", "business_research", "book"]

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # --- Constants Import ---
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Could not import constants: {e}")
     raise ImportError(f"Essential constants missing: {e}") from e
@@ -262,7 +262,7 @@ def perform_spark_harmonization(
     soul_spark: SoulSpark,
     intensity: float = 0.85,
     duration_factor: float = 1.0,
-    iterations: int = None  # Add this parameter
+    iterations: int | None = None  # Updated type hint to allow None
 ) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
     Performs natural harmonization of the soul spark through progressive phases.
@@ -284,6 +284,8 @@ def perform_spark_harmonization(
         raise ValueError("intensity must be between 0.1 and 1.0")
     if not 0.1 <= duration_factor <= 2.0:
         raise ValueError("duration_factor must be between 0.1 and 2.0")
+    if iterations is not None and not isinstance(iterations, int):
+        raise TypeError("iterations must be an integer or None")
     
     spark_id = soul_spark.spark_id
     

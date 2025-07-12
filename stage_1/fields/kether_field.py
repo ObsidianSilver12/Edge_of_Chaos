@@ -13,7 +13,7 @@ from typing import Dict, Any, Tuple, Optional, List
 
 # --- Use constants from the provided context ---
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError:
     logging.critical("CRITICAL ERROR: constants.py not found or import failed in kether_field.py")
     # Define MINIMUM fallbacks
@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 
 # --- Base Class & Dependencies ---
 try:
-    from .sephiroth_field import SephirothField
-    from .void_field import VoidField
+    from sephiroth_field import SephirothField
+    from void_field import VoidField
     # field_harmonics is optional
-    try: from .field_harmonics import FieldHarmonics; FH_AVAILABLE = True
+    try: from field_harmonics import FieldHarmonics; FH_AVAILABLE = True
     except ImportError: FH_AVAILABLE = False; FieldHarmonics = None
 except ImportError:
     try: # Fallback imports

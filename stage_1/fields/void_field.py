@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 # Ensure logger level is set appropriately
 try:
-    import constants.constants as const # Use alias
+    import shared.constants.constants as const # Use alias
     logger.setLevel(const.LOG_LEVEL)
 except ImportError:
     logger.warning(
@@ -28,9 +28,9 @@ from typing import Dict, Any, Tuple, Optional, List
 from abc import ABC, abstractmethod
 from math import sqrt, pi as PI, exp
 
-# --- Constants Import (using alias 'const') ---
+# --- Constants Import ---
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logger.critical("CRITICAL ERROR: constants.py failed import in void_field.py")
     raise ImportError(f"Essential constants missing: {e}") from e
@@ -38,7 +38,7 @@ except ImportError as e:
 # --- Dependencies ---
 try:
     # Noise Generator is optional
-    from sound.noise_generator import NoiseGenerator
+    from shared.sound.noise_generator import NoiseGenerator
     NOISE_GEN_AVAILABLE = True
 except ImportError:
     NOISE_GEN_AVAILABLE = False
@@ -57,6 +57,11 @@ except ImportError:
 # --- Resonance Calculation Helper ---
 def _calculate_cell_resonance(freq1: np.ndarray, freq2: np.ndarray) -> np.ndarray:
     """Vectorized resonance calculation between frequency grids."""
+    try:
+        import shared.constants.constants as const
+    except ImportError:
+        raise ImportError("Cannot import constants module")
+
     # Initialize resonance array
     resonance = np.zeros_like(freq1, dtype=np.float32)
     # Create mask for valid frequencies (avoid division by zero)
@@ -105,57 +110,59 @@ class VoidField(FieldBase):
     """ Dynamic Void field using SEU, SU, CU. Includes detailed resonance. """
 
     # --- __init__ ---
-    def __init__(self, grid_size: Tuple[int, int, int] = const.GRID_SIZE):
-        """Initialize the Void Field."""
-        super().__init__(name="VoidField", grid_size=grid_size)
+                def __init__(self, grid_size: Tuple[int, int, int] = GRID_SIZE):
+                    """Initialize the Void Field."""
+                    super().__init__(grid_size_=grid_size)
 
-        # --- Base Properties (from constants) ---
-        self.base_energy_seu = const.VOID_BASE_ENERGY_SEU
-        self.update_counter: int = 0
-        self.base_energy_seu = const.VOID_BASE_ENERGY_SEU
-        self.base_frequency_range = const.VOID_BASE_FREQUENCY_RANGE
-        self.base_stability_su = const.VOID_BASE_STABILITY_SU
-        self.dissipation_rate = const.ENERGY_DISSIPATION_RATE
-        self.propagation_speed = const.WAVE_PROPAGATION_SPEED
-        self.resonance_energy_boost_factor = const.HARMONIC_RESONANCE_ENERGY_BOOST
-        # Example: Coherence boost can be linked to energy boost
-        self.resonance_coherence_boost_factor = (
-            const.HARMONIC_RESONANCE_ENERGY_BOOST * 5.0 # Boost coherence more?
-        )
+                    # --- Base Properties (from constants) ---
+                    self.base_energy_seu = VOID_BASE_ENERGY_SEU
+                    self.update_counter: int = 0
+                    self.base_energy_seu = VOID_BASE_ENERGY_SEU
+                    self.base_frequency_range = VOID_BASE_FREQUENCY_RANGE
+                    self.base_stability_su = VOID_BASE_STABILITY_SU
+                    self.dissipation_rate = ENERGY_DISSIPATION_RATE
+                    self.propagation_speed = WAVE_PROPAGATION_SPEED
+                    self.resonance_energy_boost_factor = HARMONIC_RESONANCE_ENERGY_BOOST
+                    # Example: Coherence boost can be linked to energy boost
+                    self.resonance_coherence_boost_factor = (
+                        HARMONIC_RESONANCE_ENERGY_BOOST * 5.0 # Boost coherence more?
+                    )
 
-        # --- Noise Generator (Optional) ---
-        self.noise_generator = None
-        if NOISE_GEN_AVAILABLE and NoiseGenerator:
-            try:
-                self.noise_generator = NoiseGenerator(sample_rate=const.SAMPLE_RATE)
-                logger.info("NoiseGenerator initialized successfully for VoidField.")
-            except NameError:
-                logger.error("const.SAMPLE_RATE missing. Cannot initialize NoiseGenerator.")
-            except Exception as e:
-                logger.error(f"NoiseGenerator init failed: {e}")
+                    # --- Noise Generator (Optional) ---
+                    self.noise_generator = None
+                    if NOISE_GEN_AVAILABLE and NoiseGenerator:
+                        try:
+                            self.noise_generator = NoiseGenerator(sample_rate=SAMPLE_RATE)
+                            logger.info("NoiseGenerator initialized successfully for VoidField.")
+                        except NameError:
+                            logger.error("const.SAMPLE_RATE missing. Cannot initialize NoiseGenerator.")
+                        except Exception as e:
+                            logger.error(f"NoiseGenerator init failed: {e}")
 
-        # --- Grid Initialization ---
-        # Initialize grids to None initially, setup in initialize_grid
-        self.energy: Optional[np.ndarray] = None
-        self.frequency: Optional[np.ndarray] = None
-        self.stability: Optional[np.ndarray] = None
-        self.coherence: Optional[np.ndarray] = None
-        self.pattern_influence: Optional[np.ndarray] = None
-        self.color: Optional[np.ndarray] = None
-        self.order: Optional[np.ndarray] = None
-        self.chaos: Optional[np.ndarray] = None
-        # Call initialization
-        try:
-             self.initialize_grid()
-             logger.info(f"VoidField initialized with grid size {self.grid_size}.")
-        except Exception as init_err:
-             logger.critical("CRITICAL: Failed to initialize VoidField grids.",
-                             exc_info=True)
-             raise RuntimeError("VoidField grid initialization failed") from init_err
+                    # --- Grid Initialization ---
+                    # Initialize grids to None initially, setup in initialize_grid
+                    self.energy: Optional[np.ndarray] = None
+                    self.frequency: Optional[np.ndarray] = None
+                    self.stability: Optional[np.ndarray] = None
+                    self.coherence: Optional[np.ndarray] = None
+                    self.pattern_influence: Optional[np.ndarray] = None
+                    self.color: Optional[np.ndarray] = None
+                    self.order: Optional[np.ndarray] = None
+                    self.chaos: Optional[np.ndarray] = None
+                    # Call initialization
+                    try:
+                         self.initialize_grid()
+                         logger.info(f"VoidField initialized with grid size {self.grid_size}.")
+                    except Exception as init_err:
+                         logger.critical("CRITICAL: Failed to initialize VoidField grids.",
+                                         exc_info=True)
+                         raise RuntimeError("VoidField grid initialization failed") from init_err
 
     # --- initialize_grid ---
     def initialize_grid(self) -> None:
         """Initializes the VoidField grids with base values and noise."""
+        from . import const  # Add import at top of function
+        
         logger.info(f"Initializing VoidField grid ({self.grid_size}) with "
                     f"SEU/SU/CU units...")
         shape = self.grid_size
@@ -175,7 +182,7 @@ class VoidField(FieldBase):
                     max_amp = getattr(const, 'MAX_AMPLITUDE', 0.95)
                     num_needed = np.prod(shape)
                     # Request slightly more duration than strictly needed
-                    duration_needed = (float(num_needed) / float(const.SAMPLE_RATE)) + 0.1
+                    duration_needed = (float(num_needed) / float(SAMPLE_RATE)) + 0.1
                     logger.debug(f"Requesting noise duration: {duration_needed:.3f}s")
                     # Use Pink Noise for more natural frequency distribution
                     noise_data_raw = self.noise_generator.generate_noise(
@@ -455,7 +462,7 @@ class VoidField(FieldBase):
             self.chaos = 1.0 - self.order
             # Color update with light-like spectral response
             energy_factor = np.clip(self.energy / (self.base_energy_seu * 5.0), 0.1, 1.0)
-            coherence_factor = np.clip(self.coherence / const.MAX_COHERENCE_CU, 0.0, 1.0)
+            coherence_factor = np.clip(self.coherence / MAX_COHERENCE_CU, 0.0, 1.0)
             frequency_factor = np.clip((self.frequency - self.base_frequency_range[0]) / 
                                     (self.base_frequency_range[1] - self.base_frequency_range[0]), 0.0, 1.0)
 
@@ -492,88 +499,28 @@ class VoidField(FieldBase):
                         # Generate sound for significant energy flash events
                         try:
                             # Import locally to avoid circular dependencies
-                            try:
-                                from sound.sound_generator import SoundGenerator
-                                sound_gen_available = True
-                            except ImportError:
-                                sound_gen_available = False
-                                logger.debug("SoundGenerator not available for burst sound generation")
+                            from shared.sound.sound_generator import SoundGenerator
+                            from datetime import datetime
                             
-                            if sound_gen_available:
-                                # Create a sound generator
-                                sound_gen = SoundGenerator(output_dir="output/sounds/energy_events")
-                                
-                                # Define radius for bounding box calculation
-                                burst_radius = 5.0  # Use fixed radius for sound burst area
-                                
-                                # Calculate center point from high energy points
-                                center_points = np.where(high_energy_points)
-                                center_x = int(np.mean(center_points[0]))
-                                center_y = int(np.mean(center_points[1]))
-                                center_z = int(np.mean(center_points[2]))
-                                
-                                # Calculate bounding box for the affected area
-                                min_x = max(0, center_x - int(burst_radius))
-                                max_x = min(self.grid_size[0], center_x + int(burst_radius) + 1)
-                                min_y = max(0, center_y - int(burst_radius))
-                                max_y = min(self.grid_size[1], center_y + int(burst_radius) + 1)
-                                min_z = max(0, center_z - int(burst_radius))
-                                max_z = min(self.grid_size[2], center_z + int(burst_radius) + 1)
-                                
-                                # Define box slice using the calculated bounds
-                                box_slice = (slice(min_x, max_x), slice(min_y, max_y), slice(min_z, max_z))
-                                # Create mask for points within the burst radius
-                                x_idx, y_idx, z_idx = np.meshgrid(
-                                    np.arange(min_x, max_x),
-                                    np.arange(min_y, max_y),
-                                    np.arange(min_z, max_z),
-                                    indexing='ij'
-                                )
-                                dist_sq = ((x_idx - center_x)**2 + 
-                                         (y_idx - center_y)**2 + 
-                                         (z_idx - center_z)**2)
-                                mask = dist_sq <= burst_radius**2
-                                
-                                # Calculate average frequency from affected points
-                                avg_freq = np.mean(self.frequency[box_slice][mask])
-                                
-                                # Create parameters for energy burst sound
-                                sound = sound_gen.generate_harmonic_tone(
-                                    base_frequency=avg_freq,
-                                    harmonics=[1.0, 1.5, 2.0, 2.5],  # More harmonics for a rich sound
-                                    amplitudes=[0.8, 0.4, 0.2, 0.1],  # Decreasing amplitudes
-                                    duration=3.0,
-                                    fade_in_out=0.5
-                                )
-                                
-                                # Generate and save the sound
-                                burst_sound = sound
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                filename = f"energy_burst_{timestamp}.wav"
-                                sound_file = sound_gen.save_sound(burst_sound, filename)
-                                
-                                if sound_file:
-                                    logger.info(f"Generated sound file for energy burst: {sound_file}")
-                        except Exception as sound_err:
-                            logger.error(f"Error generating energy burst sound: {sound_err}", exc_info=True)
-                            # Non-critical, continue execution
-
-            # Final modulation by energy (brighter where more energy)
-            self.color *= energy_factor[..., np.newaxis]
-            self.color = np.clip(self.color, 0.0, 1.0)
-
-            # Add logging for significant changes
-            total_energy = np.sum(self.energy)
-            avg_order = np.mean(self.order)
-            avg_chaos = np.mean(self.chaos)
-            
-            if self.update_counter % 10 == 0:  # Log every 10 updates
-                logger.info(f"VoidField state: Total Energy={total_energy:.1f}SEU, "
-                        f"Avg Order={avg_order:.3f}, Avg Chaos={avg_chaos:.3f}")                                                                                 
-
-        except Exception as e:
-            logger.error(f"Error during VoidField update step: {e}", exc_info=True)
-            # Potentially reset grids or handle error gracefully? For now, log and continue.
+                            # Create a sound generator
+                            sound_gen = SoundGenerator(output_dir="output/sounds/energy_events")
+                            
+                            # Define radius for bounding box calculation
+                            burst_radius = 5.0  # Use fixed radius for sound burst area
+                            
+                            # Calculate center point from high energy points
+                            center_points = np.where(high_energy_points)
+                            center_x = int(np.mean(center_points[0]))
+                            center_y = int(np.mean(center_points[1]))
+                            center_z = int(np.mean(center_points[2]))
+                            
+                            # Calculate bounding box for the affected area
+                            min_x = max(0, center_x - int(burst_radius))
+                            max_x = min(self.grid_size[0], center_x + int(burst_radius) + 1)
+                            min_y = max(0, center_y - int(burst_radius))
+                            max_y = min(self.grid_size[1], center_y + int(burst_radius) + 1)
+                            min_z = max(0, center_z - int(burst_radius))
+                            max_z = min(self.grid_size[2], center_z + int(burst_
 
     # --- get_properties_at ---
     def get_properties_at(self, coordinates: Tuple[int, int, int]) -> Dict[str, Any]:
@@ -896,7 +843,7 @@ class VoidField(FieldBase):
         # --- Calculate Pattern Influence ---
         # Example: Increase pattern_influence grid based on pattern type & falloff
         # More complex patterns could use precomputed grids (see FieldHarmonics idea)
-        falloff = np.maximum(0.0, 1.0 - np.sqrt(dist_sq[mask] / max(const.FLOAT_EPSILON, radius_sq)))
+        falloff = np.maximum(0.0, 1.0 - np.sqrt(dist_sq[mask] / max(FLOAT_EPSILON, radius_sq)))
         # Base influence increase
         influence_increase = strength * falloff
         # Modify increase based on pattern type (simple example)

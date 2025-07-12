@@ -130,7 +130,7 @@ class FieldHarmonics:
         """
         # Import sound_generator if needed
         try:
-            from sound.sound_generator import SoundGenerator
+            from shared.sound.sound_generator import SoundGenerator
             sound_gen_available = True
             
             if sound_gen_available:

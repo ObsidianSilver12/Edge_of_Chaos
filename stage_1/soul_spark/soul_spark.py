@@ -23,11 +23,11 @@ from math import log10, pi as PI, exp, sqrt, tanh
 if TYPE_CHECKING:
     from fields.field_controller import FieldController
 import numpy as np # Make sure numpy is imported as np
-from constants.constants import * # Import constants for the module
+from shared.constants.constants import * # Import constants for the module
 # --- Constants Import ---
 # Assume constants are imported at the top level
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Could not import constants: {e}. SoulSpark cannot function.")
@@ -254,7 +254,8 @@ class SoulSpark:
         
         # Find optimal emergence location (edge of chaos) if not specified
         if coords is None:
-            coords = field_controller.find_optimal_development_location()
+            optimal_coords = field_controller.find_optimal_development_location()
+            coords = (int(optimal_coords[0]), int(optimal_coords[1]), int(optimal_coords[2]))
             logger.info(f"Found optimal emergence location: {coords}")
         
         # Get field properties at emergence point
@@ -987,8 +988,7 @@ class SoulSpark:
             class NumpyEncoder(json.JSONEncoder):
                 def default(self,o):
                     if isinstance(o,np.ndarray): return o.tolist()
-                    if isinstance(o,(np.int_,np.intc,np.intp,np.int8,np.int16,np.int32,np.int64,np.uint8,np.uint16,np.uint32,np.uint64)): return int(o)
-                    if isinstance(o,(np.float_,np.float16,np.float32,np.float64)): return float(o)
+                    if isinstance(o,(np.integer,np.floating)): return int(o) if isinstance(o,np.integer) else float(o)
                     if isinstance(o,(datetime,uuid.UUID)): return str(o)
                     try: return super().default(o)
                     except TypeError: return f"<Unserializable:{type(o).__name__}>"

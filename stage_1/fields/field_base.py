@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 try:
-    from constants.constants import GRID_SIZE, FLOAT_EPSILON, GOLDEN_RATIO
+    from shared.constants.constants import GRID_SIZE, FLOAT_EPSILON, GOLDEN_RATIO
 except ImportError:
     logger.critical("CRITICAL: Failed to import constants. FieldBase cannot function.")
     raise

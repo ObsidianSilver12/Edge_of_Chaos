@@ -18,13 +18,13 @@ from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional, Callable
 from math import sqrt, pi as PI, exp, atan2, tanh, log
 import random
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging ---
 logger = logging.getLogger(__name__)
 # Ensure logger level is set appropriately
 try:
-    import constants.constants as const # Use alias
+    import shared.constants.constants as const # Use alias
     logger.setLevel(const.LOG_LEVEL)
 except ImportError:
     logger.warning(
@@ -35,7 +35,7 @@ except ImportError:
 
 # --- Constants Import (using alias 'const') ---
 try:
-    import constants.constants as const
+    import shared.constants.constants as const
 except ImportError as e:
     logger.critical(
         "CRITICAL ERROR: constants.py failed import in "
@@ -586,7 +586,8 @@ def _form_sephirah_layer(soul_spark: SoulSpark,
         'phase_coherence_improvement': 0.0,
         'stability_before': soul_spark.stability,
         'coherence_before': soul_spark.coherence,
-        'energy_before': soul_spark.energy
+        'energy_before': soul_spark.energy,
+        'geometric_effects': {}  # Initialize geometric_effects as empty dict
     }
     
     try:
@@ -691,7 +692,7 @@ def _form_sephirah_layer(soul_spark: SoulSpark,
 
         # 6. Apply Geometric Transformation Effects to aura
         geom_changes = _apply_geometric_transformation(soul_spark, sephirah_influencer, resonance_strength)
-        changes['geometric_effects'] = geom_changes # Store dict of geometric changes
+        changes['geometric_effects'].update(geom_changes) # Update geometric_effects dict
 
         # 7. Store Interaction Metadata
         interaction_data = {
