@@ -689,12 +689,17 @@ def _find_closest_spectrum_color(hex_color: str, color_spectrum) -> str:
         min_distance = float('inf')
         closest_color = None
         
-        for spectrum_color in color_spectrum.keys():
+        for color_name, color_data in color_spectrum.items():
             try:
+                # Get hex color from the color data
+                spectrum_hex = color_data.get("hex", "")
+                if not spectrum_hex or len(spectrum_hex) < 7:
+                    continue
+                
                 # Convert spectrum color to RGB
-                sr = int(spectrum_color[1:3], 16)
-                sg = int(spectrum_color[3:5], 16)
-                sb = int(spectrum_color[5:7], 16)
+                sr = int(spectrum_hex[1:3], 16)
+                sg = int(spectrum_hex[3:5], 16)
+                sb = int(spectrum_hex[5:7], 16)
                 spectrum_rgb = (sr, sg, sb)
                 
                 # Calculate Euclidean distance
@@ -702,14 +707,15 @@ def _find_closest_spectrum_color(hex_color: str, color_spectrum) -> str:
                 
                 if distance < min_distance:
                     min_distance = distance
-                    closest_color = spectrum_color
-            except ValueError:
+                    closest_color = spectrum_hex
+            except (ValueError, KeyError):
                 # Skip invalid color formats in spectrum
                 continue
         
         if not closest_color:
-            # Default to first color in spectrum if none found
-            closest_color = next(iter(color_spectrum.keys()), hex_color)
+            # Default to first color hex in spectrum if none found
+            first_color_data = next(iter(color_spectrum.values()), {})
+            closest_color = first_color_data.get("hex", hex_color)
         
         return closest_color
         

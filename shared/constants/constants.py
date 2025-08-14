@@ -197,6 +197,7 @@ REGION_DEFAULT_FREQUENCIES: Dict[str, float] = {
 BRAIN_FREQUENCIES = {
     'delta': (0.5, 4),      # Deep sleep
     'theta': (4, 8),        # Drowsy, meditation 
+    'alpha': (8, 13),       # Relaxed, aware
     'beta': (13, 30),       # Alert, active
     'gamma': (30, 100),     # High cognition
     'lambda': (100, 400)    # Higher spiritual states
