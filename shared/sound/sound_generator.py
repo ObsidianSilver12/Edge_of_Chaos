@@ -22,7 +22,7 @@ SAMPLE_RATE = 44100  # Default sample rate in Hz
 
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     # Basic logging setup if constants failed
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -210,7 +210,7 @@ class SoundGenerator:
              logger.error(f"Error generating harmonic tone: {e}", exc_info=True)
              raise RuntimeError(f"Harmonic tone generation failed: {e}") from e
 
-    def generate_sacred_chord(self, base_frequency: float = FUNDAMENTAL_FREQUENCY_432,
+    def generate_sacred_chord(self, base_frequency: float = INITIAL_SPARK_BASE_FREQUENCY_HZ,
                            duration: float = 10.0, fade_in_out: float = 0.5) -> np.ndarray:
         """
         Generate a sacred geometry chord based on golden ratio and perfect fifths.
@@ -272,7 +272,7 @@ class SoundGenerator:
             raise ValueError(f"Steps must be a positive integer, got {steps}")
 
         # Use a defined base frequency for dimensional scaling
-        dim_base_freq = FUNDAMENTAL_FREQUENCY_432 # Or another suitable constant
+        dim_base_freq = INITIAL_SPARK_BASE_FREQUENCY_HZ # Or another suitable constant
         if dim_base_freq <= 0: raise ValueError("Dimensional base frequency must be positive.")
 
         # Calculate frequencies using exponential scaling (PHI based) from dimension 3 baseline
@@ -430,7 +430,7 @@ class SoundGenerator:
             logger.error(f"Unexpected error saving sound '{log_desc}' to {filepath}: {e}", exc_info=True)
             raise RuntimeError(f"Unexpected error saving sound: {e}") from e # Fail hard
 
-    def create_sound(self, name: str = "default_sound", fundamental_frequency: float = FUNDAMENTAL_FREQUENCY_432,
+    def create_sound(self, name: str = "default_sound", fundamental_frequency: float = INITIAL_SPARK_BASE_FREQUENCY_HZ,
                       duration: float = 1.0) -> Optional[Dict[str, Any]]:
          """
          Placeholder or simplified method to create a 'sound object' representation

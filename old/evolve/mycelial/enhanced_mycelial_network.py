@@ -27,7 +27,7 @@ from system.mycelial_network.subconscious.states.dreaming import DreamState
 from system.mycelial_network.subconscious.states.liminal_state import LiminalState
 
 # Import constants
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging Setup ---
 logger = logging.getLogger("EnhancedMycelialNetwork")

@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Any, Optional, Union
 from datetime import datetime
 import math
 import random
-from constants.constants import *
+from shared.constants.constants import *
 # --- Logging Setup ---
 logger = logging.getLogger("MemoryFragmentSystem")
 if not logger.handlers:

@@ -25,7 +25,7 @@ except ImportError:
 # --- Constants ---
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. UniverseSounds cannot function.")

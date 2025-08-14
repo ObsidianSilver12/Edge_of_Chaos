@@ -14,13 +14,13 @@ from typing import Dict, Any, Tuple, Optional, List, Union
 import json
 from datetime import datetime
 import os # Added os import
-from shared.constants.constants import *
+
 
 # --- Logger Initialization ---
 logger = logging.getLogger(__name__)
 # Ensure logger level is set appropriately
 try:
-    from constants.constants import * 
+    from shared.constants.constants import * 
     logger.setLevel(LOG_LEVEL)
 except ImportError:
     logger.warning(
@@ -28,16 +28,12 @@ except ImportError:
     )
     logger.setLevel(logging.INFO)
 
-# --- Constants Import (using alias 'const') ---
 try:
-    from shared.constants.constants import *
-    # Import sound generator and set availability flag
-    try:
         from shared.sound.sound_generator import SoundGenerator
         SOUND_GENERATOR_AVAILABLE = True
-    except ImportError:
-        SOUND_GENERATOR_AVAILABLE = False
-        logger.warning("SoundGenerator not available. Sound generation will be disabled.")
+except ImportError:
+    SOUND_GENERATOR_AVAILABLE = False
+    logger.warning("SoundGenerator not available. Sound generation will be disabled.")
 except ImportError as e:
     logger.critical(
         "CRITICAL ERROR: constants.py failed import in field_controller.py"
@@ -91,10 +87,10 @@ class FieldController:
 
         self._sound_saver: Optional['SoundGenerator'] = None # Forward reference if SoundGenerator defined later
         try:
-            from shared.sound.sound_generator import SoundGenerator # Local import is fine
+            from shared.sound.sound_generator import SoundGenerator as LocalSoundGenerator # Local import is fine
             fc_sound_output_dir = os.path.join(DATA_DIR_BASE, "sounds", "field_controller_events")
             os.makedirs(fc_sound_output_dir, exist_ok=True)
-            self._sound_saver = SoundGenerator(output_dir=fc_sound_output_dir)
+            self._sound_saver = LocalSoundGenerator(output_dir=fc_sound_output_dir)
             logger.info(f"SoundGenerator initialized for FieldController, output to: {fc_sound_output_dir}")
         except ImportError:
             logger.warning("SoundGenerator not available for FieldController. Sound events will not be saved to file.")
@@ -187,7 +183,8 @@ class FieldController:
                     logger.debug(f"  Created SephirothField '{name}' at {loc}, R={rad:.2f}")
                 created_count += 1
             except Exception as e:
-                logger.error(f"Failed to create influencer '{name}': {e}", exc_info=True)
+                logger.critical(f"CRITICAL FAILURE: Cannot create influencer '{name}': {e}", exc_info=True)
+                raise RuntimeError(f"Field controller initialization failed - cannot create {name} influencer") from e
 
         if created_count != len(seph_names_to_create):
             logger.warning(f"Influencer count mismatch: "
@@ -244,8 +241,8 @@ class FieldController:
                 try:
                     influencer.apply_sephiroth_influence(self.void_field)
                 except Exception as e:
-                    logger.error(f"Error reapplying influence for '{name}' during update: {e}",
-                                exc_info=True)
+                    logger.critical(f"CRITICAL FAILURE: Cannot reapply influence for '{name}' during update: {e}", exc_info=True)
+                    raise RuntimeError(f"Field update failed - cannot apply {name} influence") from e
 
             if self.update_counter % 5 == 0:
                 try:

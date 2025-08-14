@@ -247,7 +247,7 @@ class FieldVisualizer:
                 scatter = ax.scatter(
                     x, y, z, 
                     c=values.flatten(), 
-                    cmap=plt.cm.plasma,
+                    cmap='plasma',
                     alpha=0.6
                 )
                 

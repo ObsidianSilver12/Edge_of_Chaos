@@ -19,7 +19,7 @@ from datetime import datetime
 import math
 
 # Import constants from the main constants module
-from constants.constants import *
+from shared.constants.constants import *
 
 # Import mother resonance data
 from stage_1.evolve.core.mother_resonance import (

@@ -25,7 +25,7 @@ except ImportError:
 # --- Constants ---
 # Attempt to import constants, raise error if essential ones are missing
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError as e:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.critical(f"CRITICAL ERROR: Failed to import essential constants: {e}. NoiseGenerator cannot function.")
@@ -45,6 +45,11 @@ except ImportError:
 # --- Logging Setup ---
 log_file_path = os.path.join("logs", "noise_generator.log") # Changed log filename
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+# Provide default values if not imported from constants
+if 'LOG_LEVEL' not in globals():
+    LOG_LEVEL = logging.INFO
+if 'LOG_FORMAT' not in globals():
+    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, filename=log_file_path, filemode='w')
 logger = logging.getLogger('noise_generator')
 

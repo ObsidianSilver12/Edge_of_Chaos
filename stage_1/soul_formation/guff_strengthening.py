@@ -62,56 +62,92 @@ except ImportError:
 def _check_prerequisites(soul_spark: SoulSpark,
                          field_controller: FieldController) -> bool:
     """Checks if the soul and environment meet Guff strengthening criteria."""
-    logger.debug(
+    print(f"DEBUG: Inside _check_prerequisites for {getattr(soul_spark, 'spark_id', 'unknown')}")
+    logger.info(
         f"Checking Guff strengthening prerequisites for soul "
         f"{soul_spark.spark_id}..."
     )
+    print("DEBUG: Past logger.info statement")
     if not isinstance(soul_spark, SoulSpark):
         logger.error("Prereq fail: Invalid SoulSpark object.")
+        print("DEBUG: Failed SoulSpark instance check")
         return False
+    print("DEBUG: SoulSpark instance check passed")
     if not isinstance(field_controller, FieldController):
         logger.error("Prereq fail: Invalid FieldController object.")
+        print("DEBUG: Failed FieldController instance check")
         return False
+    print("DEBUG: FieldController instance check passed")
 
     # Check flags using constants
-    if getattr(soul_spark, const.FLAG_GUFF_STRENGTHENED, False):
+    print("DEBUG: About to check flags")
+    try:
+        guff_strengthened_flag = getattr(soul_spark, const.FLAG_GUFF_STRENGTHENED, False)
+        ready_for_guff_flag = getattr(soul_spark, const.FLAG_READY_FOR_GUFF, False)
+        print(f"DEBUG: Flags retrieved - Guff Strengthened: {guff_strengthened_flag}, Ready for Guff: {ready_for_guff_flag}")
+        logger.info(f"Flags - Guff Strengthened: {guff_strengthened_flag}, Ready for Guff: {ready_for_guff_flag}")
+    except Exception as flag_e:
+        print(f"DEBUG: Error getting flags: {flag_e}")
+        logger.error(f"Error accessing flag constants: {flag_e}")
+        return False
+    
+    if guff_strengthened_flag:
         logger.warning(f"Soul {soul_spark.spark_id} already Guff strengthened.")
         # Allow re-strengthening? For now, return True but log warning.
         # If re-strengthening is disallowed, return False here.
-    if not getattr(soul_spark, const.FLAG_READY_FOR_GUFF, False):
-        logger.error(f"Prereq fail: Soul not marked {const.FLAG_READY_FOR_GUFF}.")
+    if not ready_for_guff_flag:
+        logger.error(f"Prereq fail: Soul not marked {const.FLAG_READY_FOR_GUFF}. Flag value: {ready_for_guff_flag}")
         return False
 
     # Check essential attributes
     required_attrs = ['energy', 'stability', 'coherence', 'frequency', 'position']
-    if not all(hasattr(soul_spark, attr) for attr in required_attrs):
-        missing = [a for a in required_attrs if not hasattr(soul_spark, a)]
-        logger.error(f"Prereq fail: SoulSpark missing attributes: {missing}.")
+    print(f"DEBUG: Checking required attributes: {required_attrs}")
+    missing_attrs = [a for a in required_attrs if not hasattr(soul_spark, a)]
+    if missing_attrs:
+        print(f"DEBUG: Missing attributes: {missing_attrs}")
+        logger.error(f"Prereq fail: SoulSpark missing attributes: {missing_attrs}.")
         return False
+    print("DEBUG: All required attributes present")
 
     # Check Kether field presence
+    print("DEBUG: Checking Kether field presence")
     if not field_controller.kether_field or \
        not isinstance(field_controller.kether_field, KetherField):
+        print("DEBUG: Kether field check failed")
         logger.error("Prereq fail: FieldController missing valid KetherField.")
         return False
+    print("DEBUG: Kether field check passed")
 
     # Check location
     current_field = getattr(soul_spark, 'current_field_key', 'unknown')
+    logger.info(f"Current field: {current_field}")
     if current_field != 'kether':
         logger.error(f"Prereq fail: Soul must be in Kether field "
                      f"(current: {current_field}).")
         return False
     position = getattr(soul_spark, 'position')
+    logger.info(f"Soul position: {position}")
     try:
         # Use FieldController helper to convert float coords to int tuple
-        grid_coords = field_controller._coords_to_int_tuple(position)
-        if not field_controller.kether_field.is_in_guff(grid_coords):
+        print(f"DEBUG: Checking for _coords_to_int_tuple method. hasattr: {hasattr(field_controller, '_coords_to_int_tuple')}")
+        if hasattr(field_controller, "_coords_to_int_tuple"):
+            print(f"DEBUG: Method exists, callable: {callable(getattr(field_controller, '_coords_to_int_tuple'))}")
+        if hasattr(field_controller, "_coords_to_int_tuple") and callable(getattr(field_controller, "_coords_to_int_tuple")):
+            grid_coords = field_controller._coords_to_int_tuple(position)
+        else:
+            print("DEBUG: _coords_to_int_tuple method not found or not callable")
+            logger.error("FieldController must provide a public '_coords_to_int_tuple' method for coordinate conversion.")
+            return False
+        logger.info(f"Grid coordinates: {grid_coords}")
+        in_guff = field_controller.kether_field.is_in_guff(grid_coords)
+        logger.info(f"Is in Guff: {in_guff}")
+        if not in_guff:
             logger.error(f"Prereq fail: Soul at {grid_coords} not in Guff.")
             return False
-    except AttributeError:
-         logger.error("FieldController missing '_coords_to_int_tuple' method.")
-         return False
-    except Exception as e:
+    except KeyError as e:
+        logger.error(f"Prereq fail: Error checking Guff location {position}: {e}")
+        return False
+    except ValueError as e:
         logger.error(f"Prereq fail: Error checking Guff location {position}: {e}")
         return False
 
@@ -166,7 +202,7 @@ def _calculate_guff_boosts(soul_spark: SoulSpark,
                      f"InfluenceIncrement={influence_increment:.5f}")
         return energy_boost, influence_increment
 
-    except Exception as e:
+    except (AttributeError, KeyError, ValueError) as e:
         logger.error(f"Error calculating Guff boosts: {e}", exc_info=True)
         return 0.0, 0.0 # Return zero boost/increment on error
 
@@ -210,7 +246,10 @@ def perform_guff_strengthening(
 
     try:
         # --- Prerequisites Check ---
-        if not _check_prerequisites(soul_spark, field_controller):
+        print(f"DEBUG: About to check prerequisites for {spark_id}")
+        prereq_result = _check_prerequisites(soul_spark, field_controller)
+        print(f"DEBUG: Prerequisites check result: {prereq_result}")
+        if not prereq_result:
             raise ValueError("Guff strengthening prerequisites not met.")
 
         # --- Initial State & Properties ---
@@ -227,11 +266,14 @@ def perform_guff_strengthening(
         logger.info(log_initial)
 
         # Get Guff properties at soul's location
-        soul_pos_coords = field_controller._coords_to_int_tuple(soul_spark.position)
+        if hasattr(field_controller, "_coords_to_int_tuple") and callable(getattr(field_controller, "_coords_to_int_tuple")):
+            soul_pos_coords = field_controller._coords_to_int_tuple(soul_spark.position)
+        else:
+            raise AttributeError("FieldController must provide a public '_coords_to_int_tuple' method for coordinate conversion.")
         try:
             guff_props = field_controller.get_properties_at(soul_pos_coords)
         except Exception as e:
-             raise RuntimeError(f"Could not retrieve Guff properties at "
+            raise RuntimeError(f"Could not retrieve Guff properties at "
                                 f"{soul_pos_coords}: {e}") from e
         if not guff_props.get('in_guff', False):
             # This check should ideally be redundant due to prerequisites
@@ -346,7 +388,7 @@ def perform_guff_strengthening(
             'success': True,
         }
         if METRICS_AVAILABLE:
-             metrics.record_metrics('guff_strengthening_summary', overall_metrics)
+            metrics.record_metrics('guff_strengthening_summary', overall_metrics)
 
         # Add Memory Echo
         echo_msg = (f"Strengthened in Guff. "
@@ -369,21 +411,21 @@ def perform_guff_strengthening(
 
     # --- Error Handling ---
     except (ValueError, TypeError, AttributeError) as e_val:
-         logger.error(f"Guff strengthening failed for {spark_id}: {e_val}",
-                      exc_info=True)
-         record_failure_metric(spark_id, start_time_iso,
-                               'prerequisites/validation', str(e_val))
-         raise # Re-raise validation errors
+        logger.error(f"Guff strengthening failed for {spark_id}: {e_val}",
+                     exc_info=True)
+        record_failure_metric(spark_id, start_time_iso,
+                              'prerequisites/validation', str(e_val))
+        raise # Re-raise validation errors
     except RuntimeError as e_rt:
-         logger.critical(f"Guff strengthening failed critically "
-                         f"for {spark_id}: {e_rt}", exc_info=True)
-         record_failure_metric(spark_id, start_time_iso, 'runtime', str(e_rt))
-         raise # Re-raise runtime errors
+        logger.critical(f"Guff strengthening failed critically "
+                        f"for {spark_id}: {e_rt}", exc_info=True)
+        record_failure_metric(spark_id, start_time_iso, 'runtime', str(e_rt))
+        raise # Re-raise runtime errors
     except Exception as e:
-         logger.critical(f"Unexpected error during Guff strengthening "
-                         f"for {spark_id}: {e}", exc_info=True)
-         record_failure_metric(spark_id, start_time_iso, 'unexpected', str(e))
-         raise RuntimeError(f"Unexpected Guff strengthening failure: {e}") from e
+        logger.critical(f"Unexpected error during Guff strengthening "
+                        f"for {spark_id}: {e}", exc_info=True)
+        record_failure_metric(spark_id, start_time_iso, 'unexpected', str(e))
+        raise RuntimeError(f"Unexpected Guff strengthening failure: {e}") from e
 
 # --- Failure Metric Helper ---
 def record_failure_metric(spark_id: str, start_time_iso: str,
@@ -400,7 +442,7 @@ def record_failure_metric(spark_id: str, start_time_iso: str,
                 'duration_seconds': duration_secs, 'success': False,
                 'error': error_msg, 'failed_step': failed_step
             })
-        except Exception as metric_e:
+        except RuntimeError as metric_e:
             logger.error(f"Failed to record failure metrics for {spark_id}: {metric_e}")
 
 # --- END OF FILE src/stage_1/soul_formation/guff_strengthening.py ---

@@ -4,16 +4,17 @@
 Brain seed - energy spark that triggers brain development.
 Like sperm+egg - provides initial energy burst to start growth.
 the brain seed is saved and flag is set to indicate that the brain seed has been created.
-thiswill trigger the brain formation process.
+this will trigger the brain formation process. Happens after womb creation but before life cord creation
 """
 
+from typing import Dict, List, Tuple, Any, Optional
+from datetime import datetime
+import math
 import logging
 import uuid
 import random
 import numpy as np
-from typing import Dict, List, Tuple, Any, Optional
-from datetime import datetime
-import math
+
 
 # Import constants
 from shared.constants.constants import *
@@ -33,6 +34,14 @@ class BrainSeed:
     Brain seed - energy spark that triggers brain development.
     Like sperm+egg - provides initial energy burst to start growth.
     """
+    def checkpoint(self, stage):
+        """
+        Serialize the current state of the BrainSeed for checkpointing.
+        """
+        import pickle
+        with open(f'brain_seed_checkpoint_{stage}.pkl', 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
     def __init__(self, dimensions: Tuple[int, int, int] = GRID_DIMENSIONS):
         """Initialize conception system."""
         self.conception_id = str(uuid.uuid4())
@@ -99,7 +108,7 @@ class BrainSeed:
             
             return seed_metrics
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Failed to create brain seed: {e}")
             return {'success': False, 'error': str(e)}    
 
@@ -140,7 +149,7 @@ class BrainSeed:
             
             return creator_metrics
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Failed to add creator energy: {e}")
             return {'success': False, 'error': str(e)}
     
@@ -178,7 +187,7 @@ class BrainSeed:
             # Sort by chaos metric (best edge of chaos first)
             return chaos_positions[:5]  # Return top 5 positions
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.warning(f"Edge of chaos detection failed: {e}")
             return []
         
@@ -242,12 +251,12 @@ class BrainSeed:
                 'placement_time': self.brain_seed['placement_time'],
                 'flag_set': FLAG_BRAIN_SEED_PLACED
             }
-            
+            self.checkpoint('after_placement')
             logger.info(f"Brain seed placed at {position}, edge chaos metric: {edge_chaos_metric:.3f}")
             
             return placement_metrics
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Failed to place brain seed: {e}")
             return {'success': False, 'error': str(e)}
 
@@ -312,7 +321,7 @@ class BrainSeed:
             
             return strengthening_metrics
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Failed to strengthen brain seed: {e}")
             return {'success': False, 'error': str(e)}     
         
@@ -364,6 +373,6 @@ class BrainSeed:
             
             return save_metrics
             
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Failed to save brain seed: {e}")
             return {'success': False, 'error': str(e)}

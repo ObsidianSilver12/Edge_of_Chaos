@@ -443,18 +443,23 @@ def print_metrics_summary() -> None:
 
 
 # --- Initial Load Attempt ---
+# DISABLED: For fresh simulation runs, we want clean metrics, not old data
 # Try to load metrics when the module is imported. Failures here are logged but don't stop import.
-try:
-    if os.path.exists(METRICS_FILE):
-        load_metrics() # Attempt load, raises errors on failure now
-    else:
-        logger.info("Metrics file does not exist on initial load. Starting fresh.")
-        print("METRICS: No existing metrics file found. Starting with empty metrics store.")
-except Exception as initial_load_e:
-    logger.error(f"Error during initial metrics load: {initial_load_e}")
-    print(f"METRICS WARNING: Failed to load existing metrics: {initial_load_e}")
-    # Initialize empty store if load fails critically
-    _metrics_store = {}
+# try:
+#     if os.path.exists(METRICS_FILE):
+#         load_metrics() # Attempt load, raises errors on failure now
+#     else:
+#         logger.info("Metrics file does not exist on initial load. Starting fresh.")
+#         print("METRICS: No existing metrics file found. Starting with empty metrics store.")
+# except Exception as initial_load_e:
+#     logger.error(f"Error during initial metrics load: {initial_load_e}")
+#     print(f"METRICS WARNING: Failed to load existing metrics: {initial_load_e}")
+#     # Initialize empty store if load fails critically
+#     _metrics_store = {}
+
+# Initialize with empty metrics store for fresh simulation runs
+_metrics_store = {}
+print("METRICS: Starting with fresh metrics store for new simulation.")
 
 
 # --- Example Usage ---

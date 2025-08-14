@@ -1,16 +1,15 @@
 SEMANTIC_WORLD_MAP = {
     'semantic_world_map_id': None,
-    'domain': None, # the domain, category and sub category of the memory
-    'domain_category': None, # sub class of the domain
-    'domain_subcategory': None, # sub sub class of the domain
+    'main_category': None, # domains will be grouped into 1 main category once the model is trained this is not for mapping primarily used for training and reorganisation of data into similar fields etc.
+    'domain': None, # the domain ID of the memory
+    'domain_subcategory': None, # sub class of the domain from 
     'concepts': [], # concepts related to the domain
     'related_concepts': [], # related concepts to the domain so not direct links but share similarities
-    'main_category': None, # domains will be grouped into 1 main category once the model is trained this is not for mapping primarily used for training and reorganisation of data into similar fields etc.
     # wbs level can be searched going across or down the tree, the tree relationship is both related and level driven meaning i can search level 2 on its own or i can use the hierarchy tree down and limit to a certain level of closest concepts in space/time.
     'wbs_level_1': None, # wbs level code of the domain example 1 to 9999999 unique domains - if we search for domain 4 we will find domain 4, if we go 1 level down we will get any concepts related to 4
     'wbs_level_2': None, # wbs level code of the concepts example all concepts related to domain 1 up to 9999999 - - if we search for domain 4 we will find domain 4, if we go 1 level down we will get any concepts related to 4, if we go down another level we will find all related concepts
     'wbs_level_3': None, # wbs level code of the related concepts example all related concepts to concepts 1 up to 9999999
-    'domain_sub_region': None, # sub region of the brain where the node is stored related to the domain. 
+    'brain_sub_region_storage': None, # sub region of the brain where the node is stored related to the domain. 
     'storage_duration': None, # duration of time the node is stored for depends on decay rate and if information is accessed frequently
     'access_count': 0, # count of how many times the node has been accessed
     'access_frequency': 0.0, # frequency of access as a percentage of total access count
@@ -18,7 +17,6 @@ SEMANTIC_WORLD_MAP = {
     'temporal_references': [], # temporal references to the memory
     'sensory_modality_count': None, # the sensory mode ie captured only x of y sensory data points
     'coordinates': [], #3d coordinates for the neural network nodes within each sub region
-    'sub_region_id': None, # id of the sub region
     'frequency': 0.0, # frequency assignment of the node in hz (active/deactive nodes have different_frequencies)
    'signal_pattern': {
         'amplitude_range': [],
@@ -79,30 +77,12 @@ SEMANTIC_WORLD_MAP = {
     'resonance_score': 0.0, # score of how well the node resonates with the models world view. may need refinement of what scores contribute to this score
     'harmonic_score': 0.0, # score of energy dynamics between connections
     'emotional_charge': 0.0,  # transferred score of basic emotional charge (-1.0 to 1.0)
-    'emotional_descriptor': 0.0,  # Emotional description
+    'emotional_descriptor': None,  # Emotional description
     'valence': 0.0,  # Positivity/negativity balance
     'energy_signature': 0.0,  # Energy signal as a colour
     'impact_strength': 0.0,  # Strength of emotional impact
     'training_confidence': 0.0, # Confidence in the information learned based on training data (0-1)
-    'confidence_score': 0.0, # Confidence in the information overall there is evidence that hypothesis is plausible, training data good, patterns have high confidence etc (0-1)
-    'academic_score': 0.0, # Academic credibility (0-1) to be updated dynamically once brain processed raw node
-    'logical_score': 0.0,  # Logical plausibility (0-1) to be updated dynamically once brain processed raw node
-    'conceptual_score': 0.0, # Innovation/hypothetical nature (0-1) to be updated dynamically once brain processed raw node
-    'consensus_score': 0.0, # General agreement level (0-1) to be updated dynamically once brain processed raw node
-    'personal_significance': 0.0, # Personal importance (0-1) to be updated dynamically once brain processed raw node
-    'universality': 0.0, # How broadly applicable (0-1) to be updated dynamically once brain processed raw node
-    'ethical_score': 0.0,  # Ethical considerations (0-1) to be updated dynamically once brain processed raw node
-    'spiritual_score': 0.0, # Spiritual significance (0-1) to be updated dynamically once brain processed raw node
-    'novelty_marker': 0.0,  # how novel/unusual (0.0-1.0)  
-    'resonance_score': 0.0, # score of how well the node resonates with the models world view. may need refinement of what scores contribute to this score
-    'harmonic_score': 0.0, # score of energy dynamics between connections
-    'emotional_charge': 0.0,  # transferred score of basic emotional charge (-1.0 to 1.0)
-    'valence': 0.0,  # Positivity/negativity balance
-    'energy_signature': 0.0,  # Energy signal as a colour
-    'impact_strength': 0.0,  # Strength of emotional impac
-    'training_confidence': 0.0, # Confidence in the information learned based on training data (0-1)
-    'confidence_score': 0.0, # Confidence in the information overall there is evidence that hypothesis is plausible, training data good, patterns have high confidence etc (0-1)
-    'algorithm_confidence_score': 0.0, # Score of how well the algorithm identified high confidence patterns (0-1)
-    }
+    'confidence_score': 0.0 # Confidence in the information overall there is evidence that hypothesis is plausible, training data good, patterns have high confidence etc (0-1)
+}
 
 

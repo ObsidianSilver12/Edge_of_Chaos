@@ -9,7 +9,7 @@ import uuid
 
 # Import system components
 from system.mycelial_network.mycelial_network_controller import MycelialNetworkController
-from constants.constants import *
+from shared.constants.constants import *
 
 # Configure logging
 logger = logging.getLogger("ConsciousnessController")

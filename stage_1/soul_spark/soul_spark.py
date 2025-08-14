@@ -7,7 +7,7 @@ Defines the SoulSpark class. Initialization relies on data derived
 from field emergence. Stability/Coherence calculated based on internal
 factors and external influence factors. Initial arbitrary scaling removed.
 Adheres strictly to PEP 8 formatting, especially line length and breaks.
-Assumes `from constants.constants import *`.
+Assumes `from shared.constants.constants import *`.
 """
 
 import logging
@@ -864,11 +864,11 @@ class SoulSpark:
             
             # Validate results
             if new_stability is None or not isinstance(new_stability, (int, float)):
-                logger.warning(f"Stability calculation returned None or non-numeric. Using previous value: {original_stability}")
-                new_stability = original_stability
+                logger.critical(f"CRITICAL FAILURE: Stability calculation returned invalid result for spark {self.spark_id}")
+                raise RuntimeError(f"Stability calculation failed for spark {self.spark_id}")
             if new_coherence is None or not isinstance(new_coherence, (int, float)):
-                logger.warning(f"Coherence calculation returned None or non-numeric. Using previous value: {original_coherence}")
-                new_coherence = original_coherence
+                logger.critical(f"CRITICAL FAILURE: Coherence calculation returned invalid result for spark {self.spark_id}")
+                raise RuntimeError(f"Coherence calculation failed for spark {self.spark_id}")
             
             # Clamp values to valid range
             new_stability = max(0.0, min(MAX_STABILITY_SU, new_stability)) 
@@ -911,8 +911,12 @@ class SoulSpark:
         logger.info(f"Added layer from {source} to soul {self.spark_id}.")
 
     def get_coherence_color(self) -> Tuple[int, int, int]:
-        try: norm=self.coherence/MAX_COHERENCE_CU; norm=max(0.0,min(1.0,norm))
-        except: norm=0.1
+        try: 
+            norm = self.coherence / MAX_COHERENCE_CU
+            norm = max(0.0, min(1.0, norm))
+        except Exception as e:
+            logger.critical(f"CRITICAL FAILURE: Cannot calculate coherence color for spark {self.spark_id}: {e}")
+            raise RuntimeError(f"Coherence color calculation failed for spark {self.spark_id}") from e
         if norm>=0.98: return (255,255,255);
         if norm<=0.02: return (50,0,0);
         hue=(1.0-norm)*300.0; sat=0.8+norm*0.2; val=0.7+norm*0.3; h_i=int(hue/60)%6; f=hue/60-h_i; p=val*(1-sat); q=val*(1-f*sat); t=val*(1-(1-f)*sat)
@@ -925,8 +929,13 @@ class SoulSpark:
         return (int(r*255),int(g*255),int(b*255))
 
     def get_pattern_distortion(self) -> float:
-        try: norm=self.stability/MAX_STABILITY_SU; norm=max(0.0,min(1.0,norm)); return 1.0-norm
-        except: return 0.9
+        try: 
+            norm = self.stability / MAX_STABILITY_SU
+            norm = max(0.0, min(1.0, norm))
+            return 1.0 - norm
+        except Exception as e:
+            logger.critical(f"CRITICAL FAILURE: Cannot calculate pattern distortion for spark {self.spark_id}: {e}")
+            raise RuntimeError(f"Pattern distortion calculation failed for spark {self.spark_id}") from e
 
     def add_memory_echo(self, event_description: str):
         if not hasattr(self,'memory_echoes') or not isinstance(self.memory_echoes,list): self.memory_echoes=[]

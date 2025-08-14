@@ -8,10 +8,10 @@ and aspects of each of the 11 Sephiroth.
 """
 
 from typing import Dict, List, Any, Tuple
-from constants.constants import PHI
+from shared.constants.constants import PHI
 
 # Import shared constants if needed (e.g., for default frequencies)
-# from constants.constants import * # Example
+# from shared.constants.constants import * # Example
 
 # Define base frequencies (can be moved to constants if preferred)
 # Example: Use Solfeggio or other meaningful frequencies

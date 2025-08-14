@@ -10,7 +10,7 @@ import sys
 import os
 # Add the project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-from constants.constants import *
+from shared.constants.constants import *
 ```
 
 ### 2. **Region Proportion Sum Issue** ✅  

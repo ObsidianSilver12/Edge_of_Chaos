@@ -332,6 +332,7 @@ SEPHIROTH_DEFAULT_RADIUS: float = 8.0
 SEPHIROTH_INFLUENCE_FALLOFF: float = 1.5
 DEFAULT_PHI_HARMONIC_COUNT: int = 3
 
+
 # Guff Properties  
 GUFF_RADIUS_FACTOR: float = 0.3
 GUFF_CAPACITY: int = 100
@@ -1635,6 +1636,54 @@ STRESS_SYNAPSE_COMPLEXITY_MODERATE = 2000         # Synapse count for moderate c
 # Biological Variance
 STRESS_BIOLOGICAL_VARIANCE_MIN = 0.05             # Minimum biological stress variance
 STRESS_BIOLOGICAL_VARIANCE_MAX = 0.15             # Maximum biological stress variance
+
+# =============================================================================
+# MYCELIAL SEED & NODE FREQUENCY CONSTANTS
+# =============================================================================
+
+# Base Brain Frequency (Schumann Resonance)
+BASE_BRAIN_FREQUENCY: float = 7.83  # Hz - Base brain frequency (Schumann resonance)
+
+# Node Frequency Ranges (Active operation)
+NODE_FREQUENCY_ACTIVE_MIN: float = 40.0   # Hz - Minimum active node frequency
+NODE_FREQUENCY_ACTIVE_MAX: float = 100.0  # Hz - Maximum active node frequency
+NODE_FREQUENCY_ACTIVE: float = 70.0       # Hz - Default active node frequency
+NODE_FREQUENCY_INACTIVE: float = 0.1      # Hz - Inactive node frequency
+NODE_FREQUENCY_ARCHIVED: float = 0.05     # Hz - Archived node frequency
+
+# Mycelial Seed Frequency Ranges (Lower than nodes)
+MYCELIAL_SEED_FREQUENCY_MIN: float = 0.5  # Hz - Minimum seed frequency
+MYCELIAL_SEED_FREQUENCY_MAX: float = 4.0  # Hz - Maximum seed frequency
+MYCELIAL_SEED_FREQUENCY_BASE: float = 2.0 # Hz - Base seed frequency
+MYCELIAL_SEED_FREQUENCY_ACTIVE: float = 3.0  # Hz - Active seed frequency
+MYCELIAL_SEED_FREQUENCY_INACTIVE: float = 1.0  # Hz - Inactive seed frequency
+MYCELIAL_SEED_FREQUENCY_DORMANT: float = 0.1  # Hz - Dormant seed frequency
+
+# Energy Processing Constants
+SENSORY_CAPTURE_STEPS: int = 10           # Number of sensory data capture steps
+SUBCONSCIOUS_PROCESSING_FEE: float = 0.005  # 0.5% fee per capture step (5% total)
+CONSCIOUS_PROCESSING_MULTIPLIER: float = 3.0  # 3x energy for conscious processing
+
+# Mycelial Seed Energy Constants
+MYCELIAL_SEED_BASE_ENERGY_MULTIPLIER: float = 10.0  # 10x synapse energy base
+MYCELIAL_SEED_TRANSFER_BOOST: float = 1.5   # Additional boost for energy transfer
+MYCELIAL_SEED_COMMUNICATION_BOOST: float = 2.0  # Additional boost for communication
+MYCELIAL_SEED_FIELD_MODULATION_BOOST: float = 2.5  # Additional boost for field work
+
+# Seed density based on sub-region size
+MYCELIAL_SEED_DENSITY_VERY_SMALL: float = 0.05  # 5% for ≤5 blocks
+MYCELIAL_SEED_DENSITY_SMALL: float = 0.06       # 6% for ≤20 blocks  
+MYCELIAL_SEED_DENSITY_MEDIUM: float = 0.07      # 7% for ≤50 blocks
+MYCELIAL_SEED_DENSITY_LARGE: float = 0.08       # 8% for ≤100 blocks
+MYCELIAL_SEED_DENSITY_VERY_LARGE: float = 0.10  # 10% for >100 blocks
+
+# Block size constants (from brain structure)
+BRAIN_BLOCK_SIZE: int = 10                       # 10³ units per block
+BRAIN_BLOCK_VOLUME: int = 1000                   # 10³ = 1000 units
+
+# Energy Transfer Step Constants
+ENERGY_TRANSFER_STEP_AMOUNT: float = 1.0  # SEU per transfer step
+ENERGY_TRANSFER_VARIANCE: float = 0.1     # 10% variance in transfer amounts
 
 # =============================================================================
 # INTEGRATION FLAGS (additional flags needed)

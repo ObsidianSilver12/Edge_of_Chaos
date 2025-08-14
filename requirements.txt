@@ -1,8 +1,19 @@
+# Core AI/ML packages
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+tensorflow>=2.13.0
+transformers>=4.30.0
+datasets>=2.10.0
+accelerate>=0.20.0
+diffusers>=0.18.0
+
 # Core scientific packages
 numpy>=1.26.0            # Array operations, mathematical functions
 scipy>=1.12.0             # Scientific computing, quantum simulations, wave functions
 matplotlib>=3.8.0         # Basic visualization, plots, field displays
 pandas>=2.1.0              # Data analysis, metrics tracking
+seaborn>=0.12.0           # Statistical data visualization
 
 # 3D visualization and advanced graphics
 plotly==5.17.0            # Interactive 3D visualizations
@@ -11,8 +22,13 @@ vpython==7.6.5             # 3D visualization of geometric objects
 pyvista==0.42.3           # 3D mesh and point cloud processing
 pyvistaqt>=0.11.0           # Interactive 3D visualization with Qt
 
+# ML utilities
+scikit-learn>=1.3.0
+xgboost>=1.7.0
+lightgbm>=4.0.0
+
 # Geometric modeling and sacred geometry
-sympy==1.12               # Symbolic mathematics for geometric calculations
+sympy>=1.13.3               # Symbolic mathematics for geometric calculations
 networkx==3.1             # Graph theory for relationship mapping
 shapely==2.0.7            # Manipulation and analysis of geometric objects
 
@@ -27,10 +43,18 @@ pydub==0.25.1             # Audio manipulation
 
 # Utilities
 tqdm==4.66.1              # Progress bars
-pyyaml==6.0.1             # Configuration file handling
-h5py==3.10.0              # HDF5 file format support for large datasets
+pyyaml>=6.0
+pillow>=10.0.0
+requests>=2.31.0
+h5py>=3.9.0               # Standard HDF5 file access, C backend (works well in WSL)
+h5netcdf>=1.2.0           # Alternative to h5py for HDF5 file access, pure Python backend
 
 # Development tools
+jupyter>=1.0.0
+ipython>=8.0.0
+tqdm>=4.65.0
+wandb>=0.15.0  # for experiment tracking
+tensorboard>=2.13.0
 pytest==7.4.2             # Testing framework
 mypy==1.5.1               # Type checking
 

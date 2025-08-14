@@ -24,7 +24,7 @@ import math
 import random
 
 # Import constants
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging Setup ---
 logger = logging.getLogger("IntegratedWombEnvironment")

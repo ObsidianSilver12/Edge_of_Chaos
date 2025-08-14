@@ -21,7 +21,7 @@ import math
 import uuid
 
 # Import our libraries
-from shared.dictionaries.sigils_dictionary import create_sigils_dictionary
+from shared.dictionaries.sigils_code import create_sigils_dictionary
 from shared.tools.encode import create_image_encoder
 
 # Import sacred geometry and platonic functions

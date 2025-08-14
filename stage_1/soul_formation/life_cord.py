@@ -17,7 +17,7 @@ import os
 import sys
 from datetime import datetime
 import uuid
-from constants.constants import *
+from shared.constants.constants import *
 from typing import Dict, List, Any, Tuple, Optional
 from math import pi as PI, sqrt, exp, sin, cos, tanh, log
 

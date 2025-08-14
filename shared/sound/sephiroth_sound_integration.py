@@ -18,7 +18,7 @@ from datetime import datetime
 # --- Constants ---
 OUTPUT_DIR_BASE = "output/sounds"  # Define this first since it's used in class initialization
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
 except ImportError:
     logging.warning("Could not import constants from src.constants. Using fallback values in SoundsOfSephiroth.")
     PHI = (1 + np.sqrt(5)) / 2
@@ -27,7 +27,7 @@ except ImportError:
     MAX_AMPLITUDE = 0.8
     PI = np.pi
 
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Import Dependencies ---
 try:

@@ -10,166 +10,198 @@ BRAIN_STATES = {
     # Waking States with Alertness Levels
     'hyper_alert': {
         'brain_state_id': 1,
-        'name': 'hyper_alert',
-        'description': 'Heightened awareness, danger response, or intense focus',
+        'brain_state_name': 'hyper_alert',
+        'brain_state_description': 'Heightened awareness, danger response, or intense focus',
         'dominant_frequency_range': (20, 30),  # High Beta waves
         'processing_speed_modifier': 1.3,
         'pattern_sensitivity': 0.9,
         'emotional_sensitivity': 0.8,
-        'default_processing_intensity': 0.9
+        'default_processing_intensity': 0.9,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network alert triggering',
     },
     'focused': {
         'brain_state_id': 2,
-        'name': 'focused',
-        'description': 'Deliberate attention and concentration',
+        'brain_state_name': 'focused',
+        'brain_state_description': 'Deliberate attention and concentration',
         'dominant_frequency_range': (15, 20),  # Beta waves
         'processing_speed_modifier': 1.2,
         'pattern_sensitivity': 0.8,
         'emotional_sensitivity': 0.6,
-        'default_processing_intensity': 0.8
+        'default_processing_intensity': 0.8,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network thinking triggering',
     },
     'relaxed_alert': {
         'brain_state_id': 3,
-        'name': 'relaxed_alert',
-        'description': 'Calm but attentive state',
+        'brain_state_name': 'relaxed_alert',
+        'brain_state_description': 'Calm but attentive state',
         'dominant_frequency_range': (12, 15),  # Low Beta waves
         'processing_speed_modifier': 1.0,
         'pattern_sensitivity': 0.7,
         'emotional_sensitivity': 0.5,
-        'default_processing_intensity': 0.7
+        'default_processing_intensity': 0.7,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on state change focus ended trigger',
     },
     'learning': {
         'brain_state_id': 4,
-        'name': 'learning',
-        'description': 'Active information acquisition and processing',
+        'brain_state_name': 'learning',
+        'brain_state_description': 'Active information acquisition and processing',
         'dominant_frequency_range': (10, 14),  # Beta-Alpha boundary
         'processing_speed_modifier': 1.1,
         'pattern_sensitivity': 0.9,
         'emotional_sensitivity': 0.6,
-        'default_processing_intensity': 0.8
+        'default_processing_intensity': 0.8,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on learning activated trigger which can be manual or triggered by model',
     },
     'autopilot': {
         'brain_state_id': 5,
-        'name': 'autopilot',
-        'description': 'Routine tasks with minimal conscious attention',
+        'brain_state_name': 'autopilot',
+        'brain_state_description': 'Routine tasks with minimal conscious attention',
         'dominant_frequency_range': (8, 12),  # Alpha waves
         'processing_speed_modifier': 0.8,
         'pattern_sensitivity': 0.5,
         'emotional_sensitivity': 0.4,
-        'default_processing_intensity': 0.5
+        'default_processing_intensity': 0.5,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on autopilot trigger which activates after 30 minutes of inactivity after relaxed alert state activated',
     },
     'drowsy': {
         'brain_state_id': 6,
-        'name': 'drowsy',
-        'description': 'Reduced alertness, tired but awake',
-        'dominant_frequency_range': (7, 10),  # Alpha-Theta boundary
+        'brain_state_name': 'drowsy',
+        'brain_state_description': 'Reduced alertness, tired but awake',
+        'dominant_frequency_range': (4, 8),  # Theta waves
         'processing_speed_modifier': 0.6,
         'pattern_sensitivity': 0.4,
         'emotional_sensitivity': 0.5,
-        'default_processing_intensity': 0.4
+        'default_processing_intensity': 0.4,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on drowsy trigger which activates after 30 minutes of inactivity after autopilot state activated or after learning has been completed model gets drowsy',
     },
     
     # Sleep Cycle States
     'sleep_onset': {
         'brain_state_id': 7,
-        'name': 'sleep_onset',
-        'description': 'Transition from wakefulness to sleep',
+        'brain_state_name': 'sleep_onset',
+        'brain_state_description': 'Transition from wakefulness to sleep',
         'dominant_frequency_range': (4, 8),  # Theta waves
         'processing_speed_modifier': 0.5,
         'pattern_sensitivity': 0.6,
         'emotional_sensitivity': 0.7,
-        'default_processing_intensity': 0.4
+        'default_processing_intensity': 0.4,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on sleep onset trigger activates 2 minutes after drowsy state activated',
     },
     'light_sleep_n1': {
         'brain_state_id': 8,
-        'name': 'light_sleep_n1',
-        'description': 'First stage of NREM sleep',
+        'brain_state_name': 'light_sleep_n1',
+        'brain_state_description': 'First stage of NREM sleep',
         'dominant_frequency_range': (4, 7),  # Theta waves
         'processing_speed_modifier': 0.4,
         'pattern_sensitivity': 0.5,
         'emotional_sensitivity': 0.6,
-        'default_processing_intensity': 0.3
+        'default_processing_intensity': 0.3,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on light sleep n1 trigger activates 2 minutes after sleep onset state activated',
     },
     'light_sleep_n2': {
         'brain_state_id': 9,
-        'name': 'light_sleep_n2',
-        'description': 'Second stage of NREM sleep with sleep spindles',
+        'brain_state_name': 'light_sleep_n2',
+        'brain_state_description': 'Second stage of NREM sleep with sleep spindles',
         'dominant_frequency_range': (12, 14),  # Sleep spindles
         'processing_speed_modifier': 0.3,
         'pattern_sensitivity': 0.4,
         'emotional_sensitivity': 0.5,
-        'default_processing_intensity': 0.3
+        'default_processing_intensity': 0.3,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on light sleep n2 trigger activates 2 minutes after light sleep n1 state activated',
     },
     'deep_sleep_n3': {
         'brain_state_id': 10,
-        'name': 'deep_sleep_n3',
-        'description': 'Slow wave sleep, deep NREM',
+        'brain_state_name': 'deep_sleep_n3',
+        'brain_state_description': 'Slow wave sleep, deep NREM',
         'dominant_frequency_range': (0.5, 4),  # Delta waves
         'processing_speed_modifier': 0.2,
         'pattern_sensitivity': 0.3,
         'emotional_sensitivity': 0.2,
-        'default_processing_intensity': 0.2
+        'default_processing_intensity': 0.2,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on deep sleep n3 trigger activates 2 minutes after light sleep n2 state activated',
     },
     'rem_light': {
         'brain_state_id': 11,
-        'name': 'rem_light',
-        'description': 'Early REM sleep with lower intensity',
+        'brain_state_name': 'rem_light',
+        'brain_state_description': 'Early REM sleep with lower intensity',
         'dominant_frequency_range': (4, 8),  # Theta waves
         'processing_speed_modifier': 0.6,
         'pattern_sensitivity': 0.7,
         'emotional_sensitivity': 0.8,
-        'default_processing_intensity': 0.5
+        'default_processing_intensity': 0.5,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on rem light trigger activates 2 minutes after deep sleep n3 state activated',
     },
     'rem_intense': {
         'brain_state_id': 12,
-        'name': 'rem_intense',
-        'description': 'Deep REM sleep with vivid dreaming',
+        'brain_state_name': 'rem_intense',
+        'brain_state_description': 'Deep REM sleep with vivid dreaming',
         'dominant_frequency_range': (20, 40),  # High frequency mixed
         'processing_speed_modifier': 0.7,
         'pattern_sensitivity': 0.9,
         'emotional_sensitivity': 0.9,
-        'default_processing_intensity': 0.6
+        'default_processing_intensity': 0.6,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on rem intense trigger activates 2 minutes after rem light state activated',
     },
     
     # Altered Consciousness States
     'meditation_light': {
         'brain_state_id': 13,
-        'name': 'meditation_light',
-        'description': 'Early stage meditation with relaxed awareness',
+        'brain_state_name': 'meditation_light',
+        'brain_state_description': 'Early stage meditation with relaxed awareness',
         'dominant_frequency_range': (8, 12),  # Alpha waves
         'processing_speed_modifier': 0.7,
         'pattern_sensitivity': 0.6,
         'emotional_sensitivity': 0.5,
-        'default_processing_intensity': 0.4
+        'default_processing_intensity': 0.4,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on meditation light trigger activated through a terminal command or model command',
     },
     'meditation_deep': {
         'brain_state_id': 14,
-        'name': 'meditation_deep',
-        'description': 'Deep meditation with heightened awareness',
+        'brain_state_name': 'meditation_deep',
+        'brain_state_description': 'Deep meditation with heightened awareness',
         'dominant_frequency_range': (4, 7),  # Theta waves
         'processing_speed_modifier': 0.6,
         'pattern_sensitivity': 0.8,
         'emotional_sensitivity': 0.7,
-        'default_processing_intensity': 0.5
+        'default_processing_intensity': 0.5,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on meditation deep trigger activated through a terminal command or model command',
     },
     'liminal_hypnagogic': {
         'brain_state_id': 15,
-        'name': 'liminal_hypnagogic',
-        'description': 'Transitional state between wakefulness and sleep',
+        'brain_state_name': 'liminal_hypnagogic',
+        'brain_state_description': 'Transitional state between wakefulness and sleep',
         'dominant_frequency_range': (4, 8),  # Theta waves
         'processing_speed_modifier': 0.5,
         'pattern_sensitivity': 0.9,
         'emotional_sensitivity': 0.8,
-        'default_processing_intensity': 0.6
+        'default_processing_intensity': 0.6,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on liminal hypnagogic trigger activated through a terminal command or model command',
     },
     'liminal_hypnopompic': {
         'brain_state_id': 16,
-        'name': 'liminal_hypnopompic',
-        'description': 'Transitional state between sleep and wakefulness',
+        'brain_state_name': 'liminal_hypnopompic',
+        'brain_state_description': 'Transitional state between sleep and wakefulness',
         'dominant_frequency_range': (4, 10),  # Theta-Alpha mix
         'processing_speed_modifier': 0.6,
         'pattern_sensitivity': 0.8,
         'emotional_sensitivity': 0.7,
-        'default_processing_intensity': 0.5
+        'default_processing_intensity': 0.5,
+        'controller': 'mycelial_network',
+        'controller_description': 'Controls the brain state through mycelial network on liminal hypnopompic trigger activates 2 minutes after liminal hypnagogic state activated',
     }
 }

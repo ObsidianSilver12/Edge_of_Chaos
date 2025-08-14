@@ -41,7 +41,7 @@ else:
 
 
 try:
-    from constants.constants import *
+    from shared.constants.constants import *
     from glyphs.sigil_constants import (
         SACRED_GEOMETRY_BASES_PATH, PLATONIC_SOLID_BASES_PATH,
         DEFAULT_LINE_COLOR_BASE_IMAGE, TRANSPARENT_BACKGROUND,
@@ -217,7 +217,9 @@ def generate_all_base_images():
             else: # Standard Platonics
                 elements = generator_item(center=center_3d_param, edge_length=edge_length_param)
 
-            if not elements: logger.error(f"No elements for {name}."); continue
+            if not elements:
+                logger.critical(f"CRITICAL FAILURE: No elements generated for platonic solid {name}")
+                raise RuntimeError(f"Platonic solid generation failed for {name}")
 
             is_3d = elements.get('projection_type') == '3d'
             fig = plt.figure(figsize=(5,5))
@@ -252,7 +254,9 @@ def generate_all_base_images():
                 else: # fruit, egg, germ
                     elements = generator_item(center=center_2d_param, radius=radius_param)
             
-            if not elements: logger.error(f"No elements for {name}."); continue
+            if not elements:
+                logger.critical(f"CRITICAL FAILURE: No elements generated for sacred geometry {name}")
+                raise RuntimeError(f"Sacred geometry generation failed for {name}")
 
             is_3d_sg = elements.get('projection_type') == '3d' # Should be '2d' for these
             fig_sg, ax_sg = plt.subplots(figsize=(5,5))

@@ -17,7 +17,7 @@ import json
 from typing import Dict, List, Tuple, Any, Optional, Union
 from datetime import datetime
 import math
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging ---
 logger = logging.getLogger('BrainSoulAttachment')

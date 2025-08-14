@@ -28,25 +28,24 @@ logger = logging.getLogger(__name__)
 
 # --- Base Class & Dependencies ---
 try:
-    from sephiroth_field import SephirothField
-    from void_field import VoidField
-    # field_harmonics is optional
-    try: from field_harmonics import FieldHarmonics; FH_AVAILABLE = True
-    except ImportError: FH_AVAILABLE = False; FieldHarmonics = None
+    # Use relative imports because these modules are in the same 'fields' package
+    from .sephiroth_field import SephirothField
+    from .void_field import VoidField
+    from .field_harmonics import FieldHarmonics
+    FH_AVAILABLE = True
 except ImportError:
-    try: # Fallback imports
+    # This block is a fallback for testing, but in production the above should work
+    try:
         from sephiroth_field import SephirothField
         from void_field import VoidField
-        try: from field_harmonics import FieldHarmonics; FH_AVAILABLE = True
-        except ImportError: FH_AVAILABLE = False; FieldHarmonics = None
+        from field_harmonics import FieldHarmonics
+        FH_AVAILABLE = True
     except ImportError:
         logger.critical("CRITICAL ERROR: Cannot import base/void field in kether_field.py")
-        class SephirothField: # Dummy
-             def __init__(self, *args, **kwargs): self.location=(0,0,0); self.radius=1; self.sephirah_name='dummy'; self.target_frequency = 432.0
-             def apply_sephiroth_influence(self, *args, **kwargs): pass
-             def _validate_coordinates(self, *args): return True
-        class VoidField: # Dummy
-             def apply_geometric_pattern(self, *args, **kwargs): pass
+        # Define dummy classes if necessary for the script to be parsable, but it will fail at runtime.
+        class SephirothField: pass
+        FH_AVAILABLE = False
+        FieldHarmonics = None
 
 
 class KetherField(SephirothField):

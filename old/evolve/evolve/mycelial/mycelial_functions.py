@@ -19,7 +19,7 @@ from datetime import datetime
 import math
 import random
 from stage_1.evolve.core.evolve_constants import *
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Metrics Tracking ---
 try:

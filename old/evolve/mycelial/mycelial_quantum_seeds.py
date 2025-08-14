@@ -21,7 +21,7 @@ import math
 import random
 
 # Import constants from the main constants module
-from constants.constants import *
+from shared.constants.constants import *
 
 # --- Logging ---
 logger = logging.getLogger('MycelialQuantumSeeds')

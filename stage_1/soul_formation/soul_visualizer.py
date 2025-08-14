@@ -16,10 +16,11 @@ import sys
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib.colors import LinearSegmentedColormap, to_rgba
 from mpl_toolkits.mplot3d import Axes3D # For type hinting, actual collection below
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection # Explicit import
-from skimage import measure, filters # filters for gaussian_filter
+from skimage import measure  # For 3D visualization
 import matplotlib.cm as cm
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple, List, Union
@@ -182,7 +183,9 @@ def transform_frequency_signature(soul_spark) -> Optional[Dict[str, np.ndarray]]
                 if isinstance(val, list): result[key] = np.array(val, dtype=float)
                 elif isinstance(val, np.ndarray): result[key] = val.astype(float)
         return result if 'frequencies' in result else None
-    except Exception as e: logger.warning(f"Error transforming frequency signature: {e}"); return None
+    except Exception as e:
+        logger.critical(f"CRITICAL FAILURE: Cannot transform frequency signature: {e}", exc_info=True)
+        raise RuntimeError(f"Frequency signature transformation failed") from e
 
 def generate_soul_density_field(soul_spark, resolution: int = DEFAULT_RESOLUTION) -> np.ndarray:
     """Generate 2D density field for visualization based on soul attributes."""
@@ -275,7 +278,9 @@ def get_soul_aspects_by_strength(soul_spark, n_top=10) -> List[Tuple[str, float]
                     aspects.append((name, float(data['strength'])))
         sorted_aspects = sorted(aspects, key=lambda x: x[1], reverse=True)
         return sorted_aspects[:n_top]
-    except Exception as e: logger.warning(f"Error getting aspects by strength: {e}"); return []
+    except Exception as e:
+        logger.critical(f"CRITICAL FAILURE: Cannot get aspects by strength: {e}", exc_info=True)
+        raise RuntimeError(f"Aspects by strength calculation failed") from e
 
 def get_sephiroth_influence(soul_spark) -> Dict[str, float]:
     """Get Sephiroth influence levels from soul."""
@@ -369,7 +374,7 @@ def visualize_aspects_radar(soul_spark, ax) -> None:
         cmap = create_soul_colormap(soul_spark)
         ax.plot(theta, values, 'o-', linewidth=2, color=cmap(0.7))
         ax.fill(theta, values, alpha=0.3, color=cmap(0.5))
-        for level in [0.25, 0.5, 0.75]: ax.add_patch(plt.patches.Circle((0,0),level,fill=False,color=GRID_LINE_COLOR,alpha=0.3,ls='--',lw=0.5))
+        for level in [0.25, 0.5, 0.75]: ax.add_patch(patches.Circle((0,0),level,fill=False,color=GRID_LINE_COLOR,alpha=0.3,ls='--',lw=0.5))
         ax.set_xticks(theta[:-1]); ax.set_xticklabels(categories[:-1], color=LIGHT_TEXT_COLOR, fontsize=8) # Adjusted xticks and labels
         ax.set_ylim(0,1); ax.set_title('Soul Aspect Categories', fontsize=12, color=LIGHT_TEXT_COLOR)
         ax.tick_params(axis='y', colors=LIGHT_TEXT_COLOR) # Color y-axis ticks
@@ -532,7 +537,7 @@ def visualize_soul_state(
             # To save a dict with np.save, allow pickle or convert to structured array. Or use json.
             data_filename_json = f"{soul_spark.spark_id}_{stage_name.replace(' ','_')}_{timestamp_str}_metrics.json"
             data_filepath_json = os.path.join(data_save_dir, data_filename_json)
-            with open(data_filepath_json, 'w') as f_json:
+            with open(data_filepath_json, 'w', encoding='utf-8') as f_json:
                 json.dump(state_data_dict, f_json, indent=2, default=str)
             logger.info(f"Soul state metrics (JSON) saved to {data_filepath_json}")
         except Exception as data_e: logger.warning(f"Failed to save soul state metrics: {data_e}")

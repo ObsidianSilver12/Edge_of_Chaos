@@ -1,488 +1,660 @@
+# region_definitions.py
 """
-Brain Region Definitions - FIXED VERSION
+Brain Region Definitions - ANATOMICALLY CORRECT VERSION WITH COMPLETE PROPERTIES
 
-Defines the comprehensive properties of brain regions, sub-regions,
-and memory types for the brain formation process.
+Defines the comprehensive properties of REAL brain regions and sub-regions
+based on actual neuroanatomy with all sound, frequency, and boundary data.
 
-These definitions serve as the foundation for creating the 3D brain structure.
+Architecture: Grid → Regions → Sub-regions → Blocks
+No artificial hemispheric division - brain works as integrated system.
 """
 
 import numpy as np
 from enum import Enum
 
-# ---- Color Palette (Specific unique shades) ----
+# ---- Import missing dependencies ----
+from shared.constants.constants import *
+
+# ---- BRAIN-SPECIFIC COLOR SHADES (Unique from framework COLOR_SPECTRUM) ----
 class ColorShades(Enum):
-    # Blues
-    ROYAL_BLUE_1 = "#0a1f5c"
-    ROYAL_BLUE_2 = "#14347c"
-    ROYAL_BLUE_3 = "#1e4a9c"
-    ROYAL_BLUE_4 = "#285fbc"
-    ROYAL_BLUE_5 = "#3275dc"
-    ROYAL_BLUE_6 = "#3c8afc"
-    ROYAL_BLUE_7 = "#46a0fc"
-    
-    # Greens
-    EMERALD_1 = "#0a3c1e"
-    EMERALD_2 = "#14522a"
-    EMERALD_3 = "#1e6836"
-    EMERALD_4 = "#287e42"
-    EMERALD_5 = "#32944e"
-    EMERALD_6 = "#3caa5a"
-    EMERALD_7 = "#46c066"
-    
-    # Reds
-    RUBY_1 = "#5c0a1a"
-    RUBY_2 = "#7c1423"
-    RUBY_3 = "#9c1e2c"
-    RUBY_4 = "#bc2835"
-    RUBY_5 = "#dc323e"
-    RUBY_6 = "#fc3c47"
-    RUBY_7 = "#fc4650"
-    
-    # Golds
-    GOLD_1 = "#5c4a0a"
-    GOLD_2 = "#7c6414"
-    GOLD_3 = "#9c7e1e"
-    GOLD_4 = "#bc9828"
-    GOLD_5 = "#dcb232"
-    GOLD_6 = "#fccc3c"
-    GOLD_7 = "#fcd646"
-    
-    # Purples
-    VIOLET_1 = "#3c0a5c"
-    VIOLET_2 = "#52147c"
-    VIOLET_3 = "#681e9c"
-    VIOLET_4 = "#7e28bc"
-    VIOLET_5 = "#9432dc"
-    VIOLET_6 = "#aa3cfc"
-    VIOLET_7 = "#c046fc"
-    
-    # Oranges
-    AMBER_1 = "#5c2a0a"
-    AMBER_2 = "#7c3a14"
-    AMBER_3 = "#9c4a1e"
-    AMBER_4 = "#bc5a28"
-    AMBER_5 = "#dc6a32"
-    AMBER_6 = "#fc7a3c"
-    AMBER_7 = "#fc8a46"
-    
-    # Teals
-    TEAL_1 = "#0a5c4a"
-    TEAL_2 = "#147c64"
-    TEAL_3 = "#1e9c7e"
-    TEAL_4 = "#28bc98"
-    TEAL_5 = "#32dcb2"
-    TEAL_6 = "#3cfccc"
-    TEAL_7 = "#46fcd6"
-    
-    # Silvers
-    SILVER_1 = "#4a4a4a"
-    SILVER_2 = "#5a5a5a"
-    SILVER_3 = "#6a6a6a"
-    SILVER_4 = "#7a7a7a"
-    SILVER_5 = "#8a8a8a"
-    SILVER_6 = "#9a9a9a"
-    SILVER_7 = "#aaaaaa"
+    """Brain-specific color shades that don't conflict with framework colors."""
 
+    # Frontal Cortex - Various shades of blue (avoiding pure blue #0000FF)
+    FRONTAL_BLUE = "#4169E1"          # Royal Blue
 
-# ---- Standard Glyphs ----
-class BrainGlyphs(Enum):
-    FRONTAL_GLYPH = "frontal_glyph"
-    PARIETAL_GLYPH = "parietal_glyph"
-    TEMPORAL_GLYPH = "temporal_glyph"
-    OCCIPITAL_GLYPH = "occipital_glyph"
-    LIMBIC_GLYPH = "limbic_glyph"
-    CEREBELLUM_GLYPH = "cerebellum_glyph"
-    BRAIN_STEM_GLYPH = "brain_stem_glyph"
-    
-    PREFRONTAL_GLYPH = "prefrontal_glyph"
-    MOTOR_CORTEX_GLYPH = "motor_cortex_glyph"
-    SENSORY_CORTEX_GLYPH = "sensory_cortex_glyph"
-    VISUAL_CORTEX_GLYPH = "visual_cortex_glyph"
-    AUDITORY_CORTEX_GLYPH = "auditory_cortex_glyph"
-    HIPPOCAMPUS_GLYPH = "hippocampus_glyph"
-    AMYGDALA_GLYPH = "amygdala_glyph"
-    THALAMUS_GLYPH = "thalamus_glyph"
-    HYPOTHALAMUS_GLYPH = "hypothalamus_glyph"
+    # Parietal Cortex - Various shades of green (avoiding pure green #00FF00)
+    PARIETAL_GREEN = "#228B22"        # Forest Green
 
+    # Temporal Cortex - Various shades of gold/amber (avoiding pure gold #FFD700)
+    TEMPORAL_GOLD = "#DAA520"         # Goldenrod
 
-# ---- Platonic Solids ----
-class PlatonicSolids(Enum):
-    TETRAHEDRON = "tetrahedron"
-    CUBE = "cube"  # Hexahedron
-    OCTAHEDRON = "octahedron"
-    DODECAHEDRON = "dodecahedron"
-    ICOSAHEDRON = "icosahedron"
+    # Occipital Cortex - Various shades of purple (avoiding pure violet #8A2BE2)
+    OCCIPITAL_PURPLE = "#9370DB"      # Medium Purple
 
-# ---- Hemispheres - FIXED ----
-HEMISPHERES = {
-    'left_hemisphere': {
-        'function': 'logical_analytical',
-        'default_wave': 'beta',
-        'wave_frequency_hz': 18.5,
-        'color': ColorShades.ROYAL_BLUE_6,
-        'sound_base_note': 'C4',
-    },
-    'right_hemisphere': {
-        'function': 'creative_holistic',
-        'default_wave': 'alpha',
-        'wave_frequency_hz': 10.2,
-        'color': ColorShades.EMERALD_5,
-        'sound_base_note': 'G4',
-    }
+    # Limbic System - Various shades of red (avoiding pure red #FF0000)
+    LIMBIC_RED = "#DC143C"            # Crimson
+
+    # Cerebellum - Teal shades (not in framework spectrum)
+    CEREBELLUM_TEAL = "#008B8B"       # Dark Cyan
+
+    # Brainstem - Gray shades (avoiding pure grey #808080)
+    BRAINSTEM_GRAY = "#696969"        # Dim Gray
+
+    # Additional unique brain colors for sub-regions
+    NEURAL_CORAL = "#FF7F50"          # Coral
+    SYNAPTIC_TURQUOISE = "#40E0D0"    # Turquoise
+    MYCELIAL_OLIVE = "#808000"        # Olive
+    BORDER_SLATE = "#708090"          # Slate Gray
+    FIELD_NAVY = "#000080"            # Navy
+    COSMIC_MAROON = "#800000"         # Maroon
+    QUANTUM_PLUM = "#DDA0DD"          # Plum
+
+# Verification that brain colors don't conflict with framework colors
+FRAMEWORK_HEX_COLORS = {
+    "#FF0000", "#FFA500", "#FFD700", "#FFFF00", "#00FF00", "#0000FF", 
+    "#4B0082", "#8A2BE2", "#FFFFFF", "#000000", "#C0C0C0", "#FF00FF", 
+    "#808080", "#A0522D", "#E6E6FA", "#A52A2A"
 }
 
-# ---- Major Brain Regions ----
+BRAIN_HEX_COLORS = {color.value for color in ColorShades}
+
+# Assert no conflicts
+assert not FRAMEWORK_HEX_COLORS.intersection(BRAIN_HEX_COLORS), \
+    f"Brain colors conflict with framework colors: {FRAMEWORK_HEX_COLORS.intersection(BRAIN_HEX_COLORS)}"
+
+# ---- REAL Neuroanatomical Regions and Sub-regions WITH COMPLETE PROPERTIES ----
+
 MAJOR_REGIONS = {
-    'frontal': {
-        'proportion': 0.28,
-        'location_bias': (0.7, 0.5, 0.2),  # (x, y, z) bias in unit cube
-        'function': 'executive_control',
+    'frontal_cortex': {
+        'proportion': 0.32,  # Reduced from 0.35 to help balance total
+        'location_bias': (0.2, 0.3, 0.5),  # Front of brain
+        'function': 'executive_control_motor',
         'default_wave': 'beta',
         'wave_frequency_hz': 18.5,
-        'color': ColorShades.ROYAL_BLUE_7,
+        'color': ColorShades.FRONTAL_BLUE,
         'sound_base_note': 'C4',
-        'glyph': BrainGlyphs.FRONTAL_GLYPH,
-        'sub_regions': ['prefrontal', 'orbitofrontal', 'motor_cortex', 'broca']
+        'boundary_type': 'gradual',
+        'sub_regions': [
+            'prefrontal_cortex', 'primary_motor_cortex', 'premotor_cortex',
+            'supplementary_motor_area', 'broca_area'
+        ]
     },
-    'parietal': {
-        'proportion': 0.19,
-        'location_bias': (0.4, 0.5, 0.6),
-        'function': 'sensory_integration',
+
+    'parietal_cortex': {
+        'proportion': 0.19,  # Reduced from 0.20
+        'location_bias': (0.4, 0.7, 0.6),  # Top-back
+        'function': 'sensory_integration_spatial',
         'default_wave': 'alpha',
         'wave_frequency_hz': 10.2,
-        'color': ColorShades.EMERALD_5,
+        'color': ColorShades.PARIETAL_GREEN,
         'sound_base_note': 'E4',
-        'glyph': BrainGlyphs.PARIETAL_GLYPH,
-        'sub_regions': ['somatosensory_cortex', 'superior_parietal', 'inferior_parietal']
+        'boundary_type': 'sharp',
+        'sub_regions': [
+            'primary_somatosensory_cortex', 'secondary_somatosensory_cortex',
+            'posterior_parietal_cortex', 'superior_parietal_lobule', 'inferior_parietal_lobule'
+        ]
     },
-    'temporal': {
-        'proportion': 0.22,
-        'location_bias': (0.3, 0.2, 0.5),
+
+    'temporal_cortex': {
+        'proportion': 0.17,  # Reduced from 0.18
+        'location_bias': (0.3, 0.2, 0.3),  # Sides, lower
         'function': 'auditory_language_memory',
-        'default_wave': 'alpha',
+        'default_wave': 'theta',
         'wave_frequency_hz': 9.7,
-        'color': ColorShades.GOLD_6,
+        'color': ColorShades.TEMPORAL_GOLD,
         'sound_base_note': 'G4',
-        'glyph': BrainGlyphs.TEMPORAL_GLYPH,
-        'sub_regions': ['primary_auditory', 'wernicke', 'medial_temporal', 'fusiform']
+        'boundary_type': 'gradual',
+        'sub_regions': [
+            'primary_auditory_cortex', 'wernicke_area', 'superior_temporal_gyrus',
+            'middle_temporal_gyrus', 'inferior_temporal_gyrus', 'hippocampus', 'parahippocampal_gyrus'
+        ]
     },
-    'occipital': {
-        'proportion': 0.14,
-        'location_bias': (0.3, 0.8, 0.5),
+
+    'occipital_cortex': {
+        'proportion': 0.12,  # Kept same - smallest cortical region
+        'location_bias': (0.8, 0.5, 0.5),  # Back of brain
         'function': 'visual_processing',
         'default_wave': 'alpha',
         'wave_frequency_hz': 11.3,
-        'color': ColorShades.VIOLET_4,
+        'color': ColorShades.OCCIPITAL_PURPLE,
         'sound_base_note': 'B4',
-        'glyph': BrainGlyphs.OCCIPITAL_GLYPH,
-        'sub_regions': ['primary_visual', 'secondary_visual', 'visual_association']
+        'boundary_type': 'sharp',
+        'sub_regions': [
+            'primary_visual_cortex', 'secondary_visual_cortex', 'visual_area_v3',
+            'visual_area_v4', 'visual_area_v5_mt'
+        ]
     },
-    'limbic': {
-        'proportion': 0.11,
-        'location_bias': (0.5, 0.5, 0.5),  # Central
-        'function': 'emotion_memory',
+
+    'limbic_system': {
+        'proportion': 0.08,  # Kept same - appropriate for deep structures
+        'location_bias': (0.5, 0.5, 0.4),  # Deep, central
+        'function': 'emotion_motivation_memory',
         'default_wave': 'theta',
         'wave_frequency_hz': 6.8,
-        'color': ColorShades.RUBY_3,
+        'color': ColorShades.LIMBIC_RED,
         'sound_base_note': 'D4',
-        'glyph': BrainGlyphs.LIMBIC_GLYPH,
-        'sub_regions': ['hippocampus', 'amygdala', 'thalamus', 'hypothalamus', 'cingulate']
+        'boundary_type': 'diffuse',
+        'sub_regions': [
+            'amygdala', 'anterior_cingulate', 'posterior_cingulate', 'insula', 'orbitofrontal_cortex'
+        ]
     },
+
     'cerebellum': {
-        'proportion': 0.14,
-        'location_bias': (0.5, 0.9, 0.2),  # Low back
-        'function': 'motor_coordination',
+        'proportion': 0.10,  # Kept same - anatomically accurate
+        'location_bias': (0.7, 0.2, 0.2),  # Back, bottom
+        'function': 'motor_learning_coordination',
         'default_wave': 'alpha',
         'wave_frequency_hz': 9.3,
-        'color': ColorShades.TEAL_3,
+        'color': ColorShades.CEREBELLUM_TEAL,
         'sound_base_note': 'A3',
-        'glyph': BrainGlyphs.CEREBELLUM_GLYPH,
-        'sub_regions': ['anterior_lobe', 'posterior_lobe', 'flocculonodular']
+        'boundary_type': 'fractal',
+        'sub_regions': [
+            'cerebellar_cortex', 'deep_cerebellar_nuclei', 'vestibulocerebellum',
+            'spinocerebellum', 'cerebrocerebellum'
+        ]
     },
-    'brain_stem': {
-        'proportion': 0.06,
-        'location_bias': (0.5, 0.8, 0.1),  # Bottom center
-        'function': 'basic_life_functions',
+
+    'brainstem': {
+        'proportion': 0.02,  # Reduced from 0.07 - brainstem is actually quite small
+        'location_bias': (0.6, 0.5, 0.1),  # Central, bottom
+        'function': 'vital_functions_arousal',
         'default_wave': 'delta',
         'wave_frequency_hz': 2.5,
-        'color': ColorShades.SILVER_2,
+        'color': ColorShades.BRAINSTEM_GRAY,
         'sound_base_note': 'F3',
-        'glyph': BrainGlyphs.BRAIN_STEM_GLYPH,
-        'sub_regions': ['midbrain', 'pons', 'medulla']
+        'boundary_type': 'oscillating',
+        'sub_regions': [
+            'midbrain', 'pons', 'medulla', 'reticular_formation'
+        ]
     }
 }
 
-
-# ---- Sub Regions ----
+# ---- Sub-region Properties WITH COMPLETE SOUND AND FREQUENCY DATA ----
 SUB_REGIONS = {
-    # Frontal Sub-Regions
-    'prefrontal': {
-        'parent': 'frontal',
-        'proportion': 0.4,  # Proportion of parent region
-        'platonic_solid': PlatonicSolids.DODECAHEDRON,
-        'function': 'planning_decision_making',
+    # FRONTAL CORTEX Sub-regions
+    'prefrontal_cortex': {
+        'parent': 'frontal_cortex',
+        'proportion': 0.40,
+        'function': 'executive_control_working_memory',
+        'brodmann_areas': [9, 10, 11, 12, 46, 47],
         'wave_frequency_hz': 19.3,
-        'color': ColorShades.ROYAL_BLUE_5,
+        'default_wave': 'beta',
+        'color': ColorShades.FRONTAL_BLUE,
         'sound_modifier': 'harmonic_fifth',
-        'glyph': BrainGlyphs.PREFRONTAL_GLYPH,
+        'sound_pattern': 'harmonic_complex',
+        'boundary_type': 'gradual',
+        'connections': ['temporal_cortex', 'parietal_cortex', 'limbic_system']
     },
-    'orbitofrontal': {
-        'parent': 'frontal',
-        'proportion': 0.15,
-        'platonic_solid': PlatonicSolids.ICOSAHEDRON,
-        'function': 'reward_evaluation',
-        'wave_frequency_hz': 17.8,
-        'color': ColorShades.ROYAL_BLUE_3,
-        'sound_modifier': 'harmonic_third',
-        'glyph': None,  # No specific glyph
-    },
-    'motor_cortex': {
-        'parent': 'frontal',
-        'proportion': 0.3,
-        'platonic_solid': PlatonicSolids.CUBE,
-        'function': 'movement_control',
+    'primary_motor_cortex': {
+        'parent': 'frontal_cortex', 
+        'proportion': 0.25,
+        'function': 'voluntary_movement_control',
+        'brodmann_areas': [4],
         'wave_frequency_hz': 18.9,
-        'color': ColorShades.ROYAL_BLUE_6,
+        'default_wave': 'beta',
+        'color': ColorShades.FRONTAL_BLUE,
         'sound_modifier': 'perfect_fourth',
-        'glyph': BrainGlyphs.MOTOR_CORTEX_GLYPH,
+        'sound_pattern': 'rhythmic_sustained',
+        'boundary_type': 'sharp',
+        'connections': ['cerebellum', 'brainstem', 'parietal_cortex']
     },
-    'broca': {
-        'parent': 'frontal',
-        'proportion': 0.15,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
+    'premotor_cortex': {
+        'parent': 'frontal_cortex',
+        'proportion': 0.20,
+        'function': 'movement_planning',
+        'brodmann_areas': [6],
+        'wave_frequency_hz': 18.2,
+        'default_wave': 'beta',
+        'color': ColorShades.FRONTAL_BLUE,
+        'sound_modifier': 'major_third',
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'gradual',
+        'connections': ['primary_motor_cortex', 'parietal_cortex']
+    },
+    'supplementary_motor_area': {
+        'parent': 'frontal_cortex',
+        'proportion': 0.10,
+        'function': 'complex_movement_sequences',
+        'brodmann_areas': [6],
+        'wave_frequency_hz': 17.8,
+        'default_wave': 'beta',
+        'color': ColorShades.FRONTAL_BLUE,
+        'sound_modifier': 'harmonic_third',
+        'sound_pattern': 'melodic_varied',
+        'boundary_type': 'diffuse',
+        'connections': ['primary_motor_cortex', 'premotor_cortex']
+    },
+    'broca_area': {
+        'parent': 'frontal_cortex',
+        'proportion': 0.05,
         'function': 'speech_production',
+        'brodmann_areas': [44, 45],
         'wave_frequency_hz': 17.5,
-        'color': ColorShades.ROYAL_BLUE_2,
+        'default_wave': 'beta',
+        'color': ColorShades.FRONTAL_BLUE,
         'sound_modifier': 'minor_third',
-        'glyph': None,
+        'sound_pattern': 'staccato_high',
+        'boundary_type': 'sharp',
+        'connections': ['wernicke_area', 'primary_motor_cortex']
     },
     
-    # Parietal Sub-Regions
-    'somatosensory_cortex': {
-        'parent': 'parietal',
-        'proportion': 0.4,
-        'platonic_solid': PlatonicSolids.CUBE,
-        'function': 'touch_body_awareness',
+    # PARIETAL CORTEX Sub-regions
+    'primary_somatosensory_cortex': {
+        'parent': 'parietal_cortex',
+        'proportion': 0.30,
+        'function': 'touch_pressure_temperature',
+        'brodmann_areas': [1, 2, 3],
         'wave_frequency_hz': 10.5,
-        'color': ColorShades.EMERALD_6,
+        'default_wave': 'alpha',
+        'color': ColorShades.PARIETAL_GREEN,
         'sound_modifier': 'perfect_fifth',
-        'glyph': BrainGlyphs.SENSORY_CORTEX_GLYPH,
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'sharp',
+        'connections': ['primary_motor_cortex', 'secondary_somatosensory_cortex']
     },
-    'superior_parietal': {
-        'parent': 'parietal',
-        'proportion': 0.3,
-        'platonic_solid': PlatonicSolids.OCTAHEDRON,
-        'function': 'spatial_coordination',
+    'secondary_somatosensory_cortex': {
+        'parent': 'parietal_cortex',
+        'proportion': 0.20,
+        'function': 'complex_tactile_processing',
+        'brodmann_areas': [40, 43],
         'wave_frequency_hz': 10.1,
-        'color': ColorShades.EMERALD_4,
+        'default_wave': 'alpha',
+        'color': ColorShades.PARIETAL_GREEN,
         'sound_modifier': 'major_third',
-        'glyph': None,
+        'sound_pattern': 'harmonic_complex',
+        'boundary_type': 'gradual',
+        'connections': ['primary_somatosensory_cortex', 'insula']
     },
-    'inferior_parietal': {
-        'parent': 'parietal',
-        'proportion': 0.3,
-        'platonic_solid': PlatonicSolids.ICOSAHEDRON,
-        'function': 'language_mathematics',
+    'posterior_parietal_cortex': {
+        'parent': 'parietal_cortex',
+        'proportion': 0.25,
+        'function': 'spatial_attention_navigation',
+        'brodmann_areas': [7],
         'wave_frequency_hz': 9.8,
-        'color': ColorShades.EMERALD_3,
+        'default_wave': 'alpha',
+        'color': ColorShades.PARIETAL_GREEN,
         'sound_modifier': 'minor_seventh',
-        'glyph': None,
+        'sound_pattern': 'ethereal_light',
+        'boundary_type': 'diffuse',
+        'connections': ['occipital_cortex', 'frontal_cortex']
     },
-    
-    # Temporal Sub-Regions
-    'primary_auditory': {
-        'parent': 'temporal',
-        'proportion': 0.25,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
-        'function': 'sound_processing',
-        'wave_frequency_hz': 9.9,
-        'color': ColorShades.GOLD_7,
+    'superior_parietal_lobule': {
+        'parent': 'parietal_cortex',
+        'proportion': 0.15,
+        'function': 'spatial_processing_reaching',
+        'brodmann_areas': [5, 7],
+        'wave_frequency_hz': 10.3,
+        'default_wave': 'alpha',
+        'color': ColorShades.PARIETAL_GREEN,
         'sound_modifier': 'perfect_octave',
-        'glyph': BrainGlyphs.AUDITORY_CORTEX_GLYPH,
+        'sound_pattern': 'resonant_complex',
+        'boundary_type': 'gradual',
+        'connections': ['primary_motor_cortex', 'occipital_cortex']
     },
-    'wernicke': {
-        'parent': 'temporal',
-        'proportion': 0.2,
-        'platonic_solid': PlatonicSolids.DODECAHEDRON,
+    'inferior_parietal_lobule': {
+        'parent': 'parietal_cortex',
+        'proportion': 0.10,
+        'function': 'language_mathematics_integration',
+        'brodmann_areas': [39, 40],
+        'wave_frequency_hz': 9.9,
+        'default_wave': 'alpha',
+        'color': ColorShades.PARIETAL_GREEN,
+        'sound_modifier': 'major_sixth',
+        'sound_pattern': 'melodic_varied',
+        'boundary_type': 'oscillating',
+        'connections': ['temporal_cortex', 'frontal_cortex']
+    },
+    
+    # TEMPORAL CORTEX Sub-regions  
+    'primary_auditory_cortex': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.20,
+        'function': 'basic_sound_processing',
+        'brodmann_areas': [41, 42],
+        'wave_frequency_hz': 9.9,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
+        'sound_modifier': 'perfect_octave',
+        'sound_pattern': 'staccato_low',
+        'boundary_type': 'sharp',
+        'connections': ['superior_temporal_gyrus']
+    },
+    'wernicke_area': {
+        'parent': 'temporal_cortex', 
+        'proportion': 0.15,
         'function': 'language_comprehension',
+        'brodmann_areas': [22],
         'wave_frequency_hz': 9.5,
-        'color': ColorShades.GOLD_5,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
         'sound_modifier': 'major_sixth',
-        'glyph': None,
+        'sound_pattern': 'harmonic_complex',
+        'boundary_type': 'gradual',
+        'connections': ['broca_area', 'inferior_parietal_lobule']
     },
-    'medial_temporal': {
-        'parent': 'temporal',
-        'proportion': 0.3,
-        'platonic_solid': PlatonicSolids.ICOSAHEDRON,
-        'function': 'memory_formation',
-        'wave_frequency_hz': 8.8,
-        'color': ColorShades.GOLD_3,
-        'sound_modifier': 'perfect_fourth',
-        'glyph': None,
-    },
-    'fusiform': {
-        'parent': 'temporal',
-        'proportion': 0.25,
-        'platonic_solid': PlatonicSolids.CUBE,
-        'function': 'face_recognition',
+    'superior_temporal_gyrus': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.20,
+        'function': 'complex_auditory_processing',
+        'brodmann_areas': [22, 41, 42],
         'wave_frequency_hz': 9.2,
-        'color': ColorShades.GOLD_4,
-        'sound_modifier': 'minor_third',
-        'glyph': None,
-    },
-    
-    # Occipital Sub-Regions
-    'primary_visual': {
-        'parent': 'occipital',
-        'proportion': 0.4,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
-        'function': 'basic_visual_processing',
-        'wave_frequency_hz': 11.5,
-        'color': ColorShades.VIOLET_5,
-        'sound_modifier': 'major_third',
-        'glyph': BrainGlyphs.VISUAL_CORTEX_GLYPH,
-    },
-    'secondary_visual': {
-        'parent': 'occipital',
-        'proportion': 0.35,
-        'platonic_solid': PlatonicSolids.OCTAHEDRON,
-        'function': 'complex_visual_processing',
-        'wave_frequency_hz': 11.0,
-        'color': ColorShades.VIOLET_3,
-        'sound_modifier': 'perfect_fifth',
-        'glyph': None,
-    },
-    'visual_association': {
-        'parent': 'occipital',
-        'proportion': 0.25,
-        'platonic_solid': PlatonicSolids.DODECAHEDRON,
-        'function': 'visual_integration',
-        'wave_frequency_hz': 10.7,
-        'color': ColorShades.VIOLET_6,
-        'sound_modifier': 'minor_seventh',
-        'glyph': None,
-    },
-    
-    # Limbic Sub-Regions
-    'hippocampus': {
-        'parent': 'limbic',
-        'proportion': 0.2,
-        'platonic_solid': PlatonicSolids.DODECAHEDRON,
-        'function': 'memory_formation',
-        'wave_frequency_hz': 6.5,
-        'color': ColorShades.RUBY_4,
-        'sound_modifier': 'major_third',
-        'glyph': BrainGlyphs.HIPPOCAMPUS_GLYPH,
-    },
-    'amygdala': {
-        'parent': 'limbic',
-        'proportion': 0.15,
-        'platonic_solid': PlatonicSolids.ICOSAHEDRON,
-        'function': 'emotional_processing',
-        'wave_frequency_hz': 7.2,
-        'color': ColorShades.RUBY_5,
-        'sound_modifier': 'minor_third',
-        'glyph': BrainGlyphs.AMYGDALA_GLYPH,
-    },
-    'thalamus': {
-        'parent': 'limbic',
-        'proportion': 0.25,
-        'platonic_solid': PlatonicSolids.CUBE,
-        'function': 'sensory_relay',
-        'wave_frequency_hz': 8.1,
-        'color': ColorShades.RUBY_2,
-        'sound_modifier': 'perfect_fifth',
-        'glyph': BrainGlyphs.THALAMUS_GLYPH,
-    },
-    'hypothalamus': {
-        'parent': 'limbic',
-        'proportion': 0.15,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
-        'function': 'homeostasis',
-        'wave_frequency_hz': 5.9,
-        'color': ColorShades.RUBY_6,
-        'sound_modifier': 'octave_down',
-        'glyph': BrainGlyphs.HYPOTHALAMUS_GLYPH,
-    },
-    'cingulate': {
-        'parent': 'limbic',
-        'proportion': 0.25,
-        'platonic_solid': PlatonicSolids.OCTAHEDRON,
-        'function': 'emotion_regulation',
-        'wave_frequency_hz': 7.5,
-        'color': ColorShades.RUBY_1,
-        'sound_modifier': 'major_seventh',
-        'glyph': None,
-    },
-    
-    # Cerebellum Sub-Regions
-    'anterior_lobe': {
-        'parent': 'cerebellum',
-        'proportion': 0.4,
-        'platonic_solid': PlatonicSolids.OCTAHEDRON,
-        'function': 'skilled_movement',
-        'wave_frequency_hz': 9.4,
-        'color': ColorShades.TEAL_5,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
         'sound_modifier': 'perfect_fourth',
-        'glyph': None,
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'gradual',
+        'connections': ['primary_auditory_cortex', 'frontal_cortex']
     },
-    'posterior_lobe': {
-        'parent': 'cerebellum',
-        'proportion': 0.5,
-        'platonic_solid': PlatonicSolids.ICOSAHEDRON,
-        'function': 'movement_coordination',
-        'wave_frequency_hz': 9.1,
-        'color': ColorShades.TEAL_2,
-        'sound_modifier': 'major_sixth',
-        'glyph': None,
+    'middle_temporal_gyrus': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.15,
+        'function': 'semantic_processing',
+        'brodmann_areas': [21],
+        'wave_frequency_hz': 8.8,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
+        'sound_modifier': 'minor_third',
+        'sound_pattern': 'melodic_varied',
+        'boundary_type': 'diffuse',
+        'connections': ['inferior_temporal_gyrus', 'frontal_cortex']
     },
-    'flocculonodular': {
-        'parent': 'cerebellum',
-        'proportion': 0.1,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
-        'function': 'balance_coordination',
-        'wave_frequency_hz': 8.9,
-        'color': ColorShades.TEAL_7,
-        'sound_modifier': 'minor_seventh',
-        'glyph': None,
+    'inferior_temporal_gyrus': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.15,
+        'function': 'object_face_recognition',
+        'brodmann_areas': [20],
+        'wave_frequency_hz': 8.5,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
+        'sound_modifier': 'major_third',
+        'sound_pattern': 'resonant_complex',
+        'boundary_type': 'fractal',
+        'connections': ['occipital_cortex', 'hippocampus']
+    },
+    'hippocampus': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.10,
+        'function': 'memory_formation_spatial_navigation',
+        'brodmann_areas': ['hippocampal_formation'],
+        'wave_frequency_hz': 6.5,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
+        'sound_modifier': 'octave_down',
+        'sound_pattern': 'ethereal_light',
+        'boundary_type': 'diffuse',
+        'connections': ['parahippocampal_gyrus', 'frontal_cortex']
+    },
+    'parahippocampal_gyrus': {
+        'parent': 'temporal_cortex',
+        'proportion': 0.05,
+        'function': 'memory_context_scene_processing',
+        'brodmann_areas': [36, 37],
+        'wave_frequency_hz': 6.8,
+        'default_wave': 'theta',
+        'color': ColorShades.TEMPORAL_GOLD,
+        'sound_modifier': 'major_seventh',
+        'sound_pattern': 'staccato_high',
+        'boundary_type': 'oscillating',
+        'connections': ['hippocampus', 'occipital_cortex']
     },
     
-    # Brain Stem Sub-Regions
-    'midbrain': {
-        'parent': 'brain_stem',
-        'proportion': 0.3,
-        'platonic_solid': PlatonicSolids.OCTAHEDRON,
-        'function': 'visual_auditory_reflexes',
-        'wave_frequency_hz': 3.1,
-        'color': ColorShades.SILVER_5,
+    # OCCIPITAL CORTEX Sub-regions
+    'primary_visual_cortex': {
+        'parent': 'occipital_cortex',
+        'proportion': 0.40,
+        'function': 'edge_orientation_basic_vision',
+        'brodmann_areas': [17],
+        'wave_frequency_hz': 11.5,
+        'default_wave': 'alpha',
+        'color': ColorShades.OCCIPITAL_PURPLE,
+        'sound_modifier': 'major_third',
+        'sound_pattern': 'staccato_low',
+        'boundary_type': 'sharp',
+        'connections': ['secondary_visual_cortex']
+    },
+    'secondary_visual_cortex': {
+        'parent': 'occipital_cortex',
+        'proportion': 0.25,
+        'function': 'visual_feature_integration',
+        'brodmann_areas': [18],
+        'wave_frequency_hz': 11.0,
+        'default_wave': 'alpha',
+        'color': ColorShades.OCCIPITAL_PURPLE,
         'sound_modifier': 'perfect_fifth',
-        'glyph': None,
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'gradual',
+        'connections': ['primary_visual_cortex', 'visual_area_v3', 'visual_area_v4']
+    },
+    'visual_area_v3': {
+        'parent': 'occipital_cortex',
+        'proportion': 0.15,
+        'function': 'motion_form_processing',
+        'brodmann_areas': [19],
+        'wave_frequency_hz': 10.7,
+        'default_wave': 'alpha',
+        'color': ColorShades.OCCIPITAL_PURPLE,
+        'sound_modifier': 'minor_seventh',
+        'sound_pattern': 'rhythmic_sustained',
+        'boundary_type': 'diffuse',
+        'connections': ['secondary_visual_cortex', 'visual_area_v5_mt']
+    },
+    'visual_area_v4': {
+        'parent': 'occipital_cortex',
+        'proportion': 0.15,
+        'function': 'color_form_processing',
+        'brodmann_areas': [19],
+        'wave_frequency_hz': 10.9,
+        'default_wave': 'alpha',
+        'color': ColorShades.OCCIPITAL_PURPLE,
+        'sound_modifier': 'harmonic_fifth',
+        'sound_pattern': 'harmonic_complex',
+        'boundary_type': 'fractal',
+        'connections': ['secondary_visual_cortex', 'inferior_temporal_gyrus']
+    },
+    'visual_area_v5_mt': {
+        'parent': 'occipital_cortex',
+        'proportion': 0.05,
+        'function': 'motion_detection',
+        'brodmann_areas': [19],
+        'wave_frequency_hz': 10.2,
+        'default_wave': 'alpha',
+        'color': ColorShades.OCCIPITAL_PURPLE,
+        'sound_modifier': 'perfect_octave',
+        'sound_pattern': 'staccato_high',
+        'boundary_type': 'oscillating',
+        'connections': ['visual_area_v3', 'posterior_parietal_cortex']
+    },
+    
+    # LIMBIC SYSTEM Sub-regions
+    'amygdala': {
+        'parent': 'limbic_system',
+        'proportion': 0.25,
+        'function': 'fear_emotion_threat_detection',
+        'brodmann_areas': ['amygdaloid_complex'],
+        'wave_frequency_hz': 7.2,
+        'default_wave': 'theta',
+        'color': ColorShades.LIMBIC_RED,
+        'sound_modifier': 'minor_third',
+        'sound_pattern': 'staccato_low',
+        'boundary_type': 'diffuse',
+        'connections': ['hippocampus', 'prefrontal_cortex', 'brainstem']
+    },
+    'anterior_cingulate': {
+        'parent': 'limbic_system',
+        'proportion': 0.25,
+        'function': 'emotion_regulation_conflict_monitoring',
+        'brodmann_areas': [24, 32],
+        'wave_frequency_hz': 7.5,
+        'default_wave': 'theta',
+        'color': ColorShades.LIMBIC_RED,
+        'sound_modifier': 'major_seventh',
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'gradual',
+        'connections': ['prefrontal_cortex', 'amygdala']
+    },
+    'posterior_cingulate': {
+        'parent': 'limbic_system',
+        'proportion': 0.20,
+        'function': 'self_awareness_default_mode',
+        'brodmann_areas': [23, 31],
+        'wave_frequency_hz': 7.8,
+        'default_wave': 'theta',
+        'color': ColorShades.LIMBIC_RED,
+        'sound_modifier': 'perfect_fifth',
+        'sound_pattern': 'ethereal_light',
+        'boundary_type': 'diffuse',
+        'connections': ['prefrontal_cortex', 'parietal_cortex']
+    },
+    'insula': {
+        'parent': 'limbic_system',
+        'proportion': 0.20,
+        'function': 'interoception_body_awareness',
+        'brodmann_areas': ['insular_cortex'],
+        'wave_frequency_hz': 8.1,
+        'default_wave': 'theta',
+        'color': ColorShades.LIMBIC_RED,
+        'sound_modifier': 'harmonic_third',
+        'sound_pattern': 'resonant_complex',
+        'boundary_type': 'oscillating',
+        'connections': ['secondary_somatosensory_cortex', 'amygdala']
+    },
+    'orbitofrontal_cortex': {
+        'parent': 'limbic_system',
+        'proportion': 0.10,
+        'function': 'reward_decision_making',
+        'brodmann_areas': [11, 47],
+        'wave_frequency_hz': 8.5,
+        'default_wave': 'theta',
+        'color': ColorShades.LIMBIC_RED,
+        'sound_modifier': 'major_sixth',
+        'sound_pattern': 'melodic_varied',
+        'boundary_type': 'fractal',
+        'connections': ['amygdala', 'prefrontal_cortex']
+    },
+    
+    # CEREBELLUM Sub-regions
+    'cerebellar_cortex': {
+        'parent': 'cerebellum',
+        'proportion': 0.40,
+        'function': 'motor_learning_fine_tuning',
+        'brodmann_areas': ['cerebellar_cortex'],
+        'wave_frequency_hz': 9.4,
+        'default_wave': 'alpha',
+        'color': ColorShades.CEREBELLUM_TEAL,
+        'sound_modifier': 'perfect_fourth',
+        'sound_pattern': 'rhythmic_sustained',
+        'boundary_type': 'fractal',
+        'connections': ['deep_cerebellar_nuclei', 'primary_motor_cortex']
+    },
+    'deep_cerebellar_nuclei': {
+        'parent': 'cerebellum',
+        'proportion': 0.20,
+        'function': 'motor_output_coordination',
+        'brodmann_areas': ['deep_nuclei'],
+        'wave_frequency_hz': 9.1,
+        'default_wave': 'alpha',
+        'color': ColorShades.CEREBELLUM_TEAL,
+        'sound_modifier': 'major_sixth',
+        'sound_pattern': 'harmonic_complex',
+        'boundary_type': 'sharp',
+        'connections': ['cerebellar_cortex', 'brainstem']
+    },
+    'vestibulocerebellum': {
+        'parent': 'cerebellum',
+        'proportion': 0.15,
+        'function': 'balance_eye_movements',
+        'brodmann_areas': ['flocculonodular_lobe'],
+        'wave_frequency_hz': 8.9,
+        'default_wave': 'alpha',
+        'color': ColorShades.CEREBELLUM_TEAL,
+        'sound_modifier': 'minor_seventh',
+        'sound_pattern': 'staccato_high',
+        'boundary_type': 'oscillating',
+        'connections': ['brainstem']
+    },
+    'spinocerebellum': {
+        'parent': 'cerebellum',
+        'proportion': 0.15,
+        'function': 'posture_locomotion',
+        'brodmann_areas': ['vermis_intermediate'],
+        'wave_frequency_hz': 9.0,
+        'default_wave': 'alpha',
+        'color': ColorShades.CEREBELLUM_TEAL,
+        'sound_modifier': 'perfect_octave',
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'gradual',
+        'connections': ['primary_motor_cortex', 'brainstem']
+    },
+    'cerebrocerebellum': {
+        'parent': 'cerebellum',
+        'proportion': 0.10,
+        'function': 'cognitive_functions_planning',
+        'brodmann_areas': ['lateral_hemispheres'],
+        'wave_frequency_hz': 9.2,
+        'default_wave': 'alpha',
+        'color': ColorShades.CEREBELLUM_TEAL,
+        'sound_modifier': 'major_third',
+        'sound_pattern': 'ethereal_light',
+        'boundary_type': 'diffuse',
+        'connections': ['prefrontal_cortex', 'parietal_cortex']
+    },
+    
+    # BRAINSTEM Sub-regions
+    'midbrain': {
+        'parent': 'brainstem',
+        'proportion': 0.25,
+        'function': 'eye_movement_visual_auditory_reflexes',
+        'brodmann_areas': ['midbrain_structures'],
+        'wave_frequency_hz': 3.1,
+        'default_wave': 'delta',
+        'color': ColorShades.BRAINSTEM_GRAY,
+        'sound_modifier': 'perfect_fifth',
+        'sound_pattern': 'staccato_low',
+        'boundary_type': 'oscillating',
+        'connections': ['occipital_cortex', 'temporal_cortex']
     },
     'pons': {
-        'parent': 'brain_stem',
+        'parent': 'brainstem',
         'proportion': 0.35,
-        'platonic_solid': PlatonicSolids.CUBE,
-        'function': 'breathing_facial_expressions',
+        'function': 'sleep_arousal_facial_sensation',
+        'brodmann_areas': ['pontine_structures'],
         'wave_frequency_hz': 2.7,
-        'color': ColorShades.SILVER_3,
+        'default_wave': 'delta',
+        'color': ColorShades.BRAINSTEM_GRAY,
         'sound_modifier': 'minor_third',
-        'glyph': None,
+        'sound_pattern': 'rhythmic_sustained',
+        'boundary_type': 'gradual',
+        'connections': ['cerebellum', 'reticular_formation']
     },
     'medulla': {
-        'parent': 'brain_stem',
-        'proportion': 0.35,
-        'platonic_solid': PlatonicSolids.TETRAHEDRON,
-        'function': 'autonomic_functions',
+        'parent': 'brainstem',
+        'proportion': 0.25,
+        'function': 'breathing_heart_rate_blood_pressure',
+        'brodmann_areas': ['medullary_structures'],
         'wave_frequency_hz': 1.8,
-        'color': ColorShades.SILVER_6,
+        'default_wave': 'delta',
+        'color': ColorShades.BRAINSTEM_GRAY,
         'sound_modifier': 'octave_down',
-        'glyph': None,
+        'sound_pattern': 'flowing_mid',
+        'boundary_type': 'sharp',
+        'connections': ['spinal_cord']
+    },
+    'reticular_formation': {
+        'parent': 'brainstem',
+        'proportion': 0.15,
+        'function': 'arousal_sleep_wake_consciousness',
+        'brodmann_areas': ['reticular_structures'],
+        'wave_frequency_hz': 2.2,
+        'default_wave': 'delta',
+        'color': ColorShades.BRAINSTEM_GRAY,
+        'sound_modifier': 'harmonic_fifth',
+        'sound_pattern': 'resonant_complex',
+        'boundary_type': 'diffuse',
+        'connections': ['frontal_cortex', 'limbic_system']
     }
 }
 
-
-# ---- Sound Modifiers ----
+# ---- Sound Modifiers (COMPLETE) ----
 SOUND_MODIFIERS = {
     'harmonic_fifth': {'interval': 1.5, 'timbre_shift': 0.2, 'amplitude_modifier': 1.1},
     'harmonic_third': {'interval': 1.25, 'timbre_shift': 0.15, 'amplitude_modifier': 1.05},
@@ -497,7 +669,7 @@ SOUND_MODIFIERS = {
     'octave_down': {'interval': 0.5, 'timbre_shift': -0.3, 'amplitude_modifier': 0.9}
 }
 
-# ---- Brain Wave Types ----
+# ---- Brain Wave Types (COMPLETE) ----
 BRAIN_WAVE_TYPES = {
     'delta': {'frequency_range': (0.5, 4.0), 'state': 'deep_sleep'},
     'theta': {'frequency_range': (4.0, 8.0), 'state': 'drowsy_meditation'},
@@ -507,8 +679,7 @@ BRAIN_WAVE_TYPES = {
     'lambda': {'frequency_range': (100.0, 200.0), 'state': 'insight_transcendence'}
 }
 
-
-# ---- Sound Patterns for Memory Types ----
+# ---- Sound Patterns for sub regions ----
 SOUND_PATTERNS = {
     'staccato_low': {
         'base_note_shift': -1.0,
@@ -576,8 +747,7 @@ SOUND_PATTERNS = {
     }
 }
 
-
-# ---- Boundary Definitions ----
+# ---- Boundary Definitions (COMPLETE) ----
 BOUNDARY_TYPES = {
     'sharp': {
         'transition_width': 3,  # pixels/voxels
@@ -608,18 +778,18 @@ BOUNDARY_TYPES = {
 
 # Define which boundary type exists between regions
 REGION_BOUNDARIES = {
-    ('frontal', 'parietal'): 'gradual',
-    ('frontal', 'temporal'): 'gradual',
-    ('parietal', 'temporal'): 'gradual',
-    ('parietal', 'occipital'): 'sharp',
-    ('temporal', 'occipital'): 'sharp',
-    ('limbic', 'frontal'): 'diffuse',
-    ('limbic', 'parietal'): 'diffuse',
-    ('limbic', 'temporal'): 'diffuse',
-    ('limbic', 'occipital'): 'oscillating',
-    ('cerebellum', 'brain_stem'): 'sharp',
-    ('cerebellum', 'occipital'): 'fractal',
-    ('brain_stem', 'limbic'): 'fractal',
+    ('frontal_cortex', 'parietal_cortex'): 'gradual',
+    ('frontal_cortex', 'temporal_cortex'): 'gradual',
+    ('parietal_cortex', 'temporal_cortex'): 'gradual',
+    ('parietal_cortex', 'occipital_cortex'): 'sharp',
+    ('temporal_cortex', 'occipital_cortex'): 'sharp',
+    ('limbic_system', 'frontal_cortex'): 'diffuse',
+    ('limbic_system', 'parietal_cortex'): 'diffuse',
+    ('limbic_system', 'temporal_cortex'): 'diffuse',
+    ('limbic_system', 'occipital_cortex'): 'oscillating',
+    ('cerebellum', 'brainstem'): 'sharp',
+    ('cerebellum', 'occipital_cortex'): 'fractal',
+    ('brainstem', 'limbic_system'): 'fractal',
     # Default boundary type if not specified
     'default': 'gradual'
 }
@@ -639,16 +809,16 @@ FREQUENCY_MATCH_TOLERANCE = 0.05
 
 # Energy distribution constants
 ENERGY_DISTRIBUTION = {
-    'frontal': 0.28,
-    'parietal': 0.19,
-    'temporal': 0.22,
-    'occipital': 0.14,
-    'limbic': 0.11,
-    'cerebellum': 0.14,
-    'brain_stem': 0.06
+    'frontal_cortex': 0.35,
+    'parietal_cortex': 0.20,
+    'temporal_cortex': 0.18,
+    'occipital_cortex': 0.12,
+    'limbic_system': 0.08,
+    'cerebellum': 0.10,
+    'brainstem': 0.07
 }
 
-# Define mapping helpers to get parent regions and other relationships
+# ---- Helper Functions ----
 def get_sub_regions_for_parent(parent_region):
     """Get all sub-regions for a specified parent region."""
     return [sr for sr, data in SUB_REGIONS.items() if data['parent'] == parent_region]
@@ -665,99 +835,107 @@ def get_parent_region(sub_region):
         return sub_region  # Major regions are their own parent
     return None
 
-def get_platonic_solid_for_region(region_name):
-    """Get the platonic solid for a region."""
+def get_region_connections(region_name):
+    """Get anatomical connections for a region."""
     if region_name in SUB_REGIONS:
-        return SUB_REGIONS[region_name]['platonic_solid']
-    # For major regions, combine platonics of sub-regions or use default
-    if region_name in MAJOR_REGIONS:
-        sub_regions = get_sub_regions_for_parent(region_name)
-        if sub_regions:
-            # Just return the most common platonic among sub-regions for simplicity
-            platonic_counts = {}
-            for sr in sub_regions:
-                ps = SUB_REGIONS[sr]['platonic_solid']
-                platonic_counts[ps] = platonic_counts.get(ps, 0) + 1
-            return max(platonic_counts.items(), key=lambda x: x[1])[0]
-        else:
-            return PlatonicSolids.CUBE  # Default
-    return None
+        return SUB_REGIONS[region_name].get('connections', [])
+    return []
 
-def get_region_color(region_name):
-    """Get the color for a region."""
-    if region_name in MAJOR_REGIONS:
-        return MAJOR_REGIONS[region_name]['color']
-    elif region_name in SUB_REGIONS:
-        return SUB_REGIONS[region_name]['color']
-    return ColorShades.SILVER_4  # Default color
+def get_brodmann_areas(region_name):
+    """Get Brodmann areas for a region."""
+    if region_name in SUB_REGIONS:
+        return SUB_REGIONS[region_name].get('brodmann_areas', [])
+    return []
 
 def get_region_frequency(region_name):
-    """Get the frequency for a region."""
-    if region_name in MAJOR_REGIONS:
-        return MAJOR_REGIONS[region_name]['wave_frequency_hz']
-    elif region_name in SUB_REGIONS:
+    """Get the wave frequency for a region."""
+    if region_name in SUB_REGIONS:
         return SUB_REGIONS[region_name]['wave_frequency_hz']
-    return BASE_BRAIN_FREQUENCY  # Default frequency
+    elif region_name in MAJOR_REGIONS:
+        return MAJOR_REGIONS[region_name]['wave_frequency_hz']
+    return BASE_BRAIN_FREQUENCY
 
-def get_region_function(region_name):
-    """Get the function for a region."""
-    if region_name in MAJOR_REGIONS:
-        return MAJOR_REGIONS[region_name]['function']
-    elif region_name in SUB_REGIONS:
-        return SUB_REGIONS[region_name]['function']
-    return 'unknown'  # Default function
+def get_region_wave_type(region_name):
+    """Get the default brain wave type for a region."""
+    if region_name in SUB_REGIONS:
+        return SUB_REGIONS[region_name]['default_wave']
+    elif region_name in MAJOR_REGIONS:
+        return MAJOR_REGIONS[region_name]['default_wave']
+    return 'alpha'
 
-def get_region_boundaries(region1, region2):
-    """Get boundary type between two regions."""
-    # Check both orderings
-    boundary_key1 = (region1, region2)
-    boundary_key2 = (region2, region1)
-    
-    if boundary_key1 in REGION_BOUNDARIES:
-        return REGION_BOUNDARIES[boundary_key1]
-    elif boundary_key2 in REGION_BOUNDARIES:
-        return REGION_BOUNDARIES[boundary_key2]
-    else:
-        return REGION_BOUNDARIES['default']
+def get_sound_properties(region_name):
+    """Get complete sound properties for a region."""
+    if region_name in SUB_REGIONS:
+        sub_region = SUB_REGIONS[region_name]
+        parent = MAJOR_REGIONS[sub_region['parent']]
+        return {
+            'base_note': parent['sound_base_note'],
+            'frequency_hz': sub_region['wave_frequency_hz'],
+            'wave_type': sub_region['default_wave'],
+            'sound_modifier': sub_region.get('sound_modifier', 'perfect_fifth'),
+            'sound_pattern': sub_region.get('sound_pattern', 'flowing_mid'),
+            'boundary_type': sub_region.get('boundary_type', 'gradual')
+        }
+    elif region_name in MAJOR_REGIONS:
+        region = MAJOR_REGIONS[region_name]
+        return {
+            'base_note': region['sound_base_note'],
+            'frequency_hz': region['wave_frequency_hz'],
+            'wave_type': region['default_wave'],
+            'sound_modifier': 'perfect_fifth',
+            'sound_pattern': 'flowing_mid',
+            'boundary_type': region.get('boundary_type', 'gradual')
+        }
+    return None
 
-def validate_region_definitions():
-    """Validate that all region definitions are consistent."""
+def validate_anatomical_structure():
+    """Validate that the anatomical structure is consistent."""
     errors = []
-    
+
     # Check that all sub-regions have valid parents
     for sub_region, data in SUB_REGIONS.items():
         parent = data['parent']
         if parent not in MAJOR_REGIONS:
             errors.append(f"Sub-region '{sub_region}' has invalid parent '{parent}'")
-    
+
     # Check that proportions sum to approximately 1.0 for each major region
     for major_region in MAJOR_REGIONS.keys():
         sub_regions = get_sub_regions_for_parent(major_region)
-        total_proportion = sum(SUB_REGIONS[sr]['proportion'] for sr in sub_regions)
-        if abs(total_proportion - 1.0) > 0.01:  # Allow small floating point errors
-            errors.append(f"Region '{major_region}' sub-region proportions sum to {total_proportion:.3f}, not 1.0")
-    
+        if sub_regions:
+            total_proportion = sum(SUB_REGIONS[sr]['proportion'] for sr in sub_regions)
+            if abs(total_proportion - 1.0) > 0.01:
+                errors.append(f"Region '{major_region}' sub-region proportions sum to {total_proportion:.3f}, not 1.0")
+
     # Check that major region proportions sum to approximately 1.0
     total_major_proportion = sum(data['proportion'] for data in MAJOR_REGIONS.values())
     if abs(total_major_proportion - 1.0) > 0.01:
         errors.append(f"Major region proportions sum to {total_major_proportion:.3f}, not 1.0")
-    
-    return errors
 
-# Run validation on import
-_validation_errors = validate_region_definitions()
+    # Check frequency alignment with brain wave types
+    for region_name, region_data in SUB_REGIONS.items():
+        wave_type = region_data.get('default_wave')
+        frequency = region_data.get('wave_frequency_hz')
+        if wave_type and frequency:
+            wave_range = BRAIN_WAVE_TYPES[wave_type]['frequency_range']
+            if not (wave_range[0] <= frequency <= wave_range[1]):
+                errors.append(f"Region '{region_name}' frequency {frequency}Hz not in {wave_type} range {wave_range}")
+
+    return errors
+    return []
+
+# Validate on import
+_validation_errors = validate_anatomical_structure()
 if _validation_errors:
     import warnings
     for error in _validation_errors:
-        warnings.warn(f"Region definition validation error: {error}")
+        warnings.warn(f"Anatomical structure validation error: {error}")
 
-# Export commonly used items
+# Export
 __all__ = [
-    'HEMISPHERES', 'MAJOR_REGIONS', 'SUB_REGIONS', 'SOUND_MODIFIERS', 
+    'MAJOR_REGIONS', 'SUB_REGIONS', 'ColorShades', 'SOUND_MODIFIERS', 
     'BRAIN_WAVE_TYPES', 'SOUND_PATTERNS', 'BOUNDARY_TYPES', 'REGION_BOUNDARIES',
-    'GRID_DIMENSIONS', 'GOLDEN_RATIO', 'BASE_BRAIN_FREQUENCY', 'ENERGY_DISTRIBUTION',
-    'ColorShades', 'BrainGlyphs', 'PlatonicSolids',
+    'ENERGY_DISTRIBUTION', 'BASE_BRAIN_FREQUENCY', 'FREQUENCY_MATCH_TOLERANCE',
     'get_sub_regions_for_parent', 'get_all_region_names', 'get_parent_region',
-    'get_platonic_solid_for_region', 'get_region_color', 'get_region_frequency',
-    'get_region_function', 'get_region_boundaries', 'validate_region_definitions'
+    'get_region_connections', 'get_brodmann_areas', 'get_region_frequency',
+    'get_region_wave_type', 'get_sound_properties', 'validate_anatomical_structure'
 ]
