@@ -35,15 +35,14 @@ except ImportError as e:
     logger.critical("CRITICAL ERROR: constants.py failed import in void_field.py")
     raise ImportError(f"Essential constants missing: {e}") from e
 
-# --- Dependencies ---
+# --- Dependencies - HARD FAIL if missing ---
 try:
-    # Noise Generator is optional
+    # Noise Generator is required for proper void field initialization
     from shared.sound.noise_generator import NoiseGenerator
     NOISE_GEN_AVAILABLE = True
-except ImportError:
-    NOISE_GEN_AVAILABLE = False
-    NoiseGenerator = None # Define as None if unavailable
-    logger.warning("NoiseGenerator not found. Void field init will use uniform random.")
+except ImportError as e:
+    logger.critical("CRITICAL: NoiseGenerator is required for VoidField initialization but not found. Cannot continue without sound generation capabilities.")
+    raise ImportError("CRITICAL: NoiseGenerator is required for VoidField initialization but not found. Cannot continue without sound generation capabilities.") from e
 try:
     from stage_1.fields.field_base import FieldBase
 except ImportError:
@@ -128,16 +127,14 @@ class VoidField(FieldBase):
             HARMONIC_RESONANCE_ENERGY_BOOST * 5.0 # Boost coherence more?
         )
 
-        # --- Noise Generator (Optional) ---
-        self.noise_generator = None
-        if NOISE_GEN_AVAILABLE and NoiseGenerator:
-            try:
-                self.noise_generator = NoiseGenerator(sample_rate=SAMPLE_RATE)
-                logger.info("NoiseGenerator initialized successfully for VoidField.")
-            except NameError:
-                logger.error("const.SAMPLE_RATE missing. Cannot initialize NoiseGenerator.")
-            except Exception as e:
-                logger.error(f"NoiseGenerator init failed: {e}")
+        # --- Noise Generator - HARD FAIL if initialization fails ---
+        try:
+            self.noise_generator = NoiseGenerator(sample_rate=SAMPLE_RATE)
+            logger.info("NoiseGenerator initialized successfully for VoidField.")
+        except NameError as name_err:
+            raise RuntimeError("CRITICAL: const.SAMPLE_RATE is missing. Cannot initialize NoiseGenerator.") from name_err
+        except Exception as e:
+            raise RuntimeError(f"CRITICAL: NoiseGenerator initialization failed: {e}") from e
 
         # --- Grid Initialization ---
         # Initialize grids to None initially, setup in initialize_grid
@@ -174,43 +171,34 @@ class VoidField(FieldBase):
             )
             logger.debug(f"Initialized energy grid. Shape: {self.energy.shape}")
 
-            # Frequency (Hz) - Attempt noise, fallback to uniform
+            # Frequency (Hz) - HARD FAIL if noise generation fails
             low_freq, high_freq = self.base_frequency_range
-            if self.noise_generator:
-                try:
-                    max_amp = getattr(const, 'MAX_AMPLITUDE', 0.95)
-                    num_needed = np.prod(shape)
-                    # Request slightly more duration than strictly needed
-                    duration_needed = (float(num_needed) / float(SAMPLE_RATE)) + 0.1
-                    logger.debug(f"Requesting noise duration: {duration_needed:.3f}s")
-                    # Use Pink Noise for more natural frequency distribution
-                    noise_data_raw = self.noise_generator.generate_noise(
-                        'pink', duration=duration_needed, amplitude=max_amp
-                    )
-                    if noise_data_raw is None or len(noise_data_raw) < num_needed:
-                         raise RuntimeError("Noise generator returned insufficient data")
-                    # Slice and reshape
-                    noise_data = noise_data_raw[:num_needed]
-                    # Check for invalid noise data (NaN, Inf, or flat)
-                    if not np.all(np.isfinite(noise_data)) or (num_needed > 1 and np.max(noise_data) == np.min(noise_data)):
-                         raise RuntimeError("Generated noise data is invalid (NaN/Inf/Flat).")
-                    min_noise, max_noise = np.min(noise_data), np.max(noise_data)
-                    range_noise = max_noise - min_noise
-                    # Normalize noise 0-1
-                    noise_normalized = (np.zeros_like(noise_data) if range_noise < const.FLOAT_EPSILON
-                                       else (noise_data - min_noise) / range_noise)
-                    # Scale to frequency range and reshape
-                    self.frequency = (noise_normalized * (high_freq - low_freq) + low_freq).reshape(shape).astype(np.float32)
-                    if self.frequency.shape != shape: # Safeguard reshape
-                         raise RuntimeError(f"Frequency grid reshape failed. Expected {shape}, got {self.frequency.shape}")
-                    logger.info("Initialized frequency grid with Pink Noise.")
-                except Exception as noise_err:
-                    logger.error(f"Noise generation failed: {noise_err}. "
-                                 f"Falling back to uniform random frequency.", exc_info=True)
-                    self.frequency = np.random.uniform(low_freq, high_freq, shape).astype(np.float32)
-            else:
-                logger.warning("NoiseGenerator unavailable. Initializing frequency with uniform random.")
-                self.frequency = np.random.uniform(low_freq, high_freq, shape).astype(np.float32)
+            max_amp = getattr(const, 'MAX_AMPLITUDE', 0.95)
+            num_needed = np.prod(shape)
+            # Request slightly more duration than strictly needed
+            duration_needed = (float(num_needed) / float(SAMPLE_RATE)) + 0.1
+            logger.debug(f"Requesting noise duration: {duration_needed:.3f}s")
+            # Use Pink Noise for more natural frequency distribution
+            noise_data_raw = self.noise_generator.generate_noise(
+                'pink', duration=duration_needed, amplitude=max_amp
+            )
+            if noise_data_raw is None or len(noise_data_raw) < num_needed:
+                 raise RuntimeError("CRITICAL: Noise generator returned insufficient data for frequency grid initialization")
+            # Slice and reshape
+            noise_data = noise_data_raw[:num_needed]
+            # Check for invalid noise data (NaN, Inf, or flat)
+            if not np.all(np.isfinite(noise_data)) or (num_needed > 1 and np.max(noise_data) == np.min(noise_data)):
+                 raise RuntimeError("CRITICAL: Generated noise data is invalid (NaN/Inf/Flat)")
+            min_noise, max_noise = np.min(noise_data), np.max(noise_data)
+            range_noise = max_noise - min_noise
+            # Normalize noise 0-1
+            noise_normalized = (np.zeros_like(noise_data) if range_noise < const.FLOAT_EPSILON
+                               else (noise_data - min_noise) / range_noise)
+            # Scale to frequency range and reshape
+            self.frequency = (noise_normalized * (high_freq - low_freq) + low_freq).reshape(shape).astype(np.float32)
+            if self.frequency.shape != shape: # Safeguard reshape
+                 raise RuntimeError(f"CRITICAL: Frequency grid reshape failed. Expected {shape}, got {self.frequency.shape}")
+            logger.info("Initialized frequency grid with Pink Noise.")
             # Final clip
             self.frequency = np.clip(self.frequency, low_freq, high_freq)
             logger.debug(f"Initialized frequency grid. Shape: {self.frequency.shape}")

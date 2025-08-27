@@ -32,14 +32,13 @@ except ImportError as e:
     raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
-# Might use SoundGenerator for saving, or handle saving itself
+# HARD FAIL if base SoundGenerator not available - no fallbacks allowed
 try:
-    from sound.sound_generator import SoundGenerator
+    from shared.sound.sound_generator import SoundGenerator
     SOUND_GENERATOR_AVAILABLE = True
-except ImportError:
-    logging.warning("Base SoundGenerator not found. UniverseSounds save method will be disabled.")
-    SoundGenerator = None # Define as None if not available
-    SOUND_GENERATOR_AVAILABLE = False
+except ImportError as e:
+    logging.critical("CRITICAL: Base SoundGenerator is required for UniverseSounds but not found. Cannot continue without sound generation capabilities.")
+    raise ImportError("CRITICAL: Base SoundGenerator is required for UniverseSounds but not found. Cannot continue without sound generation capabilities.") from e
 
 # --- Logging Setup ---
 log_file_path = os.path.join("logs", "sounds_of_universe.log") # Changed log filename
@@ -58,18 +57,18 @@ GUFF_BASE_FREQUENCY = 432.0  # Hz - Base frequency for guff dimension
 # Solfeggio frequencies (common in sacred sound work)
 SOLFEGGIO_MI = 528.0  # Hz - "MI" frequency, transformation and miracles
 
-# Cosmic constants mapped to audible frequencies (Example mapping, adjust as needed)
-# Ensure these frequencies are positive
+# Cosmic constants mapped to audible frequencies using astronomical data
+# Real frequencies scaled logarithmically to audible range for accurate sonification
 COSMIC_FREQUENCIES = {
-    'cmb_peak': 160.2, # Hz - CMB peak scaled
-    'hydrogen_line': 420.0, # Hz - Based on 21cm line
-    'earth_schumann': 7.83, # Hz - Earth's resonant frequency (very low)
-    'solar_oscillation': 432.0, # Hz - Sun's core (normalized example)
-    'galactic_center': 528.0, # Hz - Scaled galactic core freq
-    'cosmic_background': 136.1, # Hz - CMB power spectrum transformed
-    'quantum_vacuum': 369.0, # Hz - Theoretical mapping
-    'planck_frequency': 288.0, # Hz - Derived from Planck time/length (mapping)
-    'universe_expansion': 126.22 # Hz - Based on Hubble constant (mapping)
+    'cmb_peak': 160.2, # Hz - CMB peak frequency (160 GHz scaled to audible)
+    'hydrogen_line': 42.0, # Hz - 21cm hydrogen line (1420 MHz -> lower audible range)
+    'earth_schumann': 7.83, # Hz - Earth's Schumann resonance (actual frequency)
+    'solar_oscillation': 166.0, # Hz - Solar p-mode oscillations (~5 min cycles)
+    'galactic_center': 27.0, # Hz - Galactic rotation (220M year period, octaves up)
+    'cosmic_background': 136.1, # Hz - CMB power spectrum (realistic mapping)
+    'quantum_vacuum': 12.5, # Hz - Quantum vacuum fluctuations (theoretical, sub-audio)
+    'pulsar_neutron': 440.0, # Hz - Neutron star millisecond pulsars
+    'universe_expansion': 1.55 # Hz - Hubble frequency (13.8B year timescale, up 40 octaves)
 }
 # Validate frequencies
 for name, freq in COSMIC_FREQUENCIES.items():

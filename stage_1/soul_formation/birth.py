@@ -189,6 +189,11 @@ class BirthProcess:
             attachment_metrics = self._create_life_cord_and_attach_soul()
             self._record_stage_completion('soul_attachment', attachment_metrics)
             
+            # IMPORTANT: Attach brain structure to soul spark for visualizations
+            if self.brain_structure and self.soul_spark:
+                self.soul_spark.brain_structure = self.brain_structure
+                logger.info(f"✓ Brain structure attached to soul spark for visualization")
+            
             # Stage 9: Simulate first breath
             logger.info("💨 Birth Stage 9: First breath simulation...")
             breath_metrics = self._simulate_first_breath()

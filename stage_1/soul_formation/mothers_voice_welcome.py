@@ -111,8 +111,8 @@ class MothersVoiceWelcome:
         """Generate audio file of mother's voice welcome."""
         
         try:
-            # Create audio directory in shared/output/sounds/ if it doesn't exist
-            audio_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'shared', 'output', 'sounds')
+            # Create audio directory in output/sounds/ if it doesn't exist
+            audio_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'output', 'sounds')
             os.makedirs(audio_dir, exist_ok=True)
             
             # Audio file path
@@ -179,21 +179,115 @@ class MothersVoiceWelcome:
             0x00, 0x08, 0x00, 0x00   # Subchunk2Size
         ])
         
-        # Generate simple sine wave at mother's voice frequency
+        # Generate realistic human speech synthesis
         import math
+        import random
+        
+        # Human speech characteristics
+        base_freq = self.mother_voice_frequency  # Fundamental frequency (F0)
+        
+        # Parse message into phonetic segments
+        words = self.welcome_message.split()
+        total_words = len(words)
+        
         audio_data = bytearray()
-        for i in range(duration_samples):
-            # Generate nurturing tone
-            t = i / sample_rate
-            amplitude = 0.3 * math.sin(2 * math.pi * self.mother_voice_frequency * t)
+        
+        # Speech timing: ~150 words per minute for gentle speech
+        word_duration = 60.0 / 150.0  # ~0.4s per word
+        syllable_duration = word_duration / 2  # Average 2 syllables per word
+        
+        current_time = 0.0
+        
+        for word_idx, word in enumerate(words):
+            # Estimate syllables (rough approximation)
+            syllables = max(1, len([c for c in word.lower() if c in 'aeiou']))
             
-            # Add emotional warmth (slight vibrato)
-            vibrato = 0.1 * math.sin(2 * math.pi * 5 * t)  # 5Hz vibrato
-            amplitude += amplitude * vibrato
+            for syl_idx in range(syllables):
+                syl_start = int(current_time * sample_rate)
+                syl_end = int((current_time + syllable_duration) * sample_rate)
+                syl_length = syl_end - syl_start
+                
+                if syl_start >= duration_samples:
+                    break
+                    
+                syl_end = min(syl_end, duration_samples)
+                syl_length = syl_end - syl_start
+                
+                if syl_length > 0:
+                    # Generate formant frequencies for human speech
+                    # Female voice formants (Hz): F1=270-610, F2=850-2550, F3=2200-3500
+                    f1 = 350 + 150 * random.random()  # First formant (tongue height)
+                    f2 = 1200 + 800 * random.random()  # Second formant (tongue position)
+                    f3 = 2800 + 500 * random.random()  # Third formant (lip rounding)
+                    
+                    # Pitch contour - natural speech melody
+                    pitch_start = base_freq * (0.9 + 0.2 * random.random())
+                    pitch_end = base_freq * (0.9 + 0.2 * random.random())
+                    
+                    # Generate syllable
+                    for i in range(syl_length):
+                        t_local = i / sample_rate
+                        t_global = (syl_start + i) / sample_rate
+                        progress = i / syl_length if syl_length > 1 else 0
+                        
+                        # Interpolate pitch
+                        pitch = pitch_start + (pitch_end - pitch_start) * progress
+                        
+                        # Generate harmonic series (fundamental + overtones)
+                        amplitude = 0.0
+                        
+                        # Fundamental frequency
+                        amplitude += 0.4 * math.sin(2 * math.pi * pitch * t_local)
+                        
+                        # Formant resonances (what makes it sound like speech)
+                        formant1 = 0.3 * math.sin(2 * math.pi * f1 * t_local) * math.exp(-(f1 * t_local * 0.01))
+                        formant2 = 0.2 * math.sin(2 * math.pi * f2 * t_local) * math.exp(-(f2 * t_local * 0.005))
+                        formant3 = 0.1 * math.sin(2 * math.pi * f3 * t_local) * math.exp(-(f3 * t_local * 0.003))
+                        
+                        # Combine formants with fundamental
+                        amplitude += formant1 + formant2 + formant3
+                        
+                        # Add harmonic overtones
+                        amplitude += 0.15 * math.sin(2 * math.pi * pitch * 2 * t_local)  # Second harmonic
+                        amplitude += 0.08 * math.sin(2 * math.pi * pitch * 3 * t_local)  # Third harmonic
+                        
+                        # Speech envelope (attack-sustain-decay)
+                        envelope = 1.0
+                        attack_time = 0.05
+                        decay_time = 0.1
+                        
+                        if t_local < attack_time:
+                            envelope = t_local / attack_time
+                        elif t_local > syllable_duration - decay_time:
+                            envelope = (syllable_duration - t_local) / decay_time
+                        
+                        # Add breath and vocal texture
+                        breath_noise = 0.02 * (random.random() - 0.5)
+                        
+                        # Natural vibrato (emotional warmth)
+                        vibrato = 1.0 + 0.03 * math.sin(2 * math.pi * 5.5 * t_global)
+                        
+                        amplitude *= envelope * vibrato
+                        amplitude += breath_noise
+                        
+                        # Clamp and convert to 16-bit PCM
+                        amplitude = max(-0.8, min(0.8, amplitude))
+                        sample = int(amplitude * 32767)
+                        
+                        if len(audio_data) < (duration_samples * 2):  # 2 bytes per sample
+                            audio_data.extend(sample.to_bytes(2, byteorder='little', signed=True))
+                
+                current_time += syllable_duration
             
-            # Convert to 16-bit PCM
-            sample = int(amplitude * 32767)
-            audio_data.extend(sample.to_bytes(2, byteorder='little', signed=True))
+            # Add natural pause between words
+            pause_duration = 0.1 + 0.1 * random.random()
+            current_time += pause_duration
+        
+        # Fill remaining time with silence
+        remaining_samples = duration_samples - len(audio_data) // 2
+        for _ in range(remaining_samples):
+            if len(audio_data) < (duration_samples * 2):
+                audio_data.extend((0).to_bytes(2, byteorder='little', signed=True))
         
         return wav_header + audio_data
     

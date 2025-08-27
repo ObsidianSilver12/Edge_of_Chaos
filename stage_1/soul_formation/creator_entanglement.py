@@ -28,15 +28,15 @@ try:
     from stage_1.soul_spark.soul_spark import SoulSpark
     from stage_1.fields.kether_field import KetherField
     
-    # Sound integration - try to import sound modules if available
+    # Sound integration - HARD FAIL if sound modules not available
     try:
         from shared.sound.sound_generator import SoundGenerator
         from shared.sound.sounds_of_universe import UniverseSounds
         SOUND_AVAILABLE = True
         logger.info("Sound modules successfully imported for Creator Entanglement.")
-    except ImportError:
-        SOUND_AVAILABLE = False
-        logger.warning("Sound modules not available. Creator Entanglement will run without sound generation.")
+    except ImportError as sound_e:
+        logger.critical("CRITICAL: Sound modules are required for Creator Entanglement but not available.")
+        raise ImportError("CRITICAL: Sound modules are required for Creator Entanglement but not available.") from sound_e
 except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}")
     raise ImportError(f"Core dependencies missing: {e}") from e

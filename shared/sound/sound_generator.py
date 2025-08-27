@@ -129,8 +129,8 @@ class SoundGenerator:
 
 
     def generate_harmonic_tone(self, base_frequency: float, harmonics: List[float],
-                             amplitudes: List[float], duration: float,
-                             fade_in_out: float = 0.05) -> np.ndarray:
+                            amplitudes: List[float], duration: float,
+                            fade_in_out: float = 0.05) -> np.ndarray:
         """
         Generate a tone composed of multiple harmonics. Fails hard on invalid input.
 
@@ -153,18 +153,20 @@ class SoundGenerator:
             raise ValueError(f"Base frequency must be positive, got {base_frequency}")
         if not isinstance(harmonics, list) or not harmonics:
             raise TypeError("Harmonics must be a non-empty list of ratios.")
+        
+        # Hard fail if fundamental frequency (1.0) is missing - NO FALLBACK
         if 1.0 not in harmonics:
-             logger.warning("Fundamental frequency (1.0) missing in harmonics list. Adding it.")
-             harmonics.insert(0, 1.0)
-             # Need corresponding amplitude - this part is tricky without fallbacks.
-             # Let's require the user provides consistent lists.
-             # raise ValueError("Harmonics list must contain the fundamental ratio 1.0") # Stricter
+            raise ValueError("Harmonics list must contain the fundamental ratio 1.0")
+        
         if not all(isinstance(h, (int, float)) and h > 0 for h in harmonics):
             raise ValueError("All harmonic ratios must be positive numbers.")
         if not isinstance(amplitudes, list):
             raise TypeError("Amplitudes must be a list.")
+        
+        # Hard fail on length mismatch - NO FALLBACK
         if len(harmonics) != len(amplitudes):
             raise ValueError(f"Harmonics list (len {len(harmonics)}) and Amplitudes list (len {len(amplitudes)}) must have the same length.")
+        
         if not all(isinstance(a, (int, float)) and 0.0 <= a <= MAX_AMPLITUDE for a in amplitudes):
             raise ValueError(f"All amplitudes must be between 0.0 and {MAX_AMPLITUDE}.")
         if not isinstance(duration, (int, float)) or duration <= 0:
@@ -207,8 +209,8 @@ class SoundGenerator:
 
             return combined_tone
         except Exception as e:
-             logger.error(f"Error generating harmonic tone: {e}", exc_info=True)
-             raise RuntimeError(f"Harmonic tone generation failed: {e}") from e
+            logger.error(f"Error generating harmonic tone: {e}", exc_info=True)
+            raise RuntimeError(f"Harmonic tone generation failed: {e}") from e
 
     def generate_sacred_chord(self, base_frequency: float = INITIAL_SPARK_BASE_FREQUENCY_HZ,
                            duration: float = 10.0, fade_in_out: float = 0.5) -> np.ndarray:

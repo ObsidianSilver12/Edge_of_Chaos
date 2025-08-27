@@ -494,8 +494,9 @@ class AnatomicalBrain:
                 
                 # Frequency management
                 'sub_region_frequency': sub_region_frequency,  # Frequency from sub-region
-                'status_frequency': self.node_status_frequencies['inactive'],  # Current status frequency
-                'status': 'inactive',  # Start inactive, activated later
+                'system_frequency_hz': 25.0,  # High frequency for nodes
+                'status_frequency': self.node_status_frequencies['active'],  # Current status frequency
+                'status': 'active',  # Start inactive, activated later
                 
                 # State tracking
                 'active': False,
@@ -506,6 +507,10 @@ class AnatomicalBrain:
                 'processing_capacity': 1.0,
                 'energy_level': 0.0,
                 'connections': [],
+
+                # energy
+                'energy_multiplier': 1.0,  # Standard energy cost
+                'energy_allocated': True,
                 
                 # Creation metadata
                 'creation_time': datetime.now().isoformat(),
@@ -619,7 +624,11 @@ class AnatomicalBrain:
                                 'capacity': 10,  # Can hold up to 10 memory fragments
                                 'fragments': {},
                                 'entanglement_link': node_id,  # Link to corresponding brain node
-                                'creation_time': datetime.now().isoformat()
+                                'creation_time': datetime.now().isoformat(),
+                                'system_frequency_hz': 5.0,  # Low frequency for fragments
+                                'energy_cost_multiplier': 0.2,
+                                'status': 'active',
+                                'energy_allocated': True
                             }
                             
                             mirror_sub_region['fragment_storage'][fragment_space_id] = fragment_space

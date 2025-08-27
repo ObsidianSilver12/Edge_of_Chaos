@@ -131,6 +131,32 @@ class SephirothField:
             f"Target Freq: {self.target_frequency:.1f} Hz."
         )
 
+    # --- Properties for Field Visualization Compatibility ---
+    @property
+    def name(self) -> str:
+        """Name property for visualization compatibility."""
+        return self.sephirah_name
+    
+    @property 
+    def base_frequency(self) -> float:
+        """Base frequency property for visualization compatibility."""
+        return self.target_frequency
+    
+    @property
+    def color(self) -> np.ndarray:
+        """Color property for visualization compatibility."""
+        return self.target_color_rgb
+    
+    @property
+    def pattern_type(self) -> str:
+        """Pattern type property for visualization compatibility."""
+        return self.geometric_pattern or self.platonic_affinity or "sacred_geometry"
+    
+    @property 
+    def pattern_influence(self) -> Optional[np.ndarray]:
+        """Pattern influence property for visualization compatibility - returns None for symbolic visualization."""
+        return None
+
     # --- Target Value Retrieval Methods ---
     def get_target_energy_seu(self) -> float:
         """Gets target energy potential (SEU) from constants."""

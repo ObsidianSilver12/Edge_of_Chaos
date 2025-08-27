@@ -36,15 +36,15 @@ except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import core dependencies: {e}")
     raise ImportError(f"Core dependencies missing: {e}") from e
     
-# --- Sound Module Imports ---
+# --- Sound Module Imports - HARD FAIL if not available ---
 try:
     from shared.sound.sound_generator import SoundGenerator
     from shared.sound.sounds_of_universe import UniverseSounds
     from shared.sound.noise_generator import NoiseGenerator
     SOUND_MODULES_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Sound modules not available: {e}. Earth harmonization will use simulated sound.")
-    SOUND_MODULES_AVAILABLE = False
+    logger.critical(f"CRITICAL: Sound modules are required for Earth harmonization but not available: {e}")
+    raise ImportError(f"CRITICAL: Sound modules are required for Earth harmonization but not available: {e}") from e
 
 # Import aspect dictionary
 try:
@@ -935,6 +935,7 @@ def calculate_elemental_balance(soul_spark: SoulSpark) -> Dict[str, Any]:
     Calculate soul's resonance with elemental energies (earth, air, fire, water, aether).
     Updates the elements dictionary in the soul spark.
     """
+    import random
     logger.info("Calculating elemental balance...")
     
     # Get existing elements or initialize
@@ -949,27 +950,36 @@ def calculate_elemental_balance(soul_spark: SoulSpark) -> Dict[str, Any]:
     layers = soul_spark.layers
     
     # Calculate base elemental resonance from soul properties
-    base_elements = {'earth': 0.0, 'air': 0.0, 'fire': 0.0, 'water': 0.0, 'aether': 0.0}
+    # Add random initial fluctuations (±10% variation)
+    base_elements = {}
+    for element in ['earth', 'air', 'fire', 'water', 'aether']:
+        random_fluctuation = random.uniform(-0.1, 0.1)
+        base_elements[element] = max(0.0, random_fluctuation)
     
     # From elemental affinity (strongest influence)
     if elemental_affinity:
         affinity_lower = elemental_affinity.lower()
         if affinity_lower in base_elements:
-            base_elements[affinity_lower] += 0.4
-            # Secondary elements based on common relationships
+            # Add random variation to primary affinity (±15% of base)
+            primary_boost = 0.4 + random.uniform(-0.06, 0.06)
+            base_elements[affinity_lower] += primary_boost
+            
+            # Secondary elements based on common relationships with random variation
+            secondary_boost = 0.1 + random.uniform(-0.03, 0.03)
             if affinity_lower == 'earth':
-                base_elements['water'] += 0.1
+                base_elements['water'] += secondary_boost
             elif affinity_lower == 'air':
-                base_elements['fire'] += 0.1
+                base_elements['fire'] += secondary_boost
             elif affinity_lower == 'fire':
-                base_elements['air'] += 0.1
+                base_elements['air'] += secondary_boost
             elif affinity_lower == 'water':
-                base_elements['earth'] += 0.1
+                base_elements['earth'] += secondary_boost
             elif affinity_lower == 'aether':
-                # Aether balances all
+                # Aether balances all with random variation
                 for elem in base_elements:
                     if elem != 'aether':
-                        base_elements[elem] += 0.05
+                        aether_boost = 0.05 + random.uniform(-0.02, 0.02)
+                        base_elements[elem] += aether_boost
     
     # From soul color (secondary influence)
     if soul_color:
@@ -1001,22 +1011,27 @@ def calculate_elemental_balance(soul_spark: SoulSpark) -> Dict[str, Any]:
                 continue
         
         if best_element and best_element in base_elements:
-            base_elements[best_element] += 0.2
+            # Add random variation to color influence (±25% of base)
+            color_boost = 0.2 + random.uniform(-0.05, 0.05)
+            base_elements[best_element] += color_boost
     
     # From sephiroth aspect
     if sephiroth_aspect and aspect_dictionary is not None:
         try:
             seph_elements = aspect_dictionary.get_aspects(sephiroth_aspect).get('element', '')
             if '/' in seph_elements:
-                # Multiple elements
+                # Multiple elements with random variation
                 elem_list = seph_elements.split('/')
-                weight = 0.2 / max(1, len(elem_list))
+                base_weight = 0.2 / max(1, len(elem_list))
                 for elem in elem_list:
                     elem_lower = elem.lower()
                     if elem_lower in base_elements:
-                        base_elements[elem_lower] += weight
+                        seph_weight = base_weight + random.uniform(-0.03, 0.03)
+                        base_elements[elem_lower] += max(0.0, seph_weight)
             elif seph_elements and seph_elements.lower() in base_elements:
-                base_elements[seph_elements.lower()] += 0.2
+                # Add random variation to sephiroth influence (±15% of base)
+                seph_boost = 0.2 + random.uniform(-0.03, 0.03)
+                base_elements[seph_elements.lower()] += seph_boost
         except (KeyError, AttributeError):
             logger.warning(f"Failed to get element for sephiroth aspect: {sephiroth_aspect}")
     
@@ -1033,10 +1048,12 @@ def calculate_elemental_balance(soul_spark: SoulSpark) -> Dict[str, Any]:
         # Find resonant layers
         resonant_layers = find_resonant_layers(soul_spark, freq)
         if resonant_layers:
-            # Add resonance contribution (avg of top 3 if available)
+            # Add resonance contribution (avg of top 3 if available) with random variation
             top_layers = sorted(resonant_layers, key=lambda x: x[1], reverse=True)[:3]
             avg_resonance = sum(res for _, res in top_layers) / len(top_layers)
-            base_elements[element] += avg_resonance * 0.2
+            # Add random variation to layer resonance (±30% of base)
+            resonance_multiplier = 0.2 + random.uniform(-0.06, 0.06)
+            base_elements[element] += avg_resonance * resonance_multiplier
     
     # Normalize to ensure sum is 1.0
     total = sum(base_elements.values())
@@ -1045,12 +1062,15 @@ def calculate_elemental_balance(soul_spark: SoulSpark) -> Dict[str, Any]:
     else:
         normalized_elements = {elem: 0.2 for elem in base_elements}
     
-    # Update with existing values using weighted average
-    # (70% new calculation, 30% existing to ensure stability)
+    # Update with existing values using weighted average with random variation
+    # Base: 70% new calculation, 30% existing with ±10% variation in weights
     updated_elements = {}
     for elem in normalized_elements:
         existing = elements.get(elem, 0.0)
-        updated_elements[elem] = 0.7 * normalized_elements[elem] + 0.3 * existing
+        # Randomize the blending weights slightly
+        new_weight = 0.7 + random.uniform(-0.1, 0.1)
+        existing_weight = 1.0 - new_weight
+        updated_elements[elem] = new_weight * normalized_elements[elem] + existing_weight * existing
     
     # Ensure all elements have values and save
     for elem in ['earth', 'air', 'fire', 'water', 'aether']:
@@ -1280,6 +1300,7 @@ def _optimize_gaia_connection(soul_spark: SoulSpark, earth_resonance: float) -> 
     based on existing Earth resonance. Gaia connection is the spiritual 
     counterpart to physical Earth resonance.
     """
+    import random
     logger.info("Optimizing Gaia connection...")
     
     # Get current Gaia connection
@@ -1314,27 +1335,35 @@ def _optimize_gaia_connection(soul_spark: SoulSpark, earth_resonance: float) -> 
                       compassion_resonance * 0.4 + 
                       harmony_resonance * 0.2)
     
-    # Calculate Gaia connection potential
-    gaia_potential = (earth_element * 0.3 + 
-                      water_element * 0.2 + 
-                      earth_resonance * 0.2 + 
-                      cycle_factor * 0.1 + 
-                      emotion_factor * 0.2)
+    # Calculate Gaia connection potential with random variations
+    # Add random fluctuations to each component (±20% variation)
+    earth_contribution = earth_element * (0.3 + random.uniform(-0.06, 0.06))
+    water_contribution = water_element * (0.2 + random.uniform(-0.04, 0.04))
+    earth_res_contribution = earth_resonance * (0.2 + random.uniform(-0.04, 0.04))
+    cycle_contribution = cycle_factor * (0.1 + random.uniform(-0.02, 0.02))
+    emotion_contribution = emotion_factor * (0.2 + random.uniform(-0.04, 0.04))
     
-    # Enhanced connection through heart-centered awareness
+    gaia_potential = (earth_contribution + water_contribution + earth_res_contribution + 
+                      cycle_contribution + emotion_contribution)
+    
+    # Enhanced connection through heart-centered awareness with random variation
     # Use Fibonacci sequence to create natural growth pattern
     fib_factor = 0.0
     fib_seq = [1, 1, 2, 3, 5, 8, 13, 21]
     for i, fib in enumerate(fib_seq[:5]):  # Use first 5 terms
-        # Create phi-based resonant nodes in heart center
+        # Create phi-based resonant nodes in heart center with slight random variation
         node_strength = (PHI ** i) / (PHI ** 5)  # Normalized to 0-1
-        fib_factor += node_strength * 0.2  # Scale contribution
+        random_node_factor = 0.2 + random.uniform(-0.05, 0.05)
+        fib_factor += node_strength * random_node_factor  # Scale contribution
     
-    # Apply to Gaia potential
-    gaia_potential *= (1.0 + fib_factor * 0.5)  # Up to 50% boost
+    # Apply to Gaia potential with random boost variation
+    boost_factor = 0.5 + random.uniform(-0.15, 0.15)  # ±30% variation in boost
+    gaia_potential *= (1.0 + fib_factor * boost_factor)
     
-    # Gradual integration with current value for stability
-    new_gaia_connection = current_gaia * 0.3 + gaia_potential * 0.7
+    # Gradual integration with current value for stability - randomize blend weights
+    current_weight = 0.3 + random.uniform(-0.1, 0.1)
+    potential_weight = 1.0 - current_weight
+    new_gaia_connection = current_gaia * current_weight + gaia_potential * potential_weight
     new_gaia_connection = max(0.0, min(1.0, new_gaia_connection))
     
     # Update soul's gaia_connection
@@ -1638,6 +1667,11 @@ def finalize_earth_harmonization(soul_spark: SoulSpark, echo_state: Dict[str, An
     
     # NATURAL: Update soul's earth_resonance with final natural value
     setattr(soul_spark, 'earth_resonance', float(final_earth_resonance))
+    
+    # NATURAL: Set physical integration based on earth resonance and harmonization
+    # Physical integration represents how well the soul can interface with physical reality
+    physical_integration = final_earth_resonance * 0.85 + planetary_resonance * 0.15
+    setattr(soul_spark, 'physical_integration', float(physical_integration))
     
     # NATURAL: Only set earth_attuned flag if meaningful resonance achieved
     # Some souls may not be naturally earth-compatible at their current development

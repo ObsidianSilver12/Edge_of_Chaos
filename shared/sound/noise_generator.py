@@ -32,15 +32,13 @@ except ImportError as e:
     raise ImportError(f"Essential constants missing: {e}") from e
 
 # --- Dependency Imports ---
-# Noise generator *might* use SoundGenerator for saving, or handle it itself
-# Let's assume it might use it for saving.
+# HARD FAIL if base SoundGenerator not available - no fallbacks allowed
 try:
-    from sound.sound_generator import SoundGenerator
+    from shared.sound.sound_generator import SoundGenerator
     SOUND_GENERATOR_AVAILABLE = True
-except ImportError:
-    logging.warning("Base SoundGenerator not found. NoiseGenerator save method will be disabled.")
-    SoundGenerator = None # Define as None if not available
-    SOUND_GENERATOR_AVAILABLE = False
+except ImportError as e:
+    logging.critical("CRITICAL: Base SoundGenerator is required for NoiseGenerator but not found. Cannot continue without sound generation capabilities.")
+    raise ImportError("CRITICAL: Base SoundGenerator is required for NoiseGenerator but not found. Cannot continue without sound generation capabilities.") from e
 
 # --- Logging Setup ---
 log_file_path = os.path.join("logs", "noise_generator.log") # Changed log filename

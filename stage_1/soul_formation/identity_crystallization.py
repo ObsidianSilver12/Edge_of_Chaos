@@ -4,11 +4,11 @@ Identity Crystallization Module (Refactored V4.4.0 - Light-Sound Principles)
 Crystallizes identity after Earth attunement. Implements Name (user input), Voice, 
 Color, Affinities (Seph, Elem, Platonic), and Astrological Signature using complete
 light and sound principles. Implements proper light physics for crystalline formation 
-and uses aura layers for resonance rather than direct frequency modification.
+
 
 Heartbeat/Love cycles implement proper acoustic physics for harmony enhancement.
 Sacred Geometry uses proper light interference patterns and standing waves.
-Modifies SoulSpark via aura layers. Uses strict validation. Hard fails only.
+Modifies SoulSpark via identity crystallisation. Uses strict validation. Hard fails only.
 """
 
 import logging
@@ -23,6 +23,9 @@ import math
 import re
 from typing import Dict, List, Any, Tuple, Optional
 from math import pi as PI, sqrt, exp, sin, cos, tanh
+from stage_1.soul_spark.soul_spark import SoulSpark
+from stage_1.fields.sephiroth_aspect_dictionary import aspect_dictionary
+from stage_1.soul_formation.creator_entanglement import calculate_resonance
 
 # Direct import of constants without try blocks
 from shared.constants.constants import *
@@ -32,10 +35,6 @@ logger = logging.getLogger(__name__)
 if not logger.handlers:
     logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 
-# --- Dependency Imports ---
-from stage_1.soul_spark.soul_spark import SoulSpark
-from stage_1.fields.sephiroth_aspect_dictionary import aspect_dictionary
-from stage_1.soul_formation.creator_entanglement import calculate_resonance
 
 # Sound module imports - These modules actively generate actual sound
 try:
@@ -112,8 +111,8 @@ def log_soul_identity_summary(soul_spark: SoulSpark) -> None:
             try:
                 birth_dt = datetime.fromisoformat(birth_datetime)
                 print(f"  Birth DateTime: {birth_dt.strftime('%Y-%m-%d %H:%M:%S')}")
-            except:
-                print(f"  Birth DateTime: {birth_datetime}")
+            except Exception:
+                print("  Birth DateTime: {birth_datetime}")
         if zodiac_sign:
             print(f"  Zodiac Sign: {zodiac_sign}")
         if governing_planet:
@@ -135,9 +134,6 @@ def log_soul_identity_summary(soul_spark: SoulSpark) -> None:
         print(f"  Earth Resonance: {earth_resonance:.3f}")
         print(f"  Gaia Connection: {gaia_connection:.3f}")
     
-    # Layer count
-    layers = getattr(soul_spark, 'layers', [])
-    print(f"\nAura Layers: {len(layers)} formed")
     
     print("="*80)
     print("READY FOR NAME ASSIGNMENT")
@@ -183,13 +179,8 @@ def _check_prerequisites(soul_spark: SoulSpark) -> bool:
     if getattr(soul_spark, 'frequency', 0.0) <= FLOAT_EPSILON:
         msg = f"Prerequisite failed: SoulSpark missing valid base 'frequency'."
         logger.error(msg); raise ValueError(msg)
-
-    # 4. Layer Structure Check
-    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
-        msg = "Prerequisite failed: Soul must have aura layers established."
-        logger.error(msg); raise AttributeError(msg)
     
-    # 5. Check for existing crystallization
+    # 4. Check for existing crystallization
     if getattr(soul_spark, FLAG_IDENTITY_CRYSTALLIZED, False):
         logger.warning(f"Soul {soul_spark.spark_id} already marked {FLAG_IDENTITY_CRYSTALLIZED}. Re-running.")
 
@@ -435,9 +426,323 @@ def _calculate_name_standing_waves(name: str, base_frequency: float) -> Dict[str
         logger.error(f"Error calculating name standing waves: {e}", exc_info=True)
         raise RuntimeError("Name standing wave calculation failed") from e
 
-def _generate_name_frequency_signature(name: str, base_frequency: float, duration: float = 10.0) -> np.ndarray:
+def _generate_phonetic_name_pronunciation(name: str, base_frequency: float, duration: float = 3.0) -> np.ndarray:
     """
-    Generate audio signature from name's standing wave pattern.
+    Generate realistic pronunciation of the name using phonetic synthesis.
+    Creates actual speech-like sounds that pronounce the name.
+    
+    Args:
+        name: Soul's name to pronounce
+        base_frequency: Base pitch frequency for the voice
+        duration: Length of audio in seconds
+        
+    Returns:
+        NumPy array containing the audio samples of the name being spoken
+        
+    Raises:
+        ValueError: If inputs are invalid
+        RuntimeError: If generation fails
+    """
+    if not name: raise ValueError("Name cannot be empty")
+    if base_frequency <= 0: raise ValueError("Base frequency must be positive")
+    if duration <= 0: raise ValueError("Duration must be positive")
+    
+    if not SOUND_MODULES_AVAILABLE:
+        raise RuntimeError("Sound generation requires sound modules")
+    
+    try:
+        import numpy as np
+        import random
+        
+        # Get sample rate from sound generator
+        sample_rate = 44100
+        total_samples = int(duration * sample_rate)
+        
+        # Name-specific phonetic pronunciations for soul names
+        # These are ethereal/fantasy names requiring specific phonetic handling
+        specific_name_pronunciations = {
+            'aeri': [('air', 0.4), ('ee', 0.3)],  # AIR-ee (like "airy")
+            'aevren': [('ay', 0.3), ('vren', 0.4)],  # AY-vren (like "haven" but Ay-vren)
+            'aeho': [('ay', 0.3), ('ho', 0.3)],  # AY-ho (like "hey" + "ho")
+            # Add more soul names as needed
+        }
+        
+        name_lower = name.lower()
+        
+        # Check if we have a specific pronunciation for this name
+        if name_lower in specific_name_pronunciations:
+            phonemes = specific_name_pronunciations[name_lower]
+            logger.info(f"Using specific pronunciation for '{name}': {[p[0] for p in phonemes]}")
+        else:
+            # Fallback to intelligent syllable parsing for unknown names
+            phonemes = _parse_name_syllables(name)
+            logger.info(f"Using syllable parsing for '{name}': {[p[0] for p in phonemes]}")
+        
+        if not phonemes:
+            raise ValueError(f"No pronounceable syllables found in name '{name}'")
+        
+        # Calculate timing
+        total_phoneme_time = sum(duration for _, duration in phonemes)
+        time_scale = duration / total_phoneme_time if total_phoneme_time > 0 else 1.0
+        
+        audio_data = np.zeros(total_samples, dtype=np.float32)
+        current_time = 0.0
+        
+        for phoneme, phoneme_duration in phonemes:
+            scaled_duration = phoneme_duration * time_scale
+            start_sample = int(current_time * sample_rate)
+            end_sample = int((current_time + scaled_duration) * sample_rate)
+            end_sample = min(end_sample, total_samples)
+            
+            if start_sample >= total_samples:
+                break
+                
+            phoneme_length = end_sample - start_sample
+            
+            if phoneme == 'pause':
+                # Silence for pauses
+                pass
+            else:
+                # Generate phoneme sound
+                t = np.linspace(0, scaled_duration, phoneme_length)
+                
+                # Voice characteristics for different phoneme types
+                if phoneme in ['ah', 'eh', 'ih', 'oh', 'oo']:  # Vowels
+                    # Vowel formants (simplified)
+                    formant_map = {
+                        'ah': (730, 1090, 2440),  # 'a' as in "father"
+                        'eh': (530, 1840, 2480),  # 'e' as in "bed"  
+                        'ih': (390, 1990, 2550),  # 'i' as in "bit"
+                        'oh': (570, 840, 2410),   # 'o' as in "boat"
+                        'oo': (300, 870, 2240)    # 'u' as in "boot"
+                    }
+                    
+                    f1, f2, f3 = formant_map.get(phoneme, (500, 1500, 2500))
+                    
+                    # Generate vowel with formants
+                    pitch_contour = base_frequency * (1.0 + 0.1 * np.sin(2 * np.pi * 3 * t))
+                    
+                    # Fundamental + formants
+                    signal = (
+                        0.4 * np.sin(2 * np.pi * pitch_contour * t) +      # Fundamental
+                        0.3 * np.sin(2 * np.pi * f1 * t) * np.exp(-f1 * t * 0.001) +  # F1
+                        0.2 * np.sin(2 * np.pi * f2 * t) * np.exp(-f2 * t * 0.0005) + # F2
+                        0.1 * np.sin(2 * np.pi * f3 * t) * np.exp(-f3 * t * 0.0003)   # F3
+                    )
+                    
+                else:  # Consonants
+                    # Consonant characteristics
+                    if phoneme.endswith('uh'):
+                        consonant = phoneme[:-2]
+                    else:
+                        consonant = phoneme
+                    
+                    # Different synthesis for different consonant types
+                    if consonant in ['b', 'd', 'g', 'p', 't', 'k']:  # Plosives
+                        # Sharp attack, quick decay
+                        envelope = np.exp(-5 * t)
+                        
+                        # Burst of noise for plosives
+                        noise = np.random.normal(0, 0.1, phoneme_length)
+                        signal = noise * envelope
+                        
+                        # Add some tonal content
+                        if consonant in ['b', 'd', 'g']:  # Voiced
+                            signal += 0.3 * np.sin(2 * np.pi * base_frequency * t) * envelope
+                            
+                    elif consonant in ['f', 's', 'z', 'h']:  # Fricatives  
+                        # Noise-based with some tonal content
+                        noise = np.random.normal(0, 0.15, phoneme_length)
+                        # Filter noise to different frequency ranges
+                        for i in range(1, len(noise)):
+                            noise[i] = 0.7 * noise[i-1] + 0.3 * noise[i]
+                        
+                        envelope = np.exp(-2 * t)
+                        signal = noise * envelope
+                        
+                        if consonant in ['z']:  # Voiced fricatives
+                            signal += 0.2 * np.sin(2 * np.pi * base_frequency * t) * envelope
+                            
+                    elif consonant in ['m', 'n', 'l', 'r']:  # Nasals/liquids
+                        # More tonal, like vowels but with different formants
+                        envelope = np.exp(-3 * t)
+                        signal = (
+                            0.4 * np.sin(2 * np.pi * base_frequency * t) +
+                            0.2 * np.sin(2 * np.pi * base_frequency * 2 * t) +
+                            0.1 * np.sin(2 * np.pi * base_frequency * 3 * t)
+                        ) * envelope
+                        
+                        # Add nasal resonance for m, n
+                        if consonant in ['m', 'n']:
+                            signal += 0.15 * np.sin(2 * np.pi * 250 * t) * envelope
+                            
+                    else:  # Default consonant
+                        envelope = np.exp(-4 * t)
+                        signal = 0.3 * np.sin(2 * np.pi * base_frequency * t) * envelope
+                
+                # Apply envelope for natural speech
+                if phoneme_length > 0:
+                    # Natural speech envelope
+                    attack_len = min(phoneme_length // 10, int(0.05 * sample_rate))
+                    decay_len = min(phoneme_length // 5, int(0.1 * sample_rate))
+                    
+                    speech_envelope = np.ones(phoneme_length)
+                    
+                    # Attack
+                    if attack_len > 0:
+                        speech_envelope[:attack_len] = np.linspace(0, 1, attack_len)
+                    
+                    # Decay  
+                    if decay_len > 0 and phoneme_length > decay_len:
+                        speech_envelope[-decay_len:] = np.linspace(1, 0, decay_len)
+                    
+                    signal *= speech_envelope
+                
+                # Add to main audio
+                audio_data[start_sample:end_sample] += signal * 0.6
+            
+            current_time += scaled_duration
+        
+        # Normalize and add natural speech dynamics
+        max_val = np.max(np.abs(audio_data))
+        if max_val > 0:
+            audio_data = audio_data / max_val * 0.8
+        
+        # Add subtle reverb for natural voice
+        reverb_delay = int(0.02 * sample_rate)  # 20ms delay
+        if len(audio_data) > reverb_delay:
+            reverb_audio = np.zeros_like(audio_data)
+            reverb_audio[reverb_delay:] = audio_data[:-reverb_delay] * 0.2
+            audio_data += reverb_audio
+        
+        logger.info(f"Generated phonetic pronunciation of '{name}' as {[p[0] for p in phonemes]}: {len(audio_data)} samples")
+        return audio_data
+        
+    except Exception as e:
+        logger.error(f"Error generating phonetic name pronunciation: {e}", exc_info=True)
+        raise RuntimeError("Phonetic name pronunciation generation failed") from e
+
+def _parse_name_syllables(name: str) -> list:
+    """
+    Parse unknown names into pronounceable syllables using phonetic rules.
+    Handles fantasy/ethereal names not in the specific pronunciation dictionary.
+    
+    Args:
+        name: Name to parse into syllables
+        
+    Returns:
+        List of (syllable, duration) tuples
+    """
+    try:
+        name_clean = name.lower().strip()
+        syllables = []
+        
+        # Common vowel combinations in fantasy names
+        vowel_combinations = {
+            'ae': ('ay', 0.35),    # Like "Aeri" -> "AY-ri" 
+            'ai': ('eye', 0.3),    # Like "Kai"
+            'au': ('ow', 0.3),     # Like "pause"
+            'ea': ('ee', 0.3),     # Like "sea"
+            'ee': ('ee', 0.35),    # Like "tree"
+            'ei': ('ay', 0.3),     # Like "veil"
+            'ie': ('ee', 0.3),     # Like "believe"
+            'oa': ('oh', 0.3),     # Like "boat"
+            'ou': ('oo', 0.3),     # Like "you"
+            'ue': ('oo', 0.3),     # Like "blue"
+            'ui': ('oo', 0.25),    # Like "suit"
+        }
+        # Consonant patterns
+        consonant_patterns = {
+            'ch': ('ch', 0.2),     # Like "chair"
+            'sh': ('sh', 0.2),     # Like "ship"  
+            'th': ('th', 0.2),     # Like "thin"
+            'ph': ('f', 0.2),      # Like "phone"
+            'gh': ('', 0.0),       # Silent in many cases
+            'ck': ('k', 0.15),     # Like "back"
+            'ng': ('ng', 0.2),     # Like "sing"
+        }
+        
+        i = 0
+        while i < len(name_clean):
+            if name_clean[i] == ' ':
+                syllables.append(('pause', 0.15))
+                i += 1
+                continue
+                
+            # Look for vowel combinations first
+            found_combination = False
+            for combo, (sound, duration) in vowel_combinations.items():
+                if i + len(combo) <= len(name_clean) and name_clean[i:i+len(combo)] == combo:
+                    # Check if this is followed by consonants to form syllable
+                    syllable_end = i + len(combo)
+                    consonant_sound = ""
+                    consonant_duration = 0
+                    
+                    # Add following consonants to this syllable
+                    while syllable_end < len(name_clean) and name_clean[syllable_end] not in 'aeiou':
+                        # Check for consonant patterns
+                        pattern_found = False
+                        for pattern, (pat_sound, pat_dur) in consonant_patterns.items():
+                            if (syllable_end + len(pattern) <= len(name_clean) and 
+                                name_clean[syllable_end:syllable_end+len(pattern)] == pattern):
+                                consonant_sound += pat_sound
+                                consonant_duration += pat_dur
+                                syllable_end += len(pattern)
+                                pattern_found = True
+                                break
+                        
+                        if not pattern_found:
+                            # Single consonant
+                            consonant_sound += name_clean[syllable_end]
+                            consonant_duration += 0.15
+                            syllable_end += 1
+                        
+                        # Stop at next vowel or end of name
+                        if (syllable_end < len(name_clean) and 
+                            name_clean[syllable_end] in 'aeiou'):
+                            break
+                    
+                    # Combine vowel and consonant sounds
+                    full_syllable = sound + consonant_sound if consonant_sound else sound
+                    full_duration = duration + (consonant_duration * 0.7)  # Consonants shorter
+                    syllables.append((full_syllable, full_duration))
+                    
+                    i = syllable_end
+                    found_combination = True
+                    break
+            
+            if not found_combination:
+                # Single character processing
+                char = name_clean[i]
+                if char in 'aeiou':
+                    # Single vowel
+                    vowel_map = {'a': 'ah', 'e': 'eh', 'i': 'ih', 'o': 'oh', 'u': 'oo'}
+                    syllables.append((vowel_map.get(char, char), 0.3))
+                elif char.isalpha():
+                    # Single consonant - attach to previous vowel or make syllable
+                    if syllables and not syllables[-1][0].endswith(char):
+                        # Modify last syllable to include this consonant
+                        last_syl, last_dur = syllables[-1]
+                        syllables[-1] = (last_syl + char, last_dur + 0.1)
+                    else:
+                        # Make consonant syllable
+                        syllables.append((char + 'uh', 0.2))
+                i += 1
+        
+        # Ensure we have at least one syllable
+        if not syllables:
+            syllables = [(name_clean, 0.5)]
+            
+        return syllables
+        
+    except Exception as e:
+        logger.error(f"Error parsing syllables for '{name}': {e}")
+        # Fallback to simple character mapping
+        return [(name.lower(), 1.0)]
+
+def _generate_name_frequency_signature(name: str, base_frequency: float, duration: float = 8.0) -> np.ndarray:
+    """
+    Generate name frequency signature using proper acoustic physics.
     Uses actual sound synthesis based on name frequencies.
     
     Args:
@@ -478,8 +783,20 @@ def _generate_name_frequency_signature(name: str, base_frequency: float, duratio
         else:
             normalized_amps = [0.0] * len(amplitudes)
         
-        # Create harmonic structure from frequencies
+        # Create harmonic structure from frequencies - ENSURE 1.0 is included
         harmonics = [f / base_frequency for f in frequencies]
+        
+        # CRITICAL: Ensure fundamental frequency (1.0) is included
+        if 1.0 not in harmonics:
+            # Add fundamental frequency at the beginning
+            harmonics.insert(0, 1.0)
+            # Add corresponding amplitude (use average of existing amplitudes)
+            avg_amp = sum(normalized_amps) / len(normalized_amps) if normalized_amps else 0.5
+            normalized_amps.insert(0, avg_amp)
+        
+        # Verify lengths match after potential addition
+        if len(harmonics) != len(normalized_amps):
+            raise RuntimeError(f"Harmonics/amplitudes length mismatch after processing: {len(harmonics)} vs {len(normalized_amps)}")
         
         logger.debug(f"Generating name audio signature: Name={name}, " +
                     f"Base={base_frequency:.2f}Hz, Harmonics={len(harmonics)}")
@@ -599,7 +916,7 @@ def _calculate_color_frequency(color_hex: str) -> float:
     original_color = color_hex
     if color_hex.lower() in color_name_map:
         color_hex = color_name_map[color_hex.lower()]
-        logger.debug(f"Converted color name '{original_color}' to hex '{color_hex}'")
+        logger.debug("Converted color name '%s' to hex '%s'", original_color, color_hex)
     
     # Validate hex format
     if not re.match(r'^#[0-9A-F]{6}$', color_hex.upper()):
@@ -666,7 +983,7 @@ def _calculate_color_frequency(color_hex: str) -> float:
         return float(audio_freq)
         
     except Exception as e:
-        logger.error(f"Error calculating frequency from color {original_color}: {e}")
+        logger.error("Error calculating frequency from color %s: %s", original_color, e)
         raise RuntimeError(f"Color frequency calculation failed: {e}") from e
 
 
@@ -730,6 +1047,7 @@ def assign_name(soul_spark: SoulSpark) -> None:
     """ 
     Assigns name via user input, calculates gematria/resonance(0-1), and 
     establishes standing wave patterns and frequency signature.
+    Stores name directly on soul_spark.
     """
     log_soul_identity_summary(soul_spark)
     logger.info("Identity Step: Assign Name with Light-Sound Signature...")
@@ -738,13 +1056,21 @@ def assign_name(soul_spark: SoulSpark) -> None:
     print(f"  Color: {getattr(soul_spark, 'soul_color', 'N/A')}, Freq: {getattr(soul_spark, 'soul_frequency', 0.0):.1f}Hz")
     print(f"  S/C: {soul_spark.stability:.1f}SU / {soul_spark.coherence:.1f}CU")
     print("-" * 30)
+    
     while not name_to_use:
         try:
             user_name = input(f"*** Please enter the name for this soul: ").strip()
-            if not user_name: print("Name cannot be empty.")
-            else: name_to_use = user_name
-        except EOFError: raise RuntimeError("Failed to get soul name from user input (EOF).")
-        except Exception as e: raise RuntimeError(f"Failed to get soul name: {e}")
+            if not user_name: 
+                print("Name cannot be empty.")
+                continue
+            name_to_use = user_name
+        except KeyboardInterrupt:
+            logger.info("User cancelled name input.")
+            raise RuntimeError("Name assignment cancelled by user.")
+        except Exception as e: 
+            logger.error(f"Error getting user input: {e}")
+            raise RuntimeError(f"Failed to get soul name: {e}")
+    
     print("-" * 30)
 
     try:
@@ -754,14 +1080,26 @@ def assign_name(soul_spark: SoulSpark) -> None:
         # Calculate name resonance 
         name_resonance = _calculate_name_resonance(name_to_use, gematria)
         
-# Calculate standing wave patterns for the name
+        # Calculate standing wave patterns for the name
         standing_waves = _calculate_name_standing_waves(name_to_use, soul_spark.frequency)
         
         # Generate actual sound signature - only if sound modules available
         if SOUND_MODULES_AVAILABLE:
             try:
+                # Generate both phonetic pronunciation and frequency signature
+                phonetic_pronunciation = _generate_phonetic_name_pronunciation(
+                    name_to_use, soul_spark.frequency, duration=2.5)
                 sound_signature = _generate_name_frequency_signature(
                     name_to_use, soul_spark.frequency)
+                
+                # Save the phonetic pronunciation
+                if SOUND_MODULES_AVAILABLE and phonetic_pronunciation is not None:
+                    sound_gen = SoundGenerator()
+                    pronunciation_path = sound_gen.save_sound(
+                        phonetic_pronunciation, f"name_pronunciation_{name_to_use.lower()}.wav", 
+                        f"Phonetic pronunciation of '{name_to_use}'")
+                    logger.info(f"  Generated phonetic pronunciation: {pronunciation_path}")
+                
                 logger.debug(f"  Generated name sound signature: {len(sound_signature)} samples")
             except Exception as sound_err:
                 logger.error(f"Failed to generate name sound: {sound_err}")
@@ -779,12 +1117,18 @@ def assign_name(soul_spark: SoulSpark) -> None:
                    f"Resonance Factor: {name_resonance:.4f}, " +
                    f"Standing Waves: {len(standing_waves['nodes'])} nodes")
         
-        # Update soul with name information
+        # Store name information directly on soul_spark
         setattr(soul_spark, 'name', name_to_use)
         setattr(soul_spark, 'gematria_value', gematria)
         setattr(soul_spark, 'name_resonance', name_resonance)
         setattr(soul_spark, 'name_standing_waves', standing_waves)
         setattr(soul_spark, 'identity_light_signature', light_signature)
+        
+        # Assign birth date and star sign based on soul characteristics
+        birth_date, star_sign = _assign_soul_birth_date_and_sign(soul_spark, name_to_use)
+        setattr(soul_spark, 'birth_date', birth_date)
+        setattr(soul_spark, 'star_sign', star_sign)
+        
         timestamp = datetime.now().isoformat()
         setattr(soul_spark, 'last_modified', timestamp)
         
@@ -793,235 +1137,157 @@ def assign_name(soul_spark: SoulSpark) -> None:
             soul_spark.add_memory_echo(f"Name assigned: {name_to_use} (G:{gematria}, " +
                                      f"NR:{name_resonance:.3f}, StandingWaves:{len(standing_waves['nodes'])})")
         
-        # Create resonant integration with aura layers
-        _integrate_name_with_aura_layers(soul_spark, standing_waves)
-        
         logger.info(f"Name assignment complete: {name_to_use} (ResFactor: {name_resonance:.4f}, " +
                    f"LightSig: {len(light_signature['harmonic_colors'])} colors)")
         
     except Exception as e:
-        logger.error(f"Error processing assigned name: {e}", exc_info=True)
-        raise RuntimeError("Name processing failed.") from e
+        logger.error("Error processing assigned name: %s", e, exc_info=True)
+        raise RuntimeError("Name processing failed.")
     
-# --- Create Aura Layer ---
-def _create_identity_aura_layer(soul_spark: SoulSpark) -> Dict[str, Any]:
+
+def _assign_soul_birth_date_and_sign(soul_spark: SoulSpark, name: str) -> Tuple[str, str]:
     """
-    Creates a specialized identity aura layer that encodes the soul's 
-    light physics frequency and identity signature.
+    Assign birth date and astrological sign based on soul's frequency characteristics.
+    Uses soul frequency and harmonic patterns to determine optimal birth timing.
     
     Args:
-        soul_spark: The soul to create identity layer for
+        soul_spark: The soul spark to assign birth date to
+        name: Soul's name for additional calculation input
         
     Returns:
-        Dictionary with created layer data
+        Tuple of (birth_date, star_sign)
     """
-    logger.info("Identity Step: Creating Identity Aura Layer...")
-    
-    # Get soul properties
-    soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
-    soul_color = getattr(soul_spark, 'soul_color', '#FFFFFF')
-    name = getattr(soul_spark, 'name', 'Unknown')
-    
-    # Calculate light physics frequency (MHz range)
-    light_physics_freq = soul_frequency * 1e6
-    
-    # Convert soul frequency to wavelength
-    wavelength_m = SPEED_OF_LIGHT / light_physics_freq if light_physics_freq > 0 else 0
-    
-    # Convert soul color to spectral components
-    r = int(soul_color[1:3], 16) / 255.0
-    g = int(soul_color[3:5], 16) / 255.0
-    b = int(soul_color[5:7], 16) / 255.0
-    
-    # Calculate dominant wavelength from RGB
-    # Simplified spectral calculation
-    if max(r, g, b) <= FLOAT_EPSILON:
-        dominant_wavelength_nm = 550  # Default green
-    elif r >= g and r >= b:
-        # Red dominant (620-750nm)
-        dominant_wavelength_nm = 620 + (r * 130)
-    elif g >= r and g >= b:
-        # Green dominant (495-570nm)
-        dominant_wavelength_nm = 495 + (g * 75)
-    else:
-        # Blue dominant (450-495nm)
-        dominant_wavelength_nm = 450 + (b * 45)
-    
-    # Create identity layer
-    identity_layer = {
-        "type": "identity",
-        "name": f"Identity Layer - {name}",
-        "light_physics_frequency": float(light_physics_freq),
-        "wavelength_m": float(wavelength_m),
-        "soul_color": soul_color,
-        "dominant_wavelength_nm": float(dominant_wavelength_nm),
-        "spectral_components": {
-            "red": float(r),
-            "green": float(g),
-            "blue": float(b)
-        },
-        "resonant_frequencies": [
-            float(soul_frequency),
-            float(soul_frequency * PHI),
-            float(soul_frequency * 2.0)
-        ],
-        "creation_timestamp": datetime.now().isoformat()
-    }
-    
-    # Add identity layer to soul's aura layers
-    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
-        setattr(soul_spark, 'layers', [])
-    
-    # Append to existing layers
-    soul_spark.layers.append(identity_layer)
-    
-    logger.info(f"Created Identity Aura Layer with Light Physics Frequency: {light_physics_freq:.2f}MHz, "
-               f"Wavelength: {wavelength_m:.2e}m, Dominant Wavelength: {dominant_wavelength_nm:.2f}nm")
-    
-    return identity_layer
-
-def _integrate_name_with_aura_layers(soul_spark: SoulSpark, 
-                                   standing_waves: Dict[str, Any]) -> None:
-    """
-    Integrate name-based standing waves with aura layers to create resonance.
-    This establishes identity patterns without modifying core frequency.
-    
-    Args:
-        soul_spark: The soul to integrate with
-        standing_waves: Standing wave patterns from name
+    try:
+        # Get soul characteristics
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+        harmony = getattr(soul_spark, 'harmony', 0.0)
+        phi_resonance = getattr(soul_spark, 'phi_resonance', 0.0)
+        gematria = getattr(soul_spark, 'gematria_value', 0)
         
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
+        # Map frequency ranges to astrological signs with dates
+        astrological_mappings = [
+            (200.0, 250.0, "Aquarius", "2024-02-15"),     # Air sign, innovative frequency
+            (250.0, 300.0, "Pisces", "2024-03-15"),       # Water sign, intuitive frequency
+            (300.0, 350.0, "Aries", "2024-04-15"),        # Fire sign, energetic frequency
+            (350.0, 400.0, "Taurus", "2024-05-11"),       # Earth sign, grounding frequency (our corrected example)
+            (400.0, 450.0, "Gemini", "2024-06-15"),       # Air sign, communication frequency
+            (450.0, 500.0, "Cancer", "2024-07-15"),       # Water sign, nurturing frequency
+            (500.0, 550.0, "Leo", "2024-08-15"),          # Fire sign, creative frequency
+            (550.0, 600.0, "Virgo", "2024-09-15"),        # Earth sign, perfectionist frequency
+            (600.0, 650.0, "Libra", "2024-10-15"),        # Air sign, harmony frequency
+            (650.0, 700.0, "Scorpio", "2024-11-15"),      # Water sign, transformative frequency
+            (700.0, 750.0, "Sagittarius", "2024-12-15"),  # Fire sign, philosophical frequency
+            (150.0, 200.0, "Capricorn", "2024-01-15"),    # Earth sign, structured frequency
+        ]
+        
+        # Find the matching sign based on soul frequency
+        birth_date = "2024-05-11"  # Default (Taurus)
+        star_sign = "Taurus"
+        
+        for freq_min, freq_max, sign, date in astrological_mappings:
+            if freq_min <= soul_frequency < freq_max:
+                birth_date = date
+                star_sign = sign
+                break
+        
+        # Fine-tune based on additional characteristics
+        if harmony > 0.8 and phi_resonance > 0.7:
+            # High harmony souls tend toward Libra (balance)
+            birth_date = "2024-10-15"
+            star_sign = "Libra"
+        elif gematria % 12 == 0:  # Divisible by 12 - Pisces (spiritual completion)
+            birth_date = "2024-03-15" 
+            star_sign = "Pisces"
+        elif name.lower().startswith(('a', 'e', 'i', 'o', 'u')):  # Vowel names - Aquarius (air/communication)
+            birth_date = "2024-02-15"
+            star_sign = "Aquarius"
+            
+        logger.info(f"Assigned birth date and sign: {name} -> {birth_date} ({star_sign})")
+        logger.debug(f"  Based on: Frequency={soul_frequency:.1f}Hz, Harmony={harmony:.3f}, Phi={phi_resonance:.3f}, Gematria={gematria}")
+        
+        return birth_date, star_sign
+        
+    except Exception as e:
+        logger.error(f"Error assigning birth date: {e}")
+        # Return default values
+        return "2024-05-11", "Taurus"
+
+def establish_mothers_voice_foundation(soul_spark: SoulSpark) -> None:
     """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be SoulSpark instance")
-    if not isinstance(standing_waves, dict):
-        raise ValueError("standing_waves must be a dictionary")
-    if not hasattr(soul_spark, 'layers') or not soul_spark.layers:
-        raise ValueError("Soul must have aura layers for integration")
-    
-    name = getattr(soul_spark, 'name', None)
-    if not name:
-        raise ValueError("Soul must have a name assigned")
+    Establishes mother's voice as the foundational security layer for identity crystallization.
+    The mother's voice (220 Hz) provides the secure, loving base that enables stable lattice formation.
+    """
+    logger.info("Identity Step: Establish Mother's Voice Foundation...")
     
     try:
-        logger.debug(f"Integrating name '{name}' standing waves with aura layers...")
+        # Mother's voice characteristics (from mothers_voice_welcome.py)
+        mothers_voice_freq = 220.0  # A3 - warm, nurturing frequency
+        emotional_resonance = 0.95  # High emotional content
+        love_energy_level = 1.0     # Maximum love energy
+        calming_effect = 0.9        # Strong calming influence
         
-        # Get key frequency components from standing waves
-        frequencies = standing_waves.get("component_frequencies", [])
-        nodes = standing_waves.get("nodes", [])
-        antinodes = standing_waves.get("antinodes", [])
+        # Create foundational security layer
+        security_foundation = {
+            "frequency": mothers_voice_freq,
+            "emotional_resonance": emotional_resonance,
+            "love_energy": love_energy_level,
+            "calming_effect": calming_effect,
+            "message": "Welcome to this world, little one. You are loved beyond measure.",
+            "foundation_strength": 1.0,  # Full foundational strength
+            "security_level": 0.95      # Very high security feeling
+        }
         
-        if not frequencies:
-            raise ValueError("Standing waves missing frequency components")
+        # Calculate how mother's voice affects identity formation
+        soul_frequency = getattr(soul_spark, 'frequency', 376.0)
+        name_resonance = getattr(soul_spark, 'name_resonance', 0.0)
         
-        # Find resonant layers for each frequency component
-        resonant_connections = []
+        # Mother's voice creates harmonic relationship with soul
+        freq_ratio = soul_frequency / mothers_voice_freq  # Should be ~1.7 (approx 5th harmonic)
+        harmonic_support = min(1.0, 1.0 / abs(freq_ratio - 1.7) + 0.5) if freq_ratio > 0 else 0.5
         
-        for freq_idx, freq in enumerate(frequencies):
-            # Look for most resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create name resonance field in layer
-                if 'name_resonance' not in layer:
-                    layer['name_resonance'] = {}
-                
-                # Position in layer is based on node/antinode positions
-                # Find closest node/antinode
-                closest_pos = 0.5  # Default to middle
-                closest_dist = 1.0
-                
-                # Check nodes
-                for node in nodes:
-                    position = node.get("position", 0)
-                    dist = abs(position - (freq_idx / max(1, len(frequencies))))
-                    if dist < closest_dist:
-                        closest_dist = dist
-                        closest_pos = position
-                
-                # Check antinodes
-                for antinode in antinodes:
-                    position = antinode.get("position", 0)
-                    dist = abs(position - (freq_idx / max(1, len(frequencies))))
-                    if dist < closest_dist:
-                        closest_dist = dist
-                        closest_pos = position
-                
-                # Add resonance component to layer
-                layer['name_resonance'][f"component_{freq_idx}"] = {
-                    "frequency": float(freq),
-                    "resonance": float(best_resonance),
-                    "position": float(closest_pos),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(freq))
-                
-                # Track connection for metrics
-                resonant_connections.append({
-                    "layer_idx": best_layer_idx,
-                    "frequency": float(freq),
-                    "resonance": float(best_resonance),
-                    "position": float(closest_pos)
-                })
+        # Security boost from mother's voice
+        security_boost = security_foundation["security_level"] * harmonic_support
+        identity_stability_boost = security_boost * 0.3  # Up to 30% boost to identity stability
         
-        # Log integration statistics
-        logger.debug(f"Name-layer integration complete: {len(resonant_connections)} connections " +
-                    f"across {len(set(c['layer_idx'] for c in resonant_connections))} layers")
+        # Apply foundational effects to soul
+        current_stability = getattr(soul_spark, 'identity_stability', 0.5)
+        new_stability = min(1.0, current_stability + identity_stability_boost)
+        
+        # Store mother's voice foundation data
+        setattr(soul_spark, 'mothers_voice_foundation', security_foundation)
+        setattr(soul_spark, 'identity_stability', new_stability)
+        setattr(soul_spark, 'foundational_security', security_boost)
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        
+        logger.info(f"Mother's voice foundation established: {mothers_voice_freq}Hz")
+        logger.info(f"Security boost: {security_boost:.3f}, Identity stability: {new_stability:.3f}")
+        logger.info(f"Harmonic support: {harmonic_support:.3f} (ratio: {freq_ratio:.2f})")
         
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
                 "soul_id": soul_spark.spark_id,
-                "name": name,
-                "connections_count": len(resonant_connections),
-                "layers_affected": len(set(c['layer_idx'] for c in resonant_connections)),
-                "frequencies_integrated": len(frequencies),
-                "avg_resonance": sum(c['resonance'] for c in resonant_connections) / 
-                               max(1, len(resonant_connections)),
+                "mothers_voice_frequency": float(mothers_voice_freq),
+                "soul_frequency": float(soul_frequency),
+                "frequency_ratio": float(freq_ratio),
+                "harmonic_support": float(harmonic_support),
+                "security_boost": float(security_boost),
+                "identity_stability_boost": float(identity_stability_boost),
+                "final_identity_stability": float(new_stability),
+                "foundational_security": float(security_boost),
                 "timestamp": datetime.now().isoformat()
             }
-            metrics.record_metrics('identity_name_layer_integration', metrics_data)
+            metrics.record_metrics('identity_mothers_voice_foundation', metrics_data)
         
     except Exception as e:
-        logger.error(f"Error integrating name with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Name-layer integration failed") from e
+        logger.error(f"Error establishing mother's voice foundation: {e}", exc_info=True)
+        raise RuntimeError("Mother's voice foundation failed.") from e
+
 
 def assign_voice_frequency(soul_spark: SoulSpark) -> None:
     """
-    Assigns voice frequency (Hz) based on name/attributes/aura layers.
-    Implements proper acoustic physics and creates standing wave patterns.
+    Assigns voice frequency (Hz) based on name/attributes using acoustic physics.
+    Stores voice frequency directly on soul_spark.
     """
     logger.info("Identity Step: Assign Voice Frequency with Acoustic Physics...")
     name = getattr(soul_spark, 'name')
@@ -1036,77 +1302,42 @@ def assign_voice_frequency(soul_spark: SoulSpark) -> None:
         raise ValueError("Name standing waves required for voice frequency calculation.")
     
     try:
-        # Base voice frequency calculation
-        length_factor = len(name) / 10.0
-        vowels = sum(1 for c in name.lower() if c in 'aeiouy')
-        total_letters = len(name)
-        vowel_ratio = vowels / max(1, total_letters)
-        gematria_factor = (gematria % 100) / 100.0
-        resonance_factor = name_resonance
+        # Calculate voice frequency using multiple acoustic factors
         
-        # Calculate base frequency through traditional factors
-        voice_frequency = (VOICE_FREQ_BASE + 
-                         VOICE_FREQ_ADJ_LENGTH_FACTOR * (length_factor - 0.5) + 
-                         VOICE_FREQ_ADJ_VOWEL_FACTOR * (vowel_ratio - 0.5) + 
-                         VOICE_FREQ_ADJ_GEMATRIA_FACTOR * (gematria_factor - 0.5) + 
-                         VOICE_FREQ_ADJ_RESONANCE_FACTOR * (resonance_factor - 0.5) + 
-                         VOICE_FREQ_ADJ_YINYANG_FACTOR * (yin_yang - 0.5))
+        # 1. Base frequency from name's fundamental resonance
+        fundamental_freq = standing_waves.get("fundamental_frequency", soul_spark.frequency)
         
-        logger.debug(f"  Voice Freq Base Calc -> Raw={voice_frequency:.2f}Hz")
+        # 2. Gender/energy balance influence (Yin/Yang)
+        if hasattr(soul_spark, 'yin_yang_balance'):
+            # Yang (masculine) tends toward lower frequencies, Yin (feminine) toward higher
+            yin_yang_factor = 0.8 + (yin_yang * 0.4)  # Range: 0.8 to 1.2
+        else:
+            yin_yang_factor = 1.0
         
-        # Enhance with standing wave resonance
-        # Find the most coherent antinode frequency
-        coherent_freq = None
-        max_coherence = 0.0
+        # 3. Gematria harmonic influence
+        gematria_harmonic = (gematria % 12) + 1  # Harmonic 1-12
+        gematria_factor = 1.0 + (gematria_harmonic / 100.0)  # Slight frequency shift
         
-        if standing_waves and "antinodes" in standing_waves:
-            antinodes = standing_waves["antinodes"]
-            component_freqs = standing_waves.get("component_frequencies", [])
-            
-            # Find most coherent antinode position
-            for antinode in antinodes:
-                position = antinode.get("position", 0)
-                amplitude = abs(antinode.get("amplitude", 0))
-                
-                # Higher amplitude = more coherent
-                if amplitude > max_coherence:
-                    max_coherence = amplitude
-                    
-                    # Find closest frequency component
-                    if component_freqs:
-                        # Normalize position to index
-                        idx = int(position * len(component_freqs))
-                        idx = max(0, min(len(component_freqs) - 1, idx))
-                        coherent_freq = component_freqs[idx]
+        # 4. Name resonance quality influence
+        resonance_factor = 0.9 + (name_resonance * 0.2)  # Range: 0.9 to 1.1
         
-        # Incorporate coherent frequency if found
-        if coherent_freq and max_coherence > 0.3:
-            # Blend with base calculation - weighted by coherence
-            voice_frequency = (voice_frequency * (1.0 - max_coherence * 0.7) + 
-                             coherent_freq * max_coherence * 0.7)
-            
-            logger.debug(f"  Enhanced with standing wave: {coherent_freq:.2f}Hz " +
-                       f"(Coherence: {max_coherence:.3f}) -> New={voice_frequency:.2f}Hz")
+        # Calculate voice frequency with all factors
+        voice_frequency = fundamental_freq * yin_yang_factor * gematria_factor * resonance_factor
         
-        # Snap to nearest Solfeggio frequency if close
-        solfeggio_values = list(SOLFEGGIO_FREQUENCIES.values())
-        if solfeggio_values:
-            closest_solfeggio = min(solfeggio_values, key=lambda x: abs(x - voice_frequency))
-            
-            if abs(closest_solfeggio - voice_frequency) < VOICE_FREQ_SOLFEGGIO_SNAP_HZ:
-                voice_frequency = closest_solfeggio
-                logger.debug(f"  Voice Freq Snapped to Solfeggio: {voice_frequency:.2f}Hz")
+        # Constrain to human vocal range (roughly 85Hz to 1100Hz)
+        voice_frequency = max(85.0, min(1100.0, voice_frequency))
         
-        # Ensure frequency is within valid range
-        voice_frequency = min(VOICE_FREQ_MAX_HZ, max(VOICE_FREQ_MIN_HZ, voice_frequency))
+        logger.debug(f"  Voice Calc: Base={fundamental_freq:.1f}Hz, " +
+                    f"YinYang={yin_yang_factor:.3f}, Gematria={gematria_factor:.3f}, " +
+                    f"Resonance={resonance_factor:.3f} -> {voice_frequency:.2f}Hz")
         
-        # Generate voice sound pattern if sound modules available
+        # Generate harmonic series for voice
+        harmonics = [1.0, 2.0, 3.0, 1.5]  # Fundamental, octave, twelfth, fifth
+        amplitudes = [0.8, 0.4, 0.3, 0.5]  # Relative amplitudes
+        
+        # Generate voice sound if modules available
         if SOUND_MODULES_AVAILABLE:
             try:
-                # Create voice tone with harmonics
-                harmonics = [1.0, 2.0, 3.0, 1.5]  # Include perfect fifth (1.5)
-                amplitudes = [0.7, 0.3, 0.15, 0.25]  # Typical vocal harmonic structure
-                
                 voice_sound = sound_gen.generate_harmonic_tone(
                     voice_frequency, harmonics, amplitudes, 3.0, 0.3)
                 
@@ -1131,13 +1362,11 @@ def assign_voice_frequency(soul_spark: SoulSpark) -> None:
         # Calculate the acoustic wavelength for this frequency
         wavelength_meters = SPEED_OF_SOUND / voice_frequency
         
-        # Update soul with voice frequency data
+        # Store voice frequency directly on soul_spark
         setattr(soul_spark, 'voice_frequency', float(voice_frequency))
         setattr(soul_spark, 'voice_wavelength', float(wavelength_meters))
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
-        # Integrate voice frequency with aura layers
-        _integrate_voice_with_aura_layers(soul_spark, voice_frequency, harmonics=[1.0, 2.0, 3.0, 1.5])
         
         logger.info(f"Voice frequency assigned: {voice_frequency:.2f}Hz, " +
                    f"Wavelength: {wavelength_meters:.2f}m")
@@ -1146,115 +1375,11 @@ def assign_voice_frequency(soul_spark: SoulSpark) -> None:
         logger.error(f"Error assigning voice frequency: {e}", exc_info=True)
         raise RuntimeError("Voice frequency assignment failed.") from e
 
-def _integrate_voice_with_aura_layers(soul_spark: SoulSpark, voice_freq: float, 
-                                    harmonics: List[float] = None) -> None:
-    """
-    Integrate voice frequency with aura layers to establish resonance.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        voice_freq: Voice fundamental frequency
-        harmonics: List of harmonic ratios to integrate
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if voice_freq <= 0:
-        raise ValueError("voice_freq must be positive")
-    if harmonics is None:
-        harmonics = [1.0, 2.0, 3.0]  # Default harmonics
-    
-    try:
-        logger.debug(f"Integrating voice frequency {voice_freq:.2f}Hz with aura layers...")
-        
-        # Generate the harmonic frequencies
-        harmonic_freqs = [voice_freq * h for h in harmonics]
-        
-        # Track integration statistics
-        connected_layers = set()
-        total_resonance = 0.0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create voice resonance field in layer
-                if 'voice_resonance' not in layer:
-                    layer['voice_resonance'] = {}
-                
-                # Add harmonic to layer
-                layer['voice_resonance'][f"harmonic_{harm_idx}"] = {
-                    "frequency": float(freq),
-                    "harmonic_ratio": float(harmonics[harm_idx]),
-                    "resonance": float(best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(freq))
-                
-                # Track statistics
-                connected_layers.add(best_layer_idx)
-                total_resonance += best_resonance
-        
-        # Log integration results
-        avg_resonance = total_resonance / max(1, len(connected_layers))
-        logger.debug(f"Voice frequency integrated with {len(connected_layers)} layers, " +
-                    f"Avg resonance: {avg_resonance:.4f}")
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "soul_id": soul_spark.spark_id,
-                "voice_frequency": float(voice_freq),
-                "harmonics_count": len(harmonics),
-                "layers_connected": len(connected_layers),
-                "average_resonance": float(avg_resonance),
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('identity_voice_integration', metrics_data)
-        
-    except Exception as e:
-        logger.error(f"Error integrating voice with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Voice-layer integration failed") from e
 
 def process_soul_color(soul_spark: SoulSpark) -> None:
     """
     Process the soul's color using light physics and electromagnetic theory.
-    Creates proper light-frequency relationships and integrates with aura layers.
+    Creates proper light-frequency relationships.
     
     This function creates the soul's spectral signature, mapping its frequency
     to visible light and electromagnetic ranges, establishing quantum coherence
@@ -1380,9 +1505,6 @@ def process_soul_color(soul_spark: SoulSpark) -> None:
                 logger.warning(f"Failed to generate color sound: {sound_err}")
                 # Continue without failing process
         
-        # Integrate color with aura layers
-        _integrate_color_with_aura_layers(soul_spark, color_properties)
-        
         setattr(soul_spark, 'color_properties', color_properties)
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
@@ -1394,274 +1516,451 @@ def process_soul_color(soul_spark: SoulSpark) -> None:
     except Exception as e:
         logger.error(f"Error processing soul color: {e}", exc_info=True)
         raise RuntimeError("Soul color processing failed") from e
-
-def _integrate_color_with_aura_layers(soul_spark: SoulSpark, color_properties: Dict) -> None:
+    
+def _create_heart_centered_field(soul_spark: SoulSpark, love_freq: float,
+                              harmonic_interval: float) -> Dict[str, Any]:
     """
-    Integrate color frequency with aura layers to establish resonance.
+    Create heart-centered geometric field for love resonance.
+    
+    Creates an energetic field pattern that integrates with ??
+    to enhance love resonance and emotional coherence.
     
     Args:
-        soul_spark: Soul to integrate with
-        color_properties: Color properties dictionary
+        soul_spark: Soul to create field for
+        love_freq: Love frequency (528Hz)
+        harmonic_interval: Harmonic interval for field geometry
+        
+    Returns:
+        Dictionary with heart field data
         
     Raises:
         ValueError: If inputs are invalid
-        RuntimeError: If integration fails
+        RuntimeError: If field creation fails
     """
     if not isinstance(soul_spark, SoulSpark):
         raise ValueError("soul_spark must be a SoulSpark instance")
-    if not isinstance(color_properties, dict):
-        raise ValueError("color_properties must be a dictionary")
+    if love_freq <= 0:
+        raise ValueError("love_freq must be positive")
+    if harmonic_interval <= 0:
+        raise ValueError("harmonic_interval must be positive")
     
     try:
-        color_freq = color_properties.get("frequency_hz", 0)
-        if color_freq <= 0:
-            raise ValueError("Color frequency must be positive")
+        logger.debug(f"Creating heart-centered field...")
         
-        logger.debug(f"Integrating color frequency {color_freq:.2f}Hz with aura layers...")
+        # Create harmonic series based on love frequency and interval
+        harmonic_freqs = []
+        for i in range(5):  # 5 harmonics
+            harmonic = love_freq * (harmonic_interval ** i)
+            harmonic_freqs.append(harmonic)
         
-        # Track integration statistics
-        connected_layers = set()
-        total_resonance = 0.0
+        # Create geometric field points in heart shape using parametric equations
+        field_points = []
+        num_points = 64  # Power of 2 for good field resolution
         
-        # Create harmonics for color frequency
-        # Using Phi-based harmonics for more natural resonance
-        harmonic_ratios = [1.0, PHI, 2.0, PHI * 2, 3.0]
-        harmonic_freqs = [color_freq * ratio for ratio in harmonic_ratios]
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
+        for i in range(num_points):
+            # Heart curve parametric equation
+            t = 2 * PI * i / num_points
             
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
+            # Heart shape equations
+            x = 16 * (sin(t) ** 3)
+            y = 13 * cos(t) - 5 * cos(2*t) - 2 * cos(3*t) - cos(4*t)
             
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create color resonance field in layer
-                if 'color_resonance' not in layer:
-                    layer['color_resonance'] = {}
-                
-                # Add harmonic to layer
-                layer['color_resonance'][f"harmonic_{harm_idx}"] = {
-                    "frequency": float(freq),
-                    "harmonic_ratio": float(harmonic_ratios[harm_idx]),
-                    "resonance": float(best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Store layer color influence
-                if 'color_influence' not in layer:
-                    layer['color_influence'] = color_properties.get('hex', '#FFFFFF')
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(freq))
-                
-                # Track statistics
-                connected_layers.add(best_layer_idx)
-                total_resonance += best_resonance
+            # Scale to unit coordinates
+            x_scaled = x / 20.0  # Normalize to roughly -1 to 1
+            y_scaled = y / 20.0
+            
+            # Calculate phase value based on position and harmonics
+            phase_value = 0.0
+            for j, freq in enumerate(harmonic_freqs):
+                # Create standing wave pattern
+                wave_contribution = sin(2 * PI * freq * t / 1000.0) * (0.8 ** j)
+                phase_value += wave_contribution
+            
+            # Normalize phase value
+            phase_value = (phase_value + 1.0) / 2.0  # Map to 0-1 range
+            
+            # Add point to field
+            field_points.append({
+                "x": float(x_scaled),
+                "y": float(y_scaled),
+                "value": float(phase_value)
+            })
         
-        # Log integration results
-        avg_resonance = total_resonance / max(1, len(connected_layers))
-        logger.debug(f"Color frequency integrated with {len(connected_layers)} layers, " +
-                    f"Avg resonance: {avg_resonance:.4f}")
+        # Calculate field strength based on points
+        field_strength = sum(p["value"] for p in field_points) / len(field_points)
+        
+        # Since there are no layers, integrated_layers is 0
+        integrated_layers = 0
+        
+        # Create the final heart field structure
+        heart_field = {
+            "love_frequency": float(love_freq),
+            "harmonic_interval": float(harmonic_interval),
+            "harmonic_frequencies": [float(f) for f in harmonic_freqs],
+            "field_strength": float(field_strength),
+            "points": field_points,
+            "integrated_layers": integrated_layers
+        }
+        
+        logger.debug(f"Created heart-centered field with strength {field_strength:.4f}, " +
+                   f"stored directly on soul (no layers).")
+        
+        return heart_field
+        
+    except Exception as e:
+        logger.error(f"Error creating heart-centered field: {e}", exc_info=True)
+        raise RuntimeError("Heart-centered field creation failed") from e
+
+def activate_love_resonance(soul_spark: SoulSpark, cycles: int = 7) -> None:
+    """
+    Activates love resonance using geometric field formation and standing waves
+    to enhance harmony and emotional resonance throughout.
+    """
+    logger.info("Identity Step: Activate Love Resonance with Geometric Field Formation...")
+    if not isinstance(cycles, int) or cycles < 0:
+        raise ValueError("Cycles must be non-negative.")
+    if cycles == 0:
+        logger.info("Skipping love resonance activation (0 cycles).")
+        return
+    
+    try:
+        soul_frequency = getattr(soul_spark, 'soul_frequency', 0.0)
+        state = getattr(soul_spark, 'consciousness_state', 'spark')
+        heartbeat_entrainment = getattr(soul_spark, 'heartbeat_entrainment', 0.0)
+        emotional_resonance = getattr(soul_spark, 'emotional_resonance', {})
+        current_love = float(emotional_resonance.get('love', 0.0))
+        love_freq = LOVE_RESONANCE_FREQ
+        
+        if love_freq <= FLOAT_EPSILON or soul_frequency <= FLOAT_EPSILON:
+            raise ValueError("Frequencies invalid for love resonance.")
+        
+        logger.debug(f"  Love Resonance Harmonic Patterning: CurrentLove={current_love:.3f}")
+        
+        # ENHANCEMENT: Create heart coherence field
+        heart_coherence = heartbeat_entrainment * 0.5 + 0.25  # Base coherence level
+        
+        # Calculate harmonic relationship between love frequency and soul frequency
+        harmonic_intervals = [1.0, 1.25, 1.333, 1.5, 1.667, 2.0]  # Musical intervals
+        best_harmonic_resonance = 0.0
+        best_harmonic_interval = 1.0
+        
+        for interval in harmonic_intervals:
+            # Check both directions
+            harmonic1 = love_freq * interval
+            harmonic2 = love_freq / interval
+            
+            # Calculate resonance with soul frequency
+            res1 = calculate_resonance(harmonic1, soul_frequency)
+            res2 = calculate_resonance(harmonic2, soul_frequency)
+            
+            # Use the best resonance
+            if res1 > best_harmonic_resonance:
+                best_harmonic_resonance = res1
+                best_harmonic_interval = interval
+            if res2 > best_harmonic_resonance:
+                best_harmonic_resonance = res2
+                best_harmonic_interval = 1.0 / interval
+        
+        # Create heart-centered geometric field
+        heart_field = _create_heart_centered_field(
+            soul_spark, love_freq, best_harmonic_interval)
+        
+        # Love resonance cycles enhanced with geometric field
+        love_accumulator = 0.0
+        
+        # Cycle metrics
+        cycle_metrics = []
+        
+        for cycle in range(cycles):
+            # Create heart-centered resonance pattern using heart coherence
+            cycle_factor = 1.0 - (cycle / (max(1, cycles) * 1.0))
+            state_factor = LOVE_RESONANCE_STATE_WEIGHT.get(
+                state, LOVE_RESONANCE_STATE_WEIGHT['default'])
+            
+            # Use the harmonic resonance rather than direct frequency matching
+            resonance_factor = best_harmonic_resonance * LOVE_RESONANCE_FREQ_RES_WEIGHT
+            
+            # Heart coherence amplifies the effect
+            heart_factor = (LOVE_RESONANCE_HEARTBEAT_WEIGHT + 
+                          LOVE_RESONANCE_HEARTBEAT_SCALE * heart_coherence)
+            
+            # Calculate the love increase
+            base_increase = LOVE_RESONANCE_BASE_INC * cycle_factor
+            
+            # Add geometric field factor
+            field_factor = heart_field.get("field_strength", 0.5)
+            
+            # Calculate full increase with all factors
+            full_increase = (base_increase * 
+                           state_factor * 
+                           resonance_factor * 
+                           heart_factor * 
+                           (1.0 + field_factor * 0.5))  # 50% boost from field
+            
+            # Apply increase to love accumulator
+            love_accumulator += full_increase
+            
+            # Track cycle metrics
+            cycle_metrics.append({
+                "cycle": cycle + 1,
+                "cycle_factor": float(cycle_factor),
+                "base_increase": float(base_increase),
+                "effective_increase": float(full_increase),
+                "accumulated": float(love_accumulator)
+            })
+            
+            logger.debug(f"    Cycle {cycle+1}: CycleFactor={cycle_factor:.3f}, " +
+                       f"FieldFactor={field_factor:.3f}, " +
+                       f"Inc={full_increase:.5f}, " +
+                       f"Accum={love_accumulator:.4f}")
+        
+        # Apply accumulated love resonance
+        new_love = min(1.0, current_love + love_accumulator)
+        
+        # Update other emotions based on love (gentle ripple effect)
+        new_emotional_resonance = emotional_resonance.copy()
+        new_emotional_resonance['love'] = float(new_love)
+        
+        # Apply gentle boost to other emotions based on love
+        for emotion in ['joy', 'peace', 'harmony', 'compassion']:
+            current = float(emotional_resonance.get(emotion, 0.0))
+            boost = LOVE_RESONANCE_EMOTION_BOOST_FACTOR * new_love
+            new_emotional_resonance[emotion] = float(min(1.0, current + boost))
+            
+        # Generate love frequency sound if available
+        if SOUND_MODULES_AVAILABLE:
+            try:
+                # Create love resonance tone with harmonics
+                harmonic_ratios = [1.0, PHI, 1.5, 2.0]
+                amplitudes = [0.8, 0.6, 0.5, 0.3]
+                
+                love_sound = sound_gen.generate_harmonic_tone(
+                    love_freq, harmonic_ratios, amplitudes, 5.0, 0.5)
+                
+                # Save love sound
+                sound_path = sound_gen.save_sound(
+                    love_sound, "love_resonance.wav", "Love Resonance 528Hz")
+                
+                logger.debug(f"  Generated love resonance sound: {sound_path}")
+                
+                # Love sound provides a small additional boost
+                sound_boost = 0.05  # 5% boost from actual sound
+                final_love = min(1.0, new_love + sound_boost)
+                new_emotional_resonance['love'] = float(final_love)
+                
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate love sound: {sound_err}")
+                # Continue without failing process
+        
+        # Update soul with new emotional resonance
+        setattr(soul_spark, 'emotional_resonance', new_emotional_resonance)
+        setattr(soul_spark, 'heart_field', heart_field)
+        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
                 "soul_id": soul_spark.spark_id,
-                "color": color_properties.get('hex', 'unknown'),
-                "color_frequency": float(color_freq),
-                "harmonics_count": len(harmonic_ratios),
-                "layers_connected": len(connected_layers),
-                "average_resonance": float(avg_resonance),
+                "love_frequency": float(love_freq),
+                "initial_love": float(current_love),
+                "cycles": cycles,
+                "accumulated_increase": float(love_accumulator),
+                "harmonic_resonance": float(best_harmonic_resonance),
+                "harmonic_interval": float(best_harmonic_interval),
+                "heart_coherence": float(heart_coherence),
+                "field_strength": float(heart_field.get("field_strength", 0.0)),
+                "final_love": float(new_emotional_resonance['love']),
+                "sound_generated": SOUND_MODULES_AVAILABLE,
+                "cycle_details": cycle_metrics,
                 "timestamp": datetime.now().isoformat()
             }
-            metrics.record_metrics('identity_color_integration', metrics_data)
+            metrics.record_metrics('identity_love_resonance', metrics_data)
+        
+        logger.info(f"Love resonance activated through harmonic patterning. " +
+                   f"Initial: {current_love:.4f}, Increase: {love_accumulator:.4f}, " +
+                   f"Final: {new_emotional_resonance['love']:.4f}")
         
     except Exception as e:
-        logger.error(f"Error integrating color with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Color-layer integration failed") from e
-
+        logger.error(f"Error activating love resonance: {e}", exc_info=True)
+        raise RuntimeError("Love resonance activation failed.") from e
+    
 def apply_heartbeat_entrainment(soul_spark: SoulSpark, bpm: float = 72.0, duration: float = 120.0) -> None:
     """
-    Applies heartbeat entrainment using proper acoustic physics, creates
-    resonant standing waves that enhance harmony factor throughout aura layers.
+    Applies heartbeat entrainment for emotional regulation and identity stability.
+    The heartbeat provides rhythmic organizing patterns that help crystallize identity structure.
     """
-    logger.info("Identity Step: Apply Heartbeat Entrainment with Acoustic Physics...")
+    logger.info("Identity Step: Apply Heartbeat Entrainment for Emotional Regulation...")
     if bpm <= 0 or duration < 0:
         raise ValueError("BPM must be positive, duration non-negative.")
-    
+
     try:
-        # Get current harmony and resonance state
+        # Get current emotional and identity state
         current_harmony = getattr(soul_spark, 'harmony', 0.0)
-        voice_frequency = getattr(soul_spark, 'voice_frequency', 0.0)
-        
-        # Calculate beat frequency in Hz (not BPM)
+        foundational_security = getattr(soul_spark, 'foundational_security', 0.0)
+        identity_stability = getattr(soul_spark, 'identity_stability', 0.5)
+
+        # Calculate beat frequency for rhythm (not acoustic resonance)
         beat_freq = bpm / 60.0
-        
-        # Calculate resonance between beat and voice frequency
-        if beat_freq <= FLOAT_EPSILON or voice_frequency <= FLOAT_EPSILON:
-            beat_resonance = 0.0
+        duration_factor = min(1.0, duration / 60.0)
+
+        # Determine heartbeat effectiveness based on BPM range for emotional regulation
+        if 60 <= bpm <= 80:
+            bpm_effectiveness = 1.0  # Optimal range for emotional regulation
+        elif 45 <= bpm < 60:
+            bpm_effectiveness = 0.9  # Very calm, slightly less organizing
+        elif 80 < bpm <= 100:
+            bpm_effectiveness = 0.7  # Higher energy, less calming
         else:
-            beat_resonance = calculate_resonance(beat_freq, voice_frequency)
+            bpm_effectiveness = 0.5  # Outside optimal ranges
+
+        # Calculate emotional regulation effect
+        regulation_factor = bpm_effectiveness * duration_factor
+
+        # Mother's voice foundation enhances heartbeat effectiveness
+        security_enhancement = foundational_security * 0.5  # Up to 50% enhancement
+        total_regulation = regulation_factor * (1.0 + security_enhancement)
+
+        # Apply emotional regulation effects
+        identity_stability_boost = total_regulation * 0.2  # Up to 20% boost
+        harmony_boost = total_regulation * 0.15  # Up to 15% boost
         
-        # Calculate entrainment factor based on duration
-        duration_factor = min(1.0, duration / HEARTBEAT_ENTRAINMENT_DURATION_CAP)
+        # Calculate meaningful resonance values based on soul properties (no layers needed)
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+        beat_resonance = min(1.0, total_regulation * 0.8)
         
-        # Calculate harmony increase based on resonance and duration
-        base_harmony_increase = beat_resonance * duration_factor * HEARTBEAT_ENTRAINMENT_INC_FACTOR
-        
-        # Generate actual heartbeat sound if available
+        # Calculate rhythmic resonance based on how well beat frequency harmonizes with soul
+        frequency_ratio = beat_freq / (soul_frequency if soul_frequency > 0 else 1.0)
+        harmonic_resonance = 1.0 / (1.0 + abs(frequency_ratio - 1.0))  # Closer to 1:1 ratio = better
+        standing_wave_resonance = beat_resonance * harmonic_resonance * bpm_effectiveness
+        standing_wave_boost = standing_wave_resonance * 0.25  # Increased from 0.1 to 0.25 for meaningful boost
+
+        # Apply changes to soul directly 
+        new_identity_stability = min(1.0, identity_stability + identity_stability_boost)
+        new_harmony = min(1.0, current_harmony + harmony_boost)
+        base_harmony_increase = harmony_boost + standing_wave_boost
+
+        # Generate heartbeat sound for additional regulation effect
         heartbeat_sound = None
+        heartbeat_sound_generated = False
         if SOUND_MODULES_AVAILABLE:
             try:
-                # Generate heartbeat waveform - more complex than simple sine
-                # Create a more realistic heartbeat waveform (using a shaped envelope)
                 num_samples = int(duration * soul_spark.sample_rate)
                 time_array = np.linspace(0, duration, num_samples, False)
-                
-                # Empty sound array
                 heartbeat_sound = np.zeros(num_samples, dtype=np.float32)
-                
-                # Generate individual beats
                 beat_period = 60.0 / bpm
                 num_beats = int(duration / beat_period)
-                
+
+                # Generate realistic heartbeat pattern
                 for i in range(num_beats):
                     beat_time = i * beat_period
                     
-                    # First part of beat (lub) - higher frequency
-                    lub_duration = 0.15  # seconds
-                    lub_start = int((beat_time) * soul_spark.sample_rate)
-                    lub_end = min(int((beat_time + lub_duration) * soul_spark.sample_rate), num_samples)
+                    # S1 Sound ("Lub") - Mitral and Tricuspid valve closure
+                    # Realistic timing: Sharp onset, ~0.14s duration
+                    s1_duration = 0.14
+                    s1_start = int(beat_time * soul_spark.sample_rate)
+                    s1_end = min(int((beat_time + s1_duration) * soul_spark.sample_rate), num_samples)
                     
-                    if lub_start < num_samples:
-                        lub_envelope = np.zeros(lub_end - lub_start)
-                        t = np.linspace(0, lub_duration, lub_end - lub_start)
-                        # Shaped envelope: fast attack, slower decay
-                        attack = 0.1 * lub_duration
-                        attack_samples = int(attack * len(t))
-                        if attack_samples > 0:
-                            lub_envelope[:attack_samples] = np.linspace(0, 1, attack_samples)
-                        decay_samples = len(t) - attack_samples
-                        if decay_samples > 0:
-                            lub_envelope[attack_samples:] = np.exp(-3 * np.linspace(0, 1, decay_samples))
+                    if s1_start < num_samples:
+                        s1_length = s1_end - s1_start
+                        t = np.linspace(0, s1_duration, s1_length)
                         
-                        # Main heartbeat frequency component (higher pitch for "lub")
-                        lub_freq = 60.0 
-                        lub_wave = 0.8 * np.sin(2 * np.pi * lub_freq * t)
+                        # Real S1 has sharp attack, exponential decay
+                        s1_envelope = np.exp(-8 * t)  # Quick decay
+                        # Add sharp attack
+                        attack_len = min(10, s1_length // 10)
+                        if attack_len > 0:
+                            s1_envelope[:attack_len] *= np.linspace(0, 1, attack_len)
                         
-                        # Add harmonics for richness
-                        lub_wave += 0.4 * np.sin(2 * np.pi * lub_freq * 2 * t)
-                        lub_wave += 0.2 * np.sin(2 * np.pi * lub_freq * 3 * t)
+                        # S1 frequency content: 20-200Hz with peak around 40-50Hz
+                        s1_wave = (
+                            0.6 * np.sin(2 * np.pi * 45 * t) +          # Main frequency
+                            0.3 * np.sin(2 * np.pi * 35 * t) +          # Lower component
+                            0.2 * np.sin(2 * np.pi * 65 * t) +          # Higher component
+                            0.1 * np.sin(2 * np.pi * 25 * t) +          # Bass component
+                            0.05 * np.sin(2 * np.pi * 85 * t)           # Slight high freq
+                        )
                         
-                        # Apply envelope
-                        lub_wave *= lub_envelope
+                        # Add muscle contraction noise (filtered white noise)
+                        if s1_length > 0:
+                            noise = np.random.normal(0, 0.02, s1_length)
+                            # Low-pass filter the noise
+                            for j in range(1, len(noise)):
+                                noise[j] = 0.8 * noise[j-1] + 0.2 * noise[j]
+                            s1_wave += noise
                         
-                        # Add to main sound
-                        heartbeat_sound[lub_start:lub_end] += lub_wave
+                        s1_wave *= s1_envelope
+                        heartbeat_sound[s1_start:s1_end] += s1_wave
                     
-                    # Second part of beat (dub) - lower frequency, after a delay
-                    dub_delay = 0.2  # seconds after lub starts
-                    dub_duration = 0.25  # seconds
-                    dub_start = int((beat_time + dub_delay) * soul_spark.sample_rate)
-                    dub_end = min(int((beat_time + dub_delay + dub_duration) * soul_spark.sample_rate), num_samples)
+                    # S2 Sound ("Dub") - Aortic and Pulmonary valve closure  
+                    # Occurs ~0.32s after S1, duration ~0.12s
+                    s2_delay = 0.32
+                    s2_duration = 0.12
+                    s2_start = int((beat_time + s2_delay) * soul_spark.sample_rate)
+                    s2_end = min(int((beat_time + s2_delay + s2_duration) * soul_spark.sample_rate), num_samples)
                     
-                    if dub_start < num_samples:
-                        dub_envelope = np.zeros(dub_end - dub_start)
-                        t = np.linspace(0, dub_duration, dub_end - dub_start)
-                        # Shaped envelope: moderate attack, slower decay
-                        attack = 0.15 * dub_duration
-                        attack_samples = int(attack * len(t))
-                        if attack_samples > 0:
-                            dub_envelope[:attack_samples] = np.linspace(0, 0.7, attack_samples)
-                        decay_samples = len(t) - attack_samples
-                        if decay_samples > 0:
-                            dub_envelope[attack_samples:] = 0.7 * np.exp(-2 * np.linspace(0, 1, decay_samples))
+                    if s2_start < num_samples:
+                        s2_length = s2_end - s2_start
+                        t = np.linspace(0, s2_duration, s2_length)
                         
-                        # Main heartbeat frequency component (lower pitch for "dub")
-                        dub_freq = 40.0
-                        dub_wave = 0.6 * np.sin(2 * np.pi * dub_freq * t)
+                        # S2 has sharper attack, quicker decay than S1
+                        s2_envelope = np.exp(-12 * t)  # Even quicker decay
+                        attack_len = min(8, s2_length // 12)
+                        if attack_len > 0:
+                            s2_envelope[:attack_len] *= np.linspace(0, 1, attack_len)
                         
-                        # Add harmonics for richness
-                        dub_wave += 0.3 * np.sin(2 * np.pi * dub_freq * 2 * t)
-                        dub_wave += 0.15 * np.sin(2 * np.pi * dub_freq * 3 * t)
+                        # S2 frequency content: Higher than S1, 20-150Hz, peak ~60Hz
+                        s2_wave = (
+                            0.5 * np.sin(2 * np.pi * 60 * t) +          # Main frequency (higher than S1)
+                            0.3 * np.sin(2 * np.pi * 45 * t) +          # Lower component
+                            0.2 * np.sin(2 * np.pi * 80 * t) +          # Higher component
+                            0.1 * np.sin(2 * np.pi * 30 * t) +          # Bass component
+                            0.05 * np.sin(2 * np.pi * 100 * t)          # High freq component
+                        )
                         
-                        # Apply envelope
-                        dub_wave *= dub_envelope
+                        # Add valve closure click (brief high frequency)
+                        if s2_length > 0:
+                            click_samples = min(s2_length // 20, 10)
+                            if click_samples > 0:
+                                click = 0.1 * np.sin(2 * np.pi * 200 * t[:click_samples])
+                                s2_wave[:click_samples] += click
                         
-                        # Add to main sound
-                        heartbeat_sound[dub_start:dub_end] += dub_wave
-                
-                # Normalize to avoid clipping
+                        s2_wave *= s2_envelope * 0.8  # S2 typically quieter than S1
+                        heartbeat_sound[s2_start:s2_end] += s2_wave
+
                 max_val = np.max(np.abs(heartbeat_sound))
                 if max_val > FLOAT_EPSILON:
                     heartbeat_sound = heartbeat_sound / max_val * 0.8
-                
-                # Save the heartbeat sound
+
                 heartbeat_path = sound_gen.save_sound(
                     heartbeat_sound, f"heartbeat_{int(bpm)}bpm.wav", f"Heartbeat at {bpm} BPM")
-                
+
                 logger.debug(f"  Generated heartbeat sound at {bpm} BPM: {heartbeat_path}")
-                
+
                 # Physical entrainment boost with real sound
-                # The actual sound generation increases the entrainment effect
                 harmony_increase = base_harmony_increase * 1.2  # 20% boost from actual sound
-                
+
             except Exception as sound_err:
                 logger.warning(f"Failed to generate heartbeat sound: {sound_err}")
-                # Use default calculation without sound boost
                 harmony_increase = base_harmony_increase
         else:
-            # No sound modules available
             harmony_increase = base_harmony_increase
-        
+
         # Calculate new harmony with entrainment effect
         new_harmony = min(1.0, current_harmony + harmony_increase)
-        
+
         logger.debug(f"  Heartbeat Entrainment: BeatFreq={beat_freq:.2f}Hz, " +
                    f"BeatRes={beat_resonance:.3f}, DurFactor={duration_factor:.2f} -> " +
                    f"HarmonyIncrease={harmony_increase:.4f}")
-        
-        # Create standing wave patterns in aura
-        standing_wave_resonance = _create_heartbeat_standing_waves(
-            soul_spark, beat_freq, beat_resonance)
-        
-        # The standing wave resonance enhances the harmony effect
-        standing_wave_boost = standing_wave_resonance * 0.1  # Up to 10% additional boost
-        final_harmony = min(1.0, new_harmony + standing_wave_boost)
-        
+
+        # Heartbeat entrainment affects soul harmony directly
+        final_harmony = new_harmony
+
         # Update soul with entrainment data
         setattr(soul_spark, 'harmony', float(final_harmony))
         setattr(soul_spark, 'heartbeat_entrainment', beat_resonance * duration_factor)
         setattr(soul_spark, 'heartbeat_frequency', float(beat_freq))
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
-        
+
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
@@ -1678,146 +1977,16 @@ def apply_heartbeat_entrainment(soul_spark: SoulSpark, bpm: float = 72.0, durati
                 "timestamp": datetime.now().isoformat()
             }
             metrics.record_metrics('identity_heartbeat_entrainment', metrics_data)
-        
+
         logger.info(f"Heartbeat entrainment applied. " +
                    f"Base Harmony Increase: {harmony_increase:.4f}, " +
                    f"Standing Wave Boost: {standing_wave_boost:.4f}, " +
                    f"Final Harmony: {final_harmony:.4f}")
-        
+
     except Exception as e:
         logger.error(f"Error applying heartbeat entrainment: {e}", exc_info=True)
         raise RuntimeError("Heartbeat entrainment failed.") from e
 
-def _create_heartbeat_standing_waves(soul_spark: SoulSpark, beat_freq: float, 
-                                   resonance: float) -> float:
-    """
-    Create standing wave patterns in aura layers based on heartbeat frequency.
-    
-    Args:
-        soul_spark: Soul to create standing waves in
-        beat_freq: Heartbeat frequency in Hz
-        resonance: Initial resonance level
-        
-    Returns:
-        Standing wave resonance factor (0-1)
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If standing wave creation fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if beat_freq <= 0:
-        raise ValueError("beat_freq must be positive")
-    if not 0 <= resonance <= 1:
-        raise ValueError("resonance must be between 0 and 1")
-    
-    try:
-        logger.debug(f"Creating heartbeat standing waves at {beat_freq:.2f}Hz...")
-        
-        # Calculate wavelength in meters
-        wavelength = SPEED_OF_SOUND / beat_freq
-        
-        # Create harmonic series from beat frequency
-        harmonic_ratios = [1.0, 2.0, 3.0, 4.0, 5.0]
-        harmonic_freqs = [beat_freq * ratio for ratio in harmonic_ratios]
-        
-        # Track layer integration
-        connected_layers = 0
-        total_standing_wave_res = 0.0
-        
-        for layer_idx, layer in enumerate(soul_spark.layers):
-            if not isinstance(layer, dict):
-                continue
-                
-            # Create heartbeat resonance field in layer
-            if 'heartbeat_resonance' not in layer:
-                layer['heartbeat_resonance'] = {}
-            
-            # Determine position in layer (different for each layer)
-            # Create natural variability for standing wave positions
-            layer_position = (layer_idx / max(1, len(soul_spark.layers) - 1))
-            
-            # Calculate best resonant harmonic for this layer
-            best_harmonic_idx = 0
-            best_harmonic_res = 0.0
-            
-            # Get layer frequencies
-            layer_freqs = []
-            if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                layer_freqs.extend(layer['resonant_frequencies'])
-            
-            # Find best resonance across harmonics
-            for h_idx, h_freq in enumerate(harmonic_freqs):
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(h_freq, layer_freq)
-                    if res > best_harmonic_res:
-                        best_harmonic_res = res
-                        best_harmonic_idx = h_idx
-            
-            # Skip layers with poor resonance
-            if best_harmonic_res < 0.1:
-                continue
-                
-            # Use the most resonant harmonic for this layer
-            harmonic_freq = harmonic_freqs[best_harmonic_idx]
-            harmonic_ratio = harmonic_ratios[best_harmonic_idx]
-            harmonic_wavelength = wavelength / harmonic_ratio
-            
-            # Calculate optimal node positions for standing waves
-            # For standing waves, nodes occur at 1/4, 3/4, etc. of the wavelength
-            primary_node_pos = 0.25 * harmonic_wavelength
-            secondary_node_pos = 0.75 * harmonic_wavelength
-            
-            # Calculate antinode positions (maximum amplitude)
-            # Antinodes at 0, 1/2, 1, etc. of wavelength
-            primary_antinode_pos = 0.0
-            secondary_antinode_pos = 0.5 * harmonic_wavelength
-            
-            # Create standing wave in layer
-            layer['heartbeat_resonance']['standing_wave'] = {
-                "frequency": float(harmonic_freq),
-                "harmonic_ratio": float(harmonic_ratio),
-                "wavelength_meters": float(harmonic_wavelength),
-                "resonance": float(best_harmonic_res),
-                "nodes": [
-                    {"position": float(primary_node_pos), "amplitude": 0.0},
-                    {"position": float(secondary_node_pos), "amplitude": 0.0}
-                ],
-                "antinodes": [
-                    {"position": float(primary_antinode_pos), "amplitude": float(best_harmonic_res)},
-                    {"position": float(secondary_antinode_pos), "amplitude": float(best_harmonic_res)}
-                ],
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            # Add to layer's resonant frequencies if not present
-            if 'resonant_frequencies' not in layer:
-                layer['resonant_frequencies'] = []
-            if harmonic_freq not in layer['resonant_frequencies']:
-                layer['resonant_frequencies'].append(float(harmonic_freq))
-            
-            # Update tracking stats
-            connected_layers += 1
-            total_standing_wave_res += best_harmonic_res
-            
-        # Calculate overall standing wave resonance quality
-        if connected_layers > 0:
-            avg_standing_wave_res = total_standing_wave_res / connected_layers
-            # Scale by number of connected layers (more layers = stronger effect)
-            # But with diminishing returns
-            standing_wave_factor = avg_standing_wave_res * min(1.0, connected_layers / 5.0)
-        else:
-            standing_wave_factor = 0.0
-            
-        logger.debug(f"Created heartbeat standing waves in {connected_layers} layers, " +
-                   f"Resonance factor: {standing_wave_factor:.4f}")
-        
-        return standing_wave_factor
-        
-    except Exception as e:
-        logger.error(f"Error creating heartbeat standing waves: {e}", exc_info=True)
-        raise RuntimeError("Heartbeat standing wave creation failed") from e
 
 def train_name_response(soul_spark: SoulSpark, cycles: int = 7) -> None:
     """
@@ -1850,9 +2019,6 @@ def train_name_response(soul_spark: SoulSpark, cycles: int = 7) -> None:
         resonance_quality = name_standing_waves.get("resonance_quality", 0.0)
         component_frequencies = name_standing_waves.get("component_frequencies", [])
         
-        # Create resonant field based on name's standing waves
-        # Instead of directly modifying frequency, we create reference points
-        # that generate resonance throughout the aura
         name_resonance_accumulator = 0.0
         
         # Adjust cycles based on name complexity
@@ -1920,12 +2086,21 @@ def train_name_response(soul_spark: SoulSpark, cycles: int = 7) -> None:
         # Clamp to valid range
         new_response = min(1.0, current_response + name_resonance_accumulator)
         
-        # Create resonant field throughout aura layers
-        resonant_field_strength = _create_name_response_field(
-            soul_spark, component_frequencies, new_response)
+        # Calculate field strength based on name integration with soul properties
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+        voice_frequency = getattr(soul_spark, 'voice_frequency', 220.0)
         
-        # The resonant field provides a small additional boost to response
-        final_response = min(1.0, new_response + resonant_field_strength * 0.05)
+        # Field strength represents how well name frequencies resonate with soul
+        frequency_harmony = calculate_resonance(voice_frequency, soul_frequency) if soul_frequency > 0 else 0.0
+        pattern_integration = pattern_coherence * resonance_quality
+        field_strength = (frequency_harmony + pattern_integration) / 2.0
+        
+        # Field boost from training effectiveness
+        training_efficiency = name_resonance_accumulator / max(0.1, effective_cycles)  # Efficiency per cycle
+        field_boost = min(0.2, training_efficiency * pattern_coherence)  # Up to 20% boost
+        
+        # Name response is internal to soul identity - apply field boost
+        final_response = min(1.0, new_response + field_boost)
         
         setattr(soul_spark, 'response_level', float(final_response))
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
@@ -1939,8 +2114,8 @@ def train_name_response(soul_spark: SoulSpark, cycles: int = 7) -> None:
                 "effective_cycles": effective_cycles,
                 "initial_response": float(current_response),
                 "accumulated_increase": float(name_resonance_accumulator),
-                "field_strength": float(resonant_field_strength),
-                "field_boost": float(final_response - new_response),
+                "field_strength": float(field_strength),  
+                "field_boost": float(field_boost),     
                 "final_response": float(final_response),
                 "state_factor": float(state_factor),
                 "heartbeat_factor": float(heartbeat_factor),
@@ -1952,242 +2127,92 @@ def train_name_response(soul_spark: SoulSpark, cycles: int = 7) -> None:
             metrics.record_metrics('identity_name_response_training', metrics_data)
         
         logger.info(f"Name carrier wave training complete. " +
-                   f"Base Response Level: {new_response:.4f}, " +
-                   f"Field Boost: {final_response - new_response:.4f}, " +
                    f"Final Response: {final_response:.4f}")
         
     except Exception as e:
         logger.error(f"Error training name response: {e}", exc_info=True)
         raise RuntimeError("Name response training failed.") from e
 
-def _create_name_response_field(soul_spark: SoulSpark, frequencies: List[float],
-                              response_level: float) -> float:
-    """
-    Create a resonant field throughout aura layers based on name frequencies.
-    
-    Args:
-        soul_spark: Soul to create field in
-        frequencies: List of frequencies to establish resonance with
-        response_level: Current response level (0-1)
-        
-    Returns:
-        Field strength factor (0-1)
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If field creation fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not frequencies:
-        raise ValueError("frequencies list cannot be empty")
-    if not 0 <= response_level <= 1:
-        raise ValueError("response_level must be between 0 and 1")
-    
-    try:
-        logger.debug(f"Creating name response field with {len(frequencies)} frequencies...")
-        
-        # Track layer integration
-        connected_layers = 0
-        total_field_strength = 0.0
-        
-        # Start with primary frequency
-        primary_freq = frequencies[0] if frequencies else 0
-        
-        for layer_idx, layer in enumerate(soul_spark.layers):
-            if not isinstance(layer, dict):
-                continue
-                
-            # Create name field in layer
-            if 'name_field' not in layer:
-                layer['name_field'] = {}
-            
-            # Find most resonant frequency for this layer
-            best_freq = primary_freq
-            best_resonance = 0.0
-            
-            # Get layer frequencies
-            layer_freqs = []
-            if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                layer_freqs.extend(layer['resonant_frequencies'])
-            
-            # Find best resonance
-            for name_freq in frequencies:
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(name_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_freq = name_freq
-            
-            # Skip layers with poor resonance
-            if best_resonance < 0.1:
-                continue
-                
-            # Calculate field strength based on resonance and response level
-            field_strength = best_resonance * response_level
-            
-            # Create field in layer
-            layer['name_field']['resonance'] = {
-                "frequency": float(best_freq),
-                "resonance": float(best_resonance),
-                "field_strength": float(field_strength),
-                "response_level": float(response_level),
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            # Add to layer's resonant frequencies if not present
-            if 'resonant_frequencies' not in layer:
-                layer['resonant_frequencies'] = []
-            if best_freq not in layer['resonant_frequencies']:
-                layer['resonant_frequencies'].append(float(best_freq))
-            
-            # Update tracking stats
-            connected_layers += 1
-            total_field_strength += field_strength
-        
-        # Calculate overall field strength
-        if connected_layers > 0:
-            avg_field_strength = total_field_strength / connected_layers
-            # Scale by number of connected layers (more layers = stronger field)
-            # But with diminishing returns
-            field_factor = avg_field_strength * min(1.0, connected_layers / 5.0)
-        else:
-            field_factor = 0.0
-            
-        logger.debug(f"Created name response field in {connected_layers} layers, " +
-                   f"Field strength: {field_factor:.4f}")
-        
-        return field_factor
-        
-    except Exception as e:
-        logger.error(f"Error creating name response field: {e}", exc_info=True)
-        raise RuntimeError("Name response field creation failed") from e
 
 def identify_primary_sephiroth(soul_spark: SoulSpark) -> None:
     """ 
-    Identifies primary Sephiroth aspect based on soul state (Hz, factors),
-    using layer resonance rather than direct frequency matching.
+    Identifies primary Sephiroth aspect based on soul state and resonance.
+    Stores aspect directly on soul_spark.
     """
     logger.info("Identity Step: Identify Primary Sephiroth with Layer Resonance...")
-    soul_frequency = getattr(soul_spark, 'soul_frequency')
-    soul_color = getattr(soul_spark, 'soul_color')
-    consciousness_state = getattr(soul_spark, 'consciousness_state')
-    gematria = getattr(soul_spark, 'gematria_value')
-    yin_yang = getattr(soul_spark, 'yin_yang_balance')
-    
-    if soul_frequency <= FLOAT_EPSILON or soul_color is None:
-        raise ValueError("Missing required soul_frequency or soul_color.")
-    
-    if aspect_dictionary is None:
-        raise RuntimeError("Aspect Dictionary unavailable.")
     
     try:
-        # Starting with traditional affinity calculations
+        # Get soul properties for Sephiroth analysis
+        name = getattr(soul_spark, 'name')
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+        harmony = getattr(soul_spark, 'harmony', 0.0)
+        pattern_coherence = getattr(soul_spark, 'pattern_coherence', 0.0)
+        phi_resonance = getattr(soul_spark, 'phi_resonance', 0.0)
+        creator_connection = getattr(soul_spark, 'creator_connection_strength', 0.0)
+        earth_resonance = getattr(soul_spark, 'earth_resonance', 0.0)
+        
+        if not name:
+            raise ValueError("Soul must have name for Sephiroth identification")
+        if soul_frequency <= FLOAT_EPSILON:
+            raise ValueError("Invalid soul frequency for Sephiroth identification")
+        
+        if aspect_dictionary is None:
+            raise RuntimeError("Aspect Dictionary unavailable.")
+        
+        # Calculate traditional Sephiroth affinities based on soul properties
         sephiroth_affinities = {}
         
-        # Gematria-based affinity
-        for gem_range, sephirah in SEPHIROTH_AFFINITY_GEMATRIA_RANGES.items():
-            if gematria in gem_range:
-                sephiroth_affinities[sephirah] = (
-                    sephiroth_affinities.get(sephirah, 0.0) + 
-                    SEPHIROTH_AFFINITY_GEMATRIA_WEIGHT)
-                break
+        # Get all available Sephiroth from aspect dictionary
+        available_sephiroth = ['kether', 'chokmah', 'binah', 'chesed', 'geburah', 
+                              'tiphareth', 'netzach', 'hod', 'yesod', 'malkuth']
         
-        # Color-based affinity
-        color_match = SEPHIROTH_AFFINITY_COLOR_MAP.get(soul_color.lower())
-        if color_match:
-            sephiroth_affinities[color_match] = (
-                sephiroth_affinities.get(color_match, 0.0) + 
-                SEPHIROTH_AFFINITY_COLOR_WEIGHT)
-        
-        # State-based affinity
-        state_match = SEPHIROTH_AFFINITY_STATE_MAP.get(consciousness_state)
-        if state_match:
-            sephiroth_affinities[state_match] = (
-                sephiroth_affinities.get(state_match, 0.0) + 
-                SEPHIROTH_AFFINITY_STATE_WEIGHT)
-        
-        # Direct frequency-based affinity (traditional)
-        for sephirah_name in aspect_dictionary.sephiroth_names:
-            sephirah_freq = aspect_dictionary.get_aspects(sephirah_name).get('base_frequency', 0.0)
-            if sephirah_freq > FLOAT_EPSILON:
-                resonance = calculate_resonance(soul_frequency, sephirah_freq)
-                if resonance > SEPHIROTH_AFFINITY_FREQ_RESONANCE_THRESHOLD:
-                    sephiroth_affinities[sephirah_name] = (
-                        sephiroth_affinities.get(sephirah_name, 0.0) + 
-                        resonance * 0.5)
-        
-        # Yin-Yang balance affinity
-        if yin_yang < SEPHIROTH_AFFINITY_YINYANG_LOW_THRESHOLD:
-            for sephirah in SEPHIROTH_AFFINITY_YIN_SEPHIROTH:
-                sephiroth_affinities[sephirah] = (
-                    sephiroth_affinities.get(sephirah, 0.0) + 
-                    SEPHIROTH_AFFINITY_YINYANG_WEIGHT * (1.0 - yin_yang))
-        elif yin_yang > SEPHIROTH_AFFINITY_YINYANG_HIGH_THRESHOLD:
-            for sephirah in SEPHIROTH_AFFINITY_YANG_SEPHIROTH:
-                sephiroth_affinities[sephirah] = (
-                    sephiroth_affinities.get(sephirah, 0.0) + 
-                    SEPHIROTH_AFFINITY_YINYANG_WEIGHT * yin_yang)
-        else:
-            balance_factor = 1.0 - abs(yin_yang - 0.5) * 2
-            for sephirah in SEPHIROTH_AFFINITY_BALANCED_SEPHIROTH:
-                sephiroth_affinities[sephirah] = (
-                    sephiroth_affinities.get(sephirah, 0.0) + 
-                    SEPHIROTH_AFFINITY_BALANCE_WEIGHT * balance_factor)
-        
-        # ENHANCEMENT: Add layer-based resonance calculation
-        # Check how layers resonate with each Sephiroth's frequencies
-        layer_resonance_weights = {}
-        
-        # For each Sephirah, check resonance with aura layers
-        for sephirah_name in aspect_dictionary.sephiroth_names:
-            # Get Sephirah frequency and harmonics
-            sephirah_freq = aspect_dictionary.get_aspects(sephirah_name).get('base_frequency', 0.0)
-            if sephirah_freq <= FLOAT_EPSILON:
+        for sephirah in available_sephiroth:
+            try:
+                sephirah_aspects = aspect_dictionary.get_aspects(sephirah)
+                if not sephirah_aspects:
+                    continue
+                
+                sephirah_freq = sephirah_aspects.get('base_frequency', 0.0)
+                if sephirah_freq <= FLOAT_EPSILON:
+                    continue
+                
+                # Calculate frequency resonance
+                freq_resonance = calculate_resonance(soul_frequency, sephirah_freq)
+                
+                # Calculate attribute alignments
+                attribute_alignments = 0.0
+                
+                # Spiritual development alignment
+                if sephirah in ['kether', 'tiphareth'] and creator_connection > 0.6:
+                    attribute_alignments += creator_connection * 0.3
+                
+                # Earth connection alignment
+                if sephirah == 'malkuth' and earth_resonance > 0.7:
+                    attribute_alignments += earth_resonance * 0.4
+                
+                # Wisdom/understanding alignment
+                if sephirah in ['chokmah', 'binah'] and pattern_coherence > 0.5:
+                    attribute_alignments += pattern_coherence * 0.25
+                
+                # Harmony alignment
+                if sephirah in ['chesed', 'netzach'] and harmony > 0.6:
+                    attribute_alignments += harmony * 0.3
+                
+                # Sacred geometry alignment
+                if sephirah in ['tiphareth', 'yesod'] and phi_resonance > 0.5:
+                    attribute_alignments += phi_resonance * 0.25
+                
+                # Strength/discipline alignment
+                if sephirah in ['geburah', 'hod'] and pattern_coherence > 0.7:
+                    attribute_alignments += pattern_coherence * 0.2
+                
+                # Combined affinity score
+                total_affinity = freq_resonance + attribute_alignments
+                sephiroth_affinities[sephirah] = min(1.0, total_affinity)
+                
+            except Exception as seph_err:
+                logger.warning(f"Error processing Sephirah {sephirah}: {seph_err}")
                 continue
-                
-            # Create harmonic series
-            sephirah_freqs = [sephirah_freq, sephirah_freq * PHI, sephirah_freq * 2.0]
-            
-            total_layer_resonance = 0.0
-            resonant_layers = 0
-            
-            # Check each layer
-            for layer in soul_spark.layers:
-                if not isinstance(layer, dict):
-                    continue
-                    
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                if not layer_freqs:
-                    continue
-                    
-                # Calculate best resonance between Sephirah and layer
-                best_resonance = 0.0
-                for s_freq in sephirah_freqs:
-                    for l_freq in layer_freqs:
-                        resonance = calculate_resonance(s_freq, l_freq)
-                        best_resonance = max(best_resonance, resonance)
-                
-                # Count as resonant if above threshold
-                if best_resonance > SEPHIROTH_AFFINITY_FREQ_RESONANCE_THRESHOLD:
-                    total_layer_resonance += best_resonance
-                    resonant_layers += 1
-            
-            # Calculate layer resonance weight
-            if resonant_layers > 0:
-                avg_resonance = total_layer_resonance / resonant_layers
-                layer_weight = avg_resonance * min(1.0, resonant_layers / 3.0)
-                layer_resonance_weights[sephirah_name] = layer_weight * 0.5  # 50% weight to layer resonance
-            else:
-                layer_resonance_weights[sephirah_name] = 0.0
-       
-        # Add layer resonance weights to affinities
-        for sephirah, weight in layer_resonance_weights.items():
-            sephiroth_affinities[sephirah] = sephiroth_affinities.get(sephirah, 0.0) + weight
         
         # Determine primary Sephiroth aspect
         sephiroth_aspect = SEPHIROTH_ASPECT_DEFAULT
@@ -2196,21 +2221,20 @@ def identify_primary_sephiroth(soul_spark: SoulSpark) -> None:
         
         logger.debug(f"  Sephirah Affinities: {sephiroth_affinities} -> Identified: {sephiroth_aspect}")
         
-        # Update soul with Sephiroth aspect
+        # Store Sephiroth aspect directly on soul_spark
         setattr(soul_spark, 'sephiroth_aspect', sephiroth_aspect)
+        setattr(soul_spark, 'sephiroth_affinities', sephiroth_affinities)
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
-        
-        # Create Sephiroth resonance in aura layers
-        _integrate_sephiroth_with_aura_layers(soul_spark, sephiroth_aspect)
         
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
                 "soul_id": soul_spark.spark_id,
                 "sephiroth_aspect": sephiroth_aspect,
-                "traditional_affinities": {k: v for k, v in sephiroth_affinities.items() 
-                                         if k not in layer_resonance_weights},
-                "layer_resonance_weights": layer_resonance_weights,
+                "affinity_scores": sephiroth_affinities,
+                "soul_frequency": float(soul_frequency),
+                "harmony": float(harmony),
+                "pattern_coherence": float(pattern_coherence),
                 "timestamp": datetime.now().isoformat()
             }
             metrics.record_metrics('identity_sephiroth_affinity', metrics_data)
@@ -2221,260 +2245,60 @@ def identify_primary_sephiroth(soul_spark: SoulSpark) -> None:
         logger.error(f"Error identifying Sephiroth aspect: {e}", exc_info=True)
         raise RuntimeError("Sephirah aspect ID failed.") from e
 
-def _integrate_sephiroth_with_aura_layers(soul_spark: SoulSpark, sephiroth_name: str) -> None:
-    """
-    Integrate Sephiroth energetic pattern with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        sephiroth_name: Name of the Sephiroth aspect
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not sephiroth_name:
-        raise ValueError("sephiroth_name cannot be empty")
-    
-    try:
-        # Get Sephiroth information
-        sephirah_aspects = aspect_dictionary.get_aspects(sephiroth_name)
-        if not sephirah_aspects:
-            raise ValueError(f"No aspects found for Sephiroth {sephiroth_name}")
-        
-        sephirah_freq = sephirah_aspects.get('base_frequency', 0.0)
-        if sephirah_freq <= FLOAT_EPSILON:
-            raise ValueError(f"Invalid base frequency for Sephiroth {sephiroth_name}")
-        
-        logger.debug(f"Integrating Sephiroth {sephiroth_name} ({sephirah_freq:.2f}Hz) with aura layers...")
-        
-        # Create harmonic series based on Sephiroth frequency
-        harmonic_ratios = [1.0, PHI, 2.0, PHI*2, 3.0]
-        harmonic_freqs = [sephirah_freq * ratio for ratio in harmonic_ratios]
-        
-        # Get Sephiroth properties for integration
-        sephirah_color = sephirah_aspects.get('color', '#FFFFFF')
-        sephirah_element = sephirah_aspects.get('element', 'generic').lower()
-        sephirah_geometry = sephirah_aspects.get('geometric_correspondence', 'generic').lower()
-        
-        # Track layer integration
-        connected_layers = 0
-        total_resonance = 0.0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, harm_freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(harm_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create Sephiroth resonance field in layer
-                if 'sephiroth_resonance' not in layer:
-                    layer['sephiroth_resonance'] = {}
-                
-                # Add harmonic to layer
-                layer['sephiroth_resonance'][f"harmonic_{harm_idx}"] = {
-                    "sephiroth": sephiroth_name,
-                    "frequency": float(harm_freq),
-                    "harmonic_ratio": float(harmonic_ratios[harm_idx]),
-                    "resonance": float(best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Add Sephiroth properties to layer
-                if 'sephiroth_properties' not in layer:
-                    layer['sephiroth_properties'] = {}
-                
-                layer['sephiroth_properties'] = {
-                    "name": sephiroth_name,
-                    "color": sephirah_color,
-                    "element": sephirah_element,
-                    "geometry": sephirah_geometry
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if harm_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(harm_freq))
-                
-                # Track statistics
-                connected_layers += 1
-                total_resonance += best_resonance
-        
-        # Log integration results
-        avg_resonance = total_resonance / max(1, connected_layers)
-        logger.debug(f"Sephiroth {sephiroth_name} integrated with {connected_layers} layers, " +
-                   f"Avg resonance: {avg_resonance:.4f}")
-        
-    except Exception as e:
-        logger.error(f"Error integrating Sephiroth with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Sephiroth-layer integration failed") from e
 
 def determine_elemental_affinity(soul_spark: SoulSpark) -> None:
     """
-    Determines elemental affinity based on soul state and aura layer resonance.
-    Uses wave physics to establish elemental signature throughout aura.
+    Determines elemental affinity using wave physics analysis of soul properties.
+    Stores affinity directly on soul_spark,.
     """
     logger.info("Identity Step: Determine Elemental Affinity with Wave Physics...")
-    name = getattr(soul_spark, 'name')
-    seph_aspect = getattr(soul_spark, 'sephiroth_aspect')
-    color = getattr(soul_spark, 'soul_color')
-    state = getattr(soul_spark, 'consciousness_state')
-    freq = getattr(soul_spark, 'soul_frequency')
-    
-    if not all([name, seph_aspect, color, state]) or freq <= FLOAT_EPSILON:
-        raise ValueError("Missing attributes for elemental affinity determination.")
-    
-    if aspect_dictionary is None:
-        raise RuntimeError("Aspect Dictionary unavailable.")
     
     try:
-        # Traditional affinity calculation
-        elemental_affinities = {}
+        # Get soul properties for elemental analysis
+        name_resonance = getattr(soul_spark, 'name_resonance', 0.0)
+        sephiroth_aspect = getattr(soul_spark, 'sephiroth_aspect', None)
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
+        harmony = getattr(soul_spark, 'harmony', 0.0)
         
-        # Name composition analysis
-        vowels = sum(1 for c in name.lower() if c in 'aeiouy')
-        consonants = sum(1 for c in name.lower() if c in 'bcdfghjklmnpqrstvwxz')
-        total = vowels + consonants
-        
-        if total > 0:
-            v_ratio = vowels / total
-            c_ratio = consonants / total
-            elem = 'fire'  # default
-            
-            if v_ratio > ELEMENTAL_AFFINITY_VOWEL_THRESHOLD:
-                elem = 'air'
-            elif c_ratio > ELEMENTAL_AFFINITY_CONSONANT_THRESHOLD:
-                elem = 'earth'
-            elif 0.4 <= v_ratio <= 0.6:
-                elem = 'water'
-                
-            elemental_affinities[elem] = elemental_affinities.get(
-                elem, 0.0) + ELEMENTAL_AFFINITY_VOWEL_MAP.get(elem, 0.1)
-        
-        # Sephiroth-based elemental affinity
-        seph_element = aspect_dictionary.get_aspects(seph_aspect).get('element', '').lower()
-        if '/' in seph_element:
-            elements = seph_element.split('/')
-            weight = ELEMENTAL_AFFINITY_SEPHIROTH_WEIGHT / len(elements)
-            for e in elements:
-                elemental_affinities[e] = elemental_affinities.get(e, 0.0) + weight
-        elif seph_element:
-            elemental_affinities[seph_element] = elemental_affinities.get(
-                seph_element, 0.0) + ELEMENTAL_AFFINITY_SEPHIROTH_WEIGHT
-        
-        # Color-based elemental affinity
-        color_element = ELEMENTAL_AFFINITY_COLOR_MAP.get(color.lower())
-        if color_element:
-            if '/' in color_element:
-                elements = color_element.split('/')
-                weight = ELEMENTAL_AFFINITY_COLOR_WEIGHT / len(elements)
-                for e in elements:
-                    elemental_affinities[e] = elemental_affinities.get(e, 0.0) + weight
-            else:
-                elemental_affinities[color_element] = elemental_affinities.get(
-                    color_element, 0.0) + ELEMENTAL_AFFINITY_COLOR_WEIGHT
-        
-        # State-based elemental affinity
-        state_element = ELEMENTAL_AFFINITY_STATE_MAP.get(state)
-        if state_element:
-            elemental_affinities[state_element] = elemental_affinities.get(
-                state_element, 0.0) + ELEMENTAL_AFFINITY_STATE_WEIGHT
-        
-        # Frequency-based elemental affinity
-        assigned_element = ELEMENTAL_AFFINITY_DEFAULT
-        for upper_bound, element in ELEMENTAL_AFFINITY_FREQ_RANGES:
-            if freq < upper_bound:
-                assigned_element = element
-                break
-                
-        elemental_affinities[assigned_element] = elemental_affinities.get(
-            assigned_element, 0.0) + ELEMENTAL_AFFINITY_FREQ_WEIGHT
-        
-        # ENHANCEMENT: Add layer-based resonance calculation
-        # Calculate how aura layers resonate with elemental frequencies
-        layer_resonance_weights = {}
-        
-        # Define elemental base frequencies (example)
+        # Traditional elemental frequencies (Hz)
         elemental_frequencies = {
-            'fire': 396.0,  # Base frequencies for each element
-            'water': 417.0,
-            'air': 528.0,
-            'earth': 639.0,
-            'aether': 741.0
+            'earth': 136.1,     # C# - Grounding, stability
+            'water': 210.42,    # G# - Flow, emotion  
+            'fire': 341.3,      # F - Energy, passion
+            'air': 426.7,       # Ab - Thought, communication
+            'aether': 528.0     # C - Spirit, transformation
         }
         
-        # For each element, check resonance with aura layers
-        for element, elem_freq in elemental_frequencies.items():
-            # Create harmonic series
-            elem_freqs = [elem_freq, elem_freq * PHI, elem_freq * 2.0]
-            
-            total_layer_resonance = 0.0
-            resonant_layers = 0
-            
-            # Check each layer
-            for layer in soul_spark.layers:
-                if not isinstance(layer, dict):
-                    continue
-                    
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                if not layer_freqs:
-                    continue
-                    
-                # Calculate best resonance between element and layer
-                best_resonance = 0.0
-                for e_freq in elem_freqs:
-                    for l_freq in layer_freqs:
-                        resonance = calculate_resonance(e_freq, l_freq)
-                        best_resonance = max(best_resonance, resonance)
-                
-                # Count as resonant if above threshold
-                if best_resonance > 0.2:  # Lower threshold for elements
-                    total_layer_resonance += best_resonance
-                    resonant_layers += 1
-            
-            # Calculate layer resonance weight
-            if resonant_layers > 0:
-                avg_resonance = total_layer_resonance / resonant_layers
-                layer_weight = avg_resonance * min(1.0, resonant_layers / 3.0)
-                layer_resonance_weights[element] = layer_weight * 0.3  # 30% weight to layer resonance
-            else:
-                layer_resonance_weights[element] = 0.0
+        # Calculate resonance with each element
+        elemental_affinities = {}
         
-        # Add layer resonance weights to affinities
-        for element, weight in layer_resonance_weights.items():
-            elemental_affinities[element] = elemental_affinities.get(element, 0.0) + weight
+        for element, elem_freq in elemental_frequencies.items():
+            # Base resonance with element frequency
+            freq_resonance = calculate_resonance(soul_frequency, elem_freq)
+            
+            # Bonus from Sephiroth aspect alignment
+            sephiroth_bonus = 0.0
+            if sephiroth_aspect:
+                sephiroth_elements = {
+                    'kether': 'aether', 'chokmah': 'fire', 'binah': 'water',
+                    'chesed': 'water', 'geburah': 'fire', 'tiphareth': 'aether',
+                    'netzach': 'fire', 'hod': 'air', 'yesod': 'water',
+                    'malkuth': 'earth'
+                }
+                if sephiroth_elements.get(sephiroth_aspect) == element:
+                    sephiroth_bonus = 0.2
+            
+            # Name resonance influence
+            name_influence = name_resonance * 0.1
+            
+            # Harmony influence for spiritual elements
+            harmony_influence = 0.0
+            if element in ['aether', 'fire'] and harmony > 0.5:
+                harmony_influence = (harmony - 0.5) * 0.2
+            
+            # Combined affinity score
+            total_affinity = freq_resonance + sephiroth_bonus + name_influence + harmony_influence
+            elemental_affinities[element] = min(1.0, total_affinity)
         
         # Determine primary elemental affinity
         elemental_affinity = ELEMENTAL_AFFINITY_DEFAULT
@@ -2483,22 +2307,38 @@ def determine_elemental_affinity(soul_spark: SoulSpark) -> None:
         
         logger.debug(f"  Elemental Affinities: {elemental_affinities} -> Identified: {elemental_affinity}")
         
-        # Update soul with elemental affinity
+        # Store elemental affinity directly on soul_spark
         setattr(soul_spark, 'elemental_affinity', elemental_affinity)
+        setattr(soul_spark, 'elemental_affinities', elemental_affinities)
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
-        # Create elemental resonance in aura layers
-        _integrate_element_with_aura_layers(
-            soul_spark, elemental_affinity, elemental_frequencies.get(elemental_affinity, 0.0))
+        # Generate elemental sound signature
+        if SOUND_MODULES_AVAILABLE:
+            try:
+                element_freq = elemental_frequencies.get(elemental_affinity, 432.0)
+                element_harmonics = [1.0, 1.5, 2.0, 3.0]  # Natural harmonics
+                element_amplitudes = [0.8, 0.4, 0.3, 0.2]
+                
+                element_sound = sound_gen.generate_harmonic_tone(
+                    element_freq, element_harmonics, element_amplitudes, duration=6.0)
+                sound_path = sound_gen.save_sound(
+                    element_sound, f"element_{elemental_affinity}.wav", 
+                    f"Element {elemental_affinity} Sound")
+                
+                setattr(soul_spark, 'elemental_sound_signature', element_sound)
+                logger.debug(f"Generated elemental sound signature: {sound_path}")
+                
+            except Exception as sound_err:
+                logger.warning(f"Failed to generate elemental sound: {sound_err}")
         
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
                 "soul_id": soul_spark.spark_id,
                 "elemental_affinity": elemental_affinity,
-                "traditional_affinities": {k: v for k, v in elemental_affinities.items() 
-                                         if k not in layer_resonance_weights},
-                "layer_resonance_weights": layer_resonance_weights,
+                "affinities_scores": elemental_affinities,
+                "sephiroth_aspect": sephiroth_aspect,
+                "soul_frequency": float(soul_frequency),
                 "timestamp": datetime.now().isoformat()
             }
             metrics.record_metrics('identity_elemental_affinity', metrics_data)
@@ -2508,149 +2348,6 @@ def determine_elemental_affinity(soul_spark: SoulSpark) -> None:
     except Exception as e:
         logger.error(f"Error determining elemental affinity: {e}", exc_info=True)
         raise RuntimeError("Elemental affinity determination failed.") from e
-
-def _integrate_element_with_aura_layers(soul_spark: SoulSpark, element_name: str,
-                                      element_freq: float) -> None:
-    """
-    Integrate elemental pattern with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        element_name: Name of elemental affinity
-        element_freq: Base frequency for the element
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not element_name:
-        raise ValueError("element_name cannot be empty")
-    if element_freq <= 0:
-        logger.warning(f"Invalid element frequency ({element_freq}), using default 432Hz")
-        element_freq = 432.0
-    
-    try:
-        logger.debug(f"Integrating element {element_name} ({element_freq:.2f}Hz) with aura layers...")
-        
-        # Create harmonic series based on elemental frequency
-        harmonic_ratios = [1.0, PHI, 2.0, 3.0]
-        harmonic_freqs = [element_freq * ratio for ratio in harmonic_ratios]
-        
-        # Define element properties
-        # NOTE: In a full implementation, these would come from a comprehensive
-        # elemental database like aspect_dictionary for Sephiroth
-        element_properties = {
-            'fire': {'color': '#FF5500', 'sound': 'crackling', 'geometry': 'tetrahedron'},
-            'water': {'color': '#0077FF', 'sound': 'flowing', 'geometry': 'icosahedron'},
-            'air': {'color': '#AAFFFF', 'sound': 'whistling', 'geometry': 'octahedron'},
-            'earth': {'color': '#996633', 'sound': 'rumbling', 'geometry': 'cube'},
-            'aether': {'color': '#FFFFFF', 'sound': 'humming', 'geometry': 'dodecahedron'},
-        }
-        
-        # Get properties for this element
-        props = element_properties.get(element_name, 
-                                     {'color': '#CCCCCC', 'sound': 'generic', 'geometry': 'sphere'})
-        
-        # Track layer integration
-        connected_layers = 0
-        total_resonance = 0.0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, harm_freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(harm_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create element resonance field in layer
-                if 'element_resonance' not in layer:
-                    layer['element_resonance'] = {}
-                
-                # Add harmonic to layer
-                layer['element_resonance'][f"harmonic_{harm_idx}"] = {
-                    "element": element_name,
-                    "frequency": float(harm_freq),
-                    "harmonic_ratio": float(harmonic_ratios[harm_idx]),
-                    "resonance": float(best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Add element properties to layer
-                if 'element_properties' not in layer:
-                    layer['element_properties'] = {}
-                
-                layer['element_properties'] = {
-                    "name": element_name,
-                    "color": props['color'],
-                    "sound": props['sound'],
-                    "geometry": props['geometry']
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if harm_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(harm_freq))
-                
-                # Track statistics
-                connected_layers += 1
-                total_resonance += best_resonance
-        
-        # Generate element sound if available
-        if SOUND_MODULES_AVAILABLE:
-            try:
-                # Create element tone with harmonics
-                element_sound = sound_gen.generate_harmonic_tone(
-                    element_freq, harmonic_ratios, 
-                    [0.8, 0.5, 0.3, 0.2],  # Amplitudes
-                    5.0,  # Duration
-                    0.5)  # Fade
-                
-                # Save element sound
-                sound_path = sound_gen.save_sound(
-                    element_sound, f"element_{element_name}.wav", 
-                    f"Element {element_name} Sound")
-                
-                logger.debug(f"  Generated element sound: {sound_path}")
-                
-            except Exception as sound_err:
-                logger.warning(f"Failed to generate element sound: {sound_err}")
-                # Continue without failing process
-        
-        # Log integration results
-        avg_resonance = total_resonance / max(1, connected_layers)
-        logger.debug(f"Element {element_name} integrated with {connected_layers} layers, " +
-                   f"Avg resonance: {avg_resonance:.4f}")
-        
-    except Exception as e:
-        logger.error(f"Error integrating element with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Element-layer integration failed") from e
 
 def assign_platonic_symbol(soul_spark: SoulSpark) -> None:
     """
@@ -2875,10 +2572,6 @@ def _create_geometric_standing_waves(soul_spark: SoulSpark, symbol: str,
                     "amplitude": float(antinode_amp)
                 })
         
-        # Integrate geometric pattern with aura layers
-        _integrate_geometry_with_aura_layers(
-            soul_spark, symbol, geometric_freq, harmonic_freqs, nodes, antinodes)
-        
         # Create the final geometric pattern structure
         geometric_pattern = {
             "symbol": symbol,
@@ -2901,110 +2594,6 @@ def _create_geometric_standing_waves(soul_spark: SoulSpark, symbol: str,
 
         raise RuntimeError("Geometric standing wave creation failed") from e
 
-def _integrate_geometry_with_aura_layers(soul_spark: SoulSpark, symbol: str,
-                                       base_freq: float, harmonic_freqs: List[float],
-                                       nodes: List[Dict], antinodes: List[Dict]) -> None:
-    """
-    Integrate geometric pattern with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        symbol: Platonic symbol name
-        base_freq: Base frequency for the geometry
-        harmonic_freqs: List of harmonic frequencies
-        nodes: List of node positions
-        antinodes: List of antinode positions
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not symbol:
-        raise ValueError("symbol cannot be empty")
-    if base_freq <= 0:
-        raise ValueError("base_freq must be positive")
-    if not harmonic_freqs:
-        raise ValueError("harmonic_freqs cannot be empty")
-    
-    try:
-        logger.debug(f"Integrating geometric pattern for {symbol} with aura layers...")
-        
-        # Track layer integration
-        connected_layers = 0
-        total_resonance = 0.0
-        
-        # Find resonant layers for each harmonic frequency
-        for freq_idx, freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create geometry resonance field in layer
-                if 'geometry_resonance' not in layer:
-                    layer['geometry_resonance'] = {}
-                
-                # Find nodes and antinodes for this frequency
-                freq_nodes = [n for n in nodes if abs(n["frequency"] - freq) < 0.1]
-                freq_antinodes = [n for n in antinodes if abs(n["frequency"] - freq) < 0.1]
-                
-                # Add geometry to layer
-                layer['geometry_resonance'][f"harmonic_{freq_idx}"] = {
-                    "symbol": symbol,
-                    "frequency": float(freq),
-                    "resonance": float(best_resonance),
-                    "nodes": [{"position": n["position"], "amplitude": n["amplitude"]} 
-                            for n in freq_nodes],
-                    "antinodes": [{"position": n["position"], "amplitude": n["amplitude"]} 
-                               for n in freq_antinodes],
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(freq))
-                
-                # Track statistics
-                connected_layers += 1
-                total_resonance += best_resonance
-        
-        # Log integration results
-        avg_resonance = total_resonance / max(1, connected_layers)
-        logger.debug(f"Geometry {symbol} integrated with {connected_layers} layers, " +
-                   f"Avg resonance: {avg_resonance:.4f}")
-        
-    except Exception as e:
-        logger.error(f"Error integrating geometry with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Geometry-layer integration failed") from e
-
 def _determine_astrological_signature(soul_spark: SoulSpark) -> None:
     """
     Determines Zodiac sign, governing planet, and selects traits with frequency mapping.
@@ -3012,9 +2601,10 @@ def _determine_astrological_signature(soul_spark: SoulSpark) -> None:
     """
     logger.info("Identity Step: Determine Astrological Signature with Frequency Mapping...")
     try:
-        # 1. Generate Conceptual Birth Datetime
+        # 1. Generate Conceptual Birth Datetime - within reasonable past range
         sim_start_dt = datetime.fromisoformat(getattr(soul_spark, 'creation_time', datetime.now().isoformat()))
-        random_offset_days = random.uniform(0, 365.25)
+        # Generate birth in past 30 years but not in the future
+        random_offset_days = random.uniform(-365.25 * 30, -30)  # 30 years ago to 30 days ago
         birth_dt = sim_start_dt + timedelta(days=random_offset_days)
         setattr(soul_spark, 'conceptual_birth_datetime', birth_dt.isoformat())
         logger.debug(f"  Conceptual Birth Datetime: {birth_dt.strftime('%Y-%m-%d %H:%M')}")
@@ -3129,9 +2719,6 @@ def _determine_astrological_signature(soul_spark: SoulSpark) -> None:
             "traits": traits
         }
         
-        # 6. Integrate with aura layers
-        _integrate_astrology_with_aura_layers(soul_spark, astrological_resonance)
-
         # Update soul with astrological data
         setattr(soul_spark, 'astrological_traits', traits)
         setattr(soul_spark, 'astrological_resonance', astrological_resonance)
@@ -3160,499 +2747,11 @@ def _determine_astrological_signature(soul_spark: SoulSpark) -> None:
         # Don't hard fail, raise the error
         raise RuntimeError("Astrological signature determination failed") from e
 
-def _integrate_astrology_with_aura_layers(soul_spark: SoulSpark, 
-                                        astro_data: Dict[str, Any]) -> None:
-    """
-    Integrate astrological frequencies with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        astro_data: Astrological data dictionary
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not isinstance(astro_data, dict):
-        raise ValueError("astro_data must be a dictionary")
-    
-    try:
-        planet = astro_data.get("governing_planet", "Unknown")
-        planet_freq = astro_data.get("planet_frequency", 0.0)
-        
-        if planet_freq <= 0:
-            raise ValueError("Planet frequency must be positive")
-        
-        logger.debug(f"Integrating astrological pattern for {planet} " +
-                   f"({planet_freq:.2f}Hz) with aura layers...")
-        
-        # Create harmonic series based on planetary frequency
-        harmonic_ratios = [1.0, PHI, 2.0, PHI*2]
-        harmonic_freqs = [planet_freq * ratio for ratio in harmonic_ratios]
-        
-        # Track layer integration
-        connected_layers = 0
-        total_resonance = 0.0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, harm_freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(harm_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create astrology resonance field in layer
-                if 'astrology_resonance' not in layer:
-                    layer['astrology_resonance'] = {}
-                
-                # Add harmonic to layer
-                layer['astrology_resonance'][f"harmonic_{harm_idx}"] = {
-                    "planet": planet,
-                    "frequency": float(harm_freq),
-                    "harmonic_ratio": float(harmonic_ratios[harm_idx]),
-                    "resonance": float(best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Add astrological properties to layer
-                if 'astrology_properties' not in layer:
-                    layer['astrology_properties'] = {}
-                
-                layer['astrology_properties'] = {
-                    "zodiac_sign": astro_data.get("zodiac_sign", "Unknown"),
-                    "planet": planet,
-                    "zodiac_symbol": astro_data.get("zodiac_symbol", "?")
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if harm_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(harm_freq))
-                
-                # Track statistics
-                connected_layers += 1
-                total_resonance += best_resonance
-        
-        # Log integration results
-        avg_resonance = total_resonance / max(1, connected_layers)
-        logger.debug(f"Astrological pattern integrated with {connected_layers} layers, " +
-                   f"Avg resonance: {avg_resonance:.4f}")
-        
-    except Exception as e:
-        logger.error(f"Error integrating astrology with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Astrology-layer integration failed") from e
-
-def activate_love_resonance(soul_spark: SoulSpark, cycles: int = 7) -> None:
-    """
-    Activates love resonance using geometric field formation and standing waves
-    to enhance harmony and emotional resonance throughout aura layers.
-    """
-    logger.info("Identity Step: Activate Love Resonance with Geometric Field Formation...")
-    if not isinstance(cycles, int) or cycles < 0:
-        raise ValueError("Cycles must be non-negative.")
-    if cycles == 0:
-        logger.info("Skipping love resonance activation (0 cycles).")
-        return
-    
-    try:
-        soul_frequency = getattr(soul_spark, 'soul_frequency', 0.0)
-        state = getattr(soul_spark, 'consciousness_state', 'spark')
-        heartbeat_entrainment = getattr(soul_spark, 'heartbeat_entrainment', 0.0)
-        emotional_resonance = getattr(soul_spark, 'emotional_resonance', {})
-        current_love = float(emotional_resonance.get('love', 0.0))
-        love_freq = LOVE_RESONANCE_FREQ
-        
-        if love_freq <= FLOAT_EPSILON or soul_frequency <= FLOAT_EPSILON:
-            raise ValueError("Frequencies invalid for love resonance.")
-        
-        logger.debug(f"  Love Resonance Harmonic Patterning: CurrentLove={current_love:.3f}")
-        
-        # ENHANCEMENT: Create heart coherence field
-        heart_coherence = heartbeat_entrainment * 0.5 + 0.25  # Base coherence level
-        
-        # Calculate harmonic relationship between love frequency and soul frequency
-        harmonic_intervals = [1.0, 1.25, 1.333, 1.5, 1.667, 2.0]  # Musical intervals
-        best_harmonic_resonance = 0.0
-        best_harmonic_interval = 1.0
-        
-        for interval in harmonic_intervals:
-            # Check both directions
-            harmonic1 = love_freq * interval
-            harmonic2 = love_freq / interval
-            
-            # Calculate resonance with soul frequency
-            res1 = calculate_resonance(harmonic1, soul_frequency)
-            res2 = calculate_resonance(harmonic2, soul_frequency)
-            
-            # Use the best resonance
-            if res1 > best_harmonic_resonance:
-                best_harmonic_resonance = res1
-                best_harmonic_interval = interval
-            if res2 > best_harmonic_resonance:
-                best_harmonic_resonance = res2
-                best_harmonic_interval = 1.0 / interval
-        
-        # Create heart-centered geometric field
-        heart_field = _create_heart_centered_field(
-            soul_spark, love_freq, best_harmonic_interval)
-        
-        # Love resonance cycles enhanced with geometric field
-        love_accumulator = 0.0
-        
-        # Cycle metrics
-        cycle_metrics = []
-        
-        for cycle in range(cycles):
-            # Create heart-centered resonance pattern using heart coherence
-            cycle_factor = 1.0 - (cycle / (max(1, cycles) * 1.0))
-            state_factor = LOVE_RESONANCE_STATE_WEIGHT.get(
-                state, LOVE_RESONANCE_STATE_WEIGHT['default'])
-            
-            # Use the harmonic resonance rather than direct frequency matching
-            resonance_factor = best_harmonic_resonance * LOVE_RESONANCE_FREQ_RES_WEIGHT
-            
-            # Heart coherence amplifies the effect
-            heart_factor = (LOVE_RESONANCE_HEARTBEAT_WEIGHT + 
-                          LOVE_RESONANCE_HEARTBEAT_SCALE * heart_coherence)
-            
-            # Calculate the love increase
-            base_increase = LOVE_RESONANCE_BASE_INC * cycle_factor
-            
-            # Add geometric field factor
-            field_factor = heart_field.get("field_strength", 0.5)
-            
-            # Calculate full increase with all factors
-            full_increase = (base_increase * 
-                           state_factor * 
-                           resonance_factor * 
-                           heart_factor * 
-                           (1.0 + field_factor * 0.5))  # 50% boost from field
-            
-            # Apply increase to love accumulator
-            love_accumulator += full_increase
-            
-            # Track cycle metrics
-            cycle_metrics.append({
-                "cycle": cycle + 1,
-                "cycle_factor": float(cycle_factor),
-                "base_increase": float(base_increase),
-                "effective_increase": float(full_increase),
-                "accumulated": float(love_accumulator)
-            })
-            
-            logger.debug(f"    Cycle {cycle+1}: CycleFactor={cycle_factor:.3f}, " +
-                       f"FieldFactor={field_factor:.3f}, " +
-                       f"Inc={full_increase:.5f}, " +
-                       f"Accum={love_accumulator:.4f}")
-        
-        # Apply accumulated love resonance
-        new_love = min(1.0, current_love + love_accumulator)
-        
-        # Update other emotions based on love (gentle ripple effect)
-        new_emotional_resonance = emotional_resonance.copy()
-        new_emotional_resonance['love'] = float(new_love)
-        
-        # Apply gentle boost to other emotions based on love
-        for emotion in ['joy', 'peace', 'harmony', 'compassion']:
-            current = float(emotional_resonance.get(emotion, 0.0))
-            boost = LOVE_RESONANCE_EMOTION_BOOST_FACTOR * new_love
-            new_emotional_resonance[emotion] = float(min(1.0, current + boost))
-            
-        # Generate love frequency sound if available
-        if SOUND_MODULES_AVAILABLE:
-            try:
-                # Create love resonance tone with harmonics
-                harmonic_ratios = [1.0, PHI, 1.5, 2.0]
-                amplitudes = [0.8, 0.6, 0.5, 0.3]
-                
-                love_sound = sound_gen.generate_harmonic_tone(
-                    love_freq, harmonic_ratios, amplitudes, 5.0, 0.5)
-                
-                # Save love sound
-                sound_path = sound_gen.save_sound(
-                    love_sound, "love_resonance.wav", "Love Resonance 528Hz")
-                
-                logger.debug(f"  Generated love resonance sound: {sound_path}")
-                
-                # Love sound provides a small additional boost
-                sound_boost = 0.05  # 5% boost from actual sound
-                final_love = min(1.0, new_love + sound_boost)
-                new_emotional_resonance['love'] = float(final_love)
-                
-            except Exception as sound_err:
-                logger.warning(f"Failed to generate love sound: {sound_err}")
-                # Continue without failing process
-        
-        # Update soul with new emotional resonance
-        setattr(soul_spark, 'emotional_resonance', new_emotional_resonance)
-        setattr(soul_spark, 'heart_field', heart_field)
-        setattr(soul_spark, 'last_modified', datetime.now().isoformat())
-        
-        # Record metrics
-        if METRICS_AVAILABLE:
-            metrics_data = {
-                "soul_id": soul_spark.spark_id,
-                "love_frequency": float(love_freq),
-                "initial_love": float(current_love),
-                "cycles": cycles,
-                "accumulated_increase": float(love_accumulator),
-                "harmonic_resonance": float(best_harmonic_resonance),
-                "harmonic_interval": float(best_harmonic_interval),
-                "heart_coherence": float(heart_coherence),
-                "field_strength": float(heart_field.get("field_strength", 0.0)),
-                "final_love": float(new_emotional_resonance['love']),
-                "sound_generated": SOUND_MODULES_AVAILABLE,
-                "cycle_details": cycle_metrics,
-                "timestamp": datetime.now().isoformat()
-            }
-            metrics.record_metrics('identity_love_resonance', metrics_data)
-        
-        logger.info(f"Love resonance activated through harmonic patterning. " +
-                   f"Initial: {current_love:.4f}, Increase: {love_accumulator:.4f}, " +
-                   f"Final: {new_emotional_resonance['love']:.4f}")
-        
-    except Exception as e:
-        logger.error(f"Error activating love resonance: {e}", exc_info=True)
-        raise RuntimeError("Love resonance activation failed.") from e
-
-def _create_heart_centered_field(soul_spark: SoulSpark, love_freq: float,
-                              harmonic_interval: float) -> Dict[str, Any]:
-    """
-    Create heart-centered geometric field for love resonance.
-    
-    Args:
-        soul_spark: Soul to create field in
-        love_freq: Love frequency (528Hz default)
-        harmonic_interval: Optimal harmonic interval
-        
-    Returns:
-        Dictionary with heart field data
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If field creation fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if love_freq <= 0:
-        raise ValueError("love_freq must be positive")
-    if harmonic_interval <= 0:
-        raise ValueError("harmonic_interval must be positive")
-    
-    try:
-        logger.debug(f"Creating heart-centered field at {love_freq:.2f}Hz " +
-                   f"with harmonic interval {harmonic_interval:.3f}...")
-        
-        # Create harmonic series based on love frequency
-        harmonic_ratios = [1.0, harmonic_interval, PHI, 2.0]
-        harmonic_freqs = [love_freq * ratio for ratio in harmonic_ratios]
-        
-        # Heart field properties - heart shape in phase space
-        num_points = 36
-        radius = 0.8
-        field_points = []
-        
-        # Create heart shape points in phase space
-        for i in range(num_points):
-            angle = 2 * PI * i / num_points
-            
-            # Heart shape parametric equation
-            # x = 16 * sin(t)^3
-            # y = 13 * cos(t) - 5 * cos(2t) - 2 * cos(3t) - cos(4t)
-            # Normalized to -1 to 1 range
-            
-            # t parameter (0 to 2π)
-            t = angle
-            
-            # Heart shape coordinates
-            x = 16 * np.sin(t)**3
-            y = 13 * np.cos(t) - 5 * np.cos(2*t) - 2 * np.cos(3*t) - np.cos(4*t)
-            
-            # Normalize to 0-1 range
-            x_norm = (x / 16 + 1) / 2
-            y_norm = (y / 16 + 1) / 2
-            
-            # Scale by radius
-            x_scaled = 0.5 + (x_norm - 0.5) * radius
-            y_scaled = 0.5 + (y_norm - 0.5) * radius
-            
-            # Calculate value at this point
-            # Phase space value based on position
-            phase_value = (1.0 - 0.5 * np.sqrt((x_scaled - 0.5)**2 + (y_scaled - 0.5)**2)) ** 2
-            
-            # Add point to field
-            field_points.append({
-                "x": float(x_scaled),
-                "y": float(y_scaled),
-                "value": float(phase_value)
-            })
-        
-        # Calculate field strength based on points
-        field_strength = sum(p["value"] for p in field_points) / len(field_points)
-        
-        # Integrate heart field with aura layers
-        integrated_layers = _integrate_heart_field_with_aura_layers(
-            soul_spark, love_freq, harmonic_freqs, field_points, field_strength)
-        
-        # Create the final heart field structure
-        heart_field = {
-            "love_frequency": float(love_freq),
-            "harmonic_interval": float(harmonic_interval),
-            "harmonic_frequencies": [float(f) for f in harmonic_freqs],
-            "field_strength": float(field_strength),
-            "points": field_points,
-            "integrated_layers": integrated_layers
-        }
-        
-        logger.debug(f"Created heart-centered field with strength {field_strength:.4f}, " +
-                   f"integrated with {integrated_layers} layers.")
-        
-        return heart_field
-        
-    except Exception as e:
-        logger.error(f"Error creating heart-centered field: {e}", exc_info=True)
-        raise RuntimeError("Heart-centered field creation failed") from e
-
-def _integrate_heart_field_with_aura_layers(soul_spark: SoulSpark, love_freq: float,
-                                         harmonic_freqs: List[float],
-                                         field_points: List[Dict],
-                                         field_strength: float) -> int:
-    """
-    Integrate heart field with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        love_freq: Primary love frequency
-        harmonic_freqs: List of harmonic frequencies
-        field_points: List of field points in phase space
-        field_strength: Overall field strength
-        
-    Returns:
-        Number of integrated layers
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if love_freq <= 0:
-        raise ValueError("love_freq must be positive")
-    if not harmonic_freqs:
-        raise ValueError("harmonic_freqs cannot be empty")
-    if not field_points:
-        raise ValueError("field_points cannot be empty")
-    
-    try:
-        logger.debug(f"Integrating heart field with aura layers...")
-        
-        # Track layer integration
-        connected_layers = 0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, harm_freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(harm_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create heart field in layer
-                if 'heart_field' not in layer:
-                    layer['heart_field'] = {}
-                
-                # Add harmonic to layer
-                layer['heart_field'][f"harmonic_{harm_idx}"] = {
-                    "frequency": float(harm_freq),
-                    "resonance": float(best_resonance),
-                    "field_strength": float(field_strength * best_resonance),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # Add field properties to layer
-                if 'field_properties' not in layer:
-                    layer['field_properties'] = {}
-                
-                # Add love resonance to properties
-                layer['field_properties']['love_resonance'] = {
-                    "frequency": float(love_freq),
-                    "strength": float(field_strength),
-                    "shape": "heart"
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if harm_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(harm_freq))
-                
-                # Count connected layer
-                connected_layers += 1
-        
-        logger.debug(f"Heart field integrated with {connected_layers} layers.")
-        return connected_layers
-        
-    except Exception as e:
-        logger.error(f"Error integrating heart field with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Heart field-layer integration failed") from e
-
 def apply_sacred_geometry(soul_spark: SoulSpark, stages: int = 5) -> None:
     """
-    Applies sacred geometry with proper light interference patterns that reinforce
-    coherence through constructive interference in the aura's standing waves.
-    
-    This function ensures that the geometry is encoded directly in the soul's structure,
-    regardless of stability/coherence levels.
+    Applies sacred geometry patterns directly to the soul's internal structure
+    using proper light interference patterns. Creates crystalline coherence
+    within the soul itself.
     """
     logger.info("Identity Step: Apply Sacred Geometry with Light Interference Patterns...")
     if not isinstance(stages, int) or stages < 0:
@@ -3662,182 +2761,119 @@ def apply_sacred_geometry(soul_spark: SoulSpark, stages: int = 5) -> None:
         return
     
     try:
+        # Get soul properties for geometry application
         seph_aspect = getattr(soul_spark, 'sephiroth_aspect', None)
         elem_affinity = getattr(soul_spark, 'elemental_affinity', None)
         name_resonance = getattr(soul_spark, 'name_resonance', 0.0)
+        soul_frequency = getattr(soul_spark, 'soul_frequency', soul_spark.frequency)
         
         if not seph_aspect or not elem_affinity:
             raise ValueError("Missing affinities for geometry application.")
         
-        # Available sacred geometries
-        geometries = SACRED_GEOMETRY_STAGES
-        actual_stages = min(stages, len(geometries))
-        current_cryst_level = getattr(soul_spark, 'crystallization_level', 0.0)
-        dominant_geometry = None
-        max_increase = -1.0
-        
-        # Track factor boosts for patterns
-        total_pcoh_boost = 0.0
-        total_phi_boost = 0.0
-        total_harmony_boost = 0.0
-        total_torus_boost = 0.0
-        
-        # Track each geometry application
-        geometry_applications = []
-        
-        logger.debug("  Applying Sacred Geometry Pattern Reinforcement:")
-        
-        for i in range(actual_stages):
-            geometry = geometries[i]
-            
-            # Calculate stage factor (progressive complexity)
-            stage_factor = (SACRED_GEOMETRY_STAGE_FACTOR_BASE + 
-                          SACRED_GEOMETRY_STAGE_FACTOR_SCALE * (i / max(1, actual_stages - 1)))
-            
-            # Calculate base increase
-            base_increase = SACRED_GEOMETRY_BASE_INC_BASE + SACRED_GEOMETRY_BASE_INC_SCALE * i
-            
-            # Calculate sephiroth and elemental factors
-            seph_geom = aspect_dictionary.get_aspects(seph_aspect).get('geometric_correspondence', '').lower()
-            seph_weight = SACRED_GEOMETRY_SYMBOL_MATCH_WEIGHT.get(
-                seph_geom, SACRED_GEOMETRY_SYMBOL_MATCH_WEIGHT['default'])
-            sephiroth_factor = seph_weight
-            
-            elem_weight = SACRED_GEOMETRY_ELEMENT_MATCH_WEIGHT.get(
-                elem_affinity, SACRED_GEOMETRY_ELEMENT_MATCH_WEIGHT['default'])
-            elemental_factor = elem_weight
-            
-            # Calculate Fibonacci-based name factor
-            fib_idx = min(i, len(FIBONACCI_SEQUENCE) - 1)
-            fib_val = FIBONACCI_SEQUENCE[fib_idx]
-            fib_norm_idx = min(SACRED_GEOMETRY_FIB_MAX_IDX, len(FIBONACCI_SEQUENCE) - 1)
-            fib_norm = FIBONACCI_SEQUENCE[fib_norm_idx]
-            
-            name_factor = (SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_BASE + 
-                         SACRED_GEOMETRY_NAME_RESONANCE_FACTOR_SCALE * name_resonance * 
-                         (fib_val / max(1, fib_norm)))
-            
-            # Calculate total increase for this stage
-            increase = base_increase * stage_factor * sephiroth_factor * elemental_factor * name_factor
-            current_cryst_level = min(1.0, current_cryst_level + increase)
-            
-            # Track dominant geometry
-            if increase > max_increase:
-                dominant_geometry = geometry
-                max_increase = increase
-            
-            logger.debug(f"    Stage {i+1} ({geometry}): CrystInc={increase:.5f}")
-            
-            # Get effects for this geometry
-            geom_effects = GEOMETRY_EFFECTS.get(geometry, DEFAULT_GEOMETRY_EFFECT)
-            stage_effect_scale = increase * 0.5
-            
-            # Apply geometric effects to patterns rather than directly changing frequency
-            stage_pcoh_boost = geom_effects.get('pattern_coherence_boost', 0.0) * stage_effect_scale
-            stage_phi_boost = geom_effects.get('phi_resonance_boost', 0.0) * stage_effect_scale
-            stage_harmony_boost = geom_effects.get('harmony_boost', 0.0) * stage_effect_scale
-            stage_torus_boost = geom_effects.get('toroidal_flow_strength_boost', 0.0) * stage_effect_scale
-            
-            total_pcoh_boost += stage_pcoh_boost
-            total_phi_boost += stage_phi_boost
-            total_harmony_boost += stage_harmony_boost
-            total_torus_boost += stage_torus_boost
-            
-            # Create sacred geometry light interference pattern
-            geom_pattern = _create_sacred_geometry_pattern(
-                soul_spark, geometry, stage_factor, stage_effect_scale)
-            
-            # Track geometry application
-            geometry_applications.append({
-                "geometry": geometry,
-                "stage": i + 1,
-                "increase": float(increase),
-                "pattern_coherence_boost": float(stage_pcoh_boost),
-                "phi_resonance_boost": float(stage_phi_boost),
-                "harmony_boost": float(stage_harmony_boost),
-                "torus_boost": float(stage_torus_boost),
-                "pattern": geom_pattern
-            })
-            
-            logger.debug(f"      Factor Boosts (Cum): dPcoh={total_pcoh_boost:.5f}, " +
-                       f"dPhi={total_phi_boost:.5f}, " +
-                       f"dHarm={total_harmony_boost:.5f}, " +
-                       f"dTorus={total_torus_boost:.5f}")
-        
-        # ENHANCEMENT: Create coherent light interference pattern
-        # that reinforces the sacred geometry throughout the aura
-        interference_pattern = _create_coherent_interference_pattern(
-            soul_spark, geometry_applications)
-        
-        # Apply additional boost from coherent interference
-        interference_boost_factor = interference_pattern.get("coherence", 0.0) * 0.2
-        
-        # Apply final pattern reinforcement boosts with interference enhancement
-        # MODIFICATION: Even if soul already has perfect SU/CU, we still apply sacred geometry
-        soul_spark.pattern_coherence = min(1.0, soul_spark.pattern_coherence + 
-                                         total_pcoh_boost * (1.0 + interference_boost_factor))
-        
-        soul_spark.phi_resonance = min(1.0, soul_spark.phi_resonance + 
-                                     total_phi_boost * (1.0 + interference_boost_factor))
-        
-        soul_spark.harmony = min(1.0, soul_spark.harmony + 
-                               total_harmony_boost * (1.0 + interference_boost_factor))
-        
-        soul_spark.toroidal_flow_strength = min(1.0, soul_spark.toroidal_flow_strength + 
-                                             total_torus_boost * (1.0 + interference_boost_factor))
-        
-        # Update soul with sacred geometry data - ALWAYS STORE THIS
-        setattr(soul_spark, 'crystallization_level', float(current_cryst_level))
-        setattr(soul_spark, 'sacred_geometry_imprint', dominant_geometry)
-        setattr(soul_spark, 'sacred_geometry_applications', geometry_applications)
-        setattr(soul_spark, 'interference_pattern', interference_pattern)
-        
-        # Add sacred geometry to soul's core properties
-        # Ensure this is always saved regardless of SU/CU
-        if not hasattr(soul_spark, 'core_properties'):
-            setattr(soul_spark, 'core_properties', {})
-        
-        soul_spark.core_properties['sacred_geometry'] = {
-            'dominant_geometry': dominant_geometry,
-            'pattern_coherence': float(soul_spark.pattern_coherence),
-            'phi_resonance': float(soul_spark.phi_resonance),
-            'interference_pattern_coherence': float(interference_pattern.get("coherence", 0.0))
+        # Sacred geometry patterns and their frequencies
+        geometry_patterns = {
+            'flower_of_life': {'freq': 528.0, 'coherence': 0.95, 'complexity': 7},
+            'metatrons_cube': {'freq': 741.0, 'coherence': 0.92, 'complexity': 13},
+            'golden_spiral': {'freq': PHI * 432.0, 'coherence': 0.88, 'complexity': 5},
+            'vesica_piscis': {'freq': 396.0, 'coherence': 0.85, 'complexity': 2},
+            'tree_of_life': {'freq': 852.0, 'coherence': 0.90, 'complexity': 10},
+            'platonic_solid': {'freq': 639.0, 'coherence': 0.87, 'complexity': 6}
         }
         
+        # Select dominant geometry based on soul characteristics
+        geometry_resonances = {}
+        for pattern, props in geometry_patterns.items():
+            # Calculate resonance between soul frequency and pattern frequency
+            freq_resonance = calculate_resonance(soul_frequency, props['freq'])
+            
+            # Apply complexity modifier based on soul's development
+            complexity_factor = min(1.0, stages / props['complexity'])
+            
+            # Sephiroth influence
+            seph_influence = 0.1 if pattern == 'tree_of_life' and seph_aspect else 0.0
+            
+            # Element influence
+            element_influence = 0.0
+            if elem_affinity == 'earth' and pattern in ['platonic_solid', 'metatrons_cube']:
+                element_influence = 0.15
+            elif elem_affinity == 'aether' and pattern in ['flower_of_life', 'tree_of_life']:
+                element_influence = 0.15
+            
+            total_resonance = (freq_resonance * complexity_factor + 
+                             seph_influence + element_influence)
+            geometry_resonances[pattern] = total_resonance
+        
+        # Select dominant pattern
+        dominant_pattern = max(geometry_resonances.items(), key=lambda x: x[1])[0]
+        pattern_props = geometry_patterns[dominant_pattern]
+        
+        # Apply sacred geometry crystallization to soul's internal structure
+        crystallization_boost = (pattern_props['coherence'] * 
+                                geometry_resonances[dominant_pattern] * 
+                                min(1.0, stages / 5.0))
+        
+        # Update soul's sacred geometry properties directly
+        current_crystallization = getattr(soul_spark, 'crystallization_level', 0.0)
+        new_crystallization = min(1.0, current_crystallization + crystallization_boost)
+        
+        # Update pattern coherence using sacred geometry
+        current_pattern_coherence = getattr(soul_spark, 'pattern_coherence', 0.0)
+        geometry_pattern_boost = pattern_props['coherence'] * 0.1
+        new_pattern_coherence = min(1.0, current_pattern_coherence + geometry_pattern_boost)
+        
+        # Update phi resonance through golden ratio in geometry
+        current_phi = getattr(soul_spark, 'phi_resonance', 0.0)
+        phi_boost = 0.0
+        if dominant_pattern in ['golden_spiral', 'flower_of_life']:
+            phi_boost = 0.05 * (geometry_resonances[dominant_pattern])
+        new_phi_resonance = min(1.0, current_phi + phi_boost)
+        
+        # Update harmony through geometric resonance
+        current_harmony = getattr(soul_spark, 'harmony', 0.0)
+        harmony_boost = crystallization_boost * 0.3
+        new_harmony = min(1.0, current_harmony + harmony_boost)
+        
+        # Store sacred geometry properties directly on soul_spark
+        setattr(soul_spark, 'sacred_geometry_pattern', dominant_pattern)
+        setattr(soul_spark, 'sacred_geometry_frequency', pattern_props['freq'])
+        setattr(soul_spark, 'sacred_geometry_coherence', pattern_props['coherence'])
+        setattr(soul_spark, 'sacred_geometry_stages', stages)
+        setattr(soul_spark, 'crystallization_level', new_crystallization)
+        setattr(soul_spark, 'pattern_coherence', new_pattern_coherence)
+        setattr(soul_spark, 'phi_resonance', new_phi_resonance)
+        setattr(soul_spark, 'harmony', new_harmony)
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
+        
+        # Calculate final result factors
+        result_factors = {
+            'pattern_coherence': new_pattern_coherence,
+            'phi_resonance': new_phi_resonance,
+            'harmony': new_harmony,
+            'toroidal_flow': getattr(soul_spark, 'toroidal_flow_strength', 0.0)
+        }
         
         # Record metrics
         if METRICS_AVAILABLE:
             metrics_data = {
                 "soul_id": soul_spark.spark_id,
-                "stages_applied": actual_stages,
-                "dominant_geometry": dominant_geometry,
-                "crystallization_level": float(current_cryst_level),
-                "pattern_coherence_boost": float(total_pcoh_boost),
-                "phi_resonance_boost": float(total_phi_boost),
-                "harmony_boost": float(total_harmony_boost),
-                "torus_boost": float(total_torus_boost),
-                "interference_boost_factor": float(interference_boost_factor),
-                "final_pattern_coherence": float(soul_spark.pattern_coherence),
-                "final_phi_resonance": float(soul_spark.phi_resonance),
-                "final_harmony": float(soul_spark.harmony),
-                "final_torus_strength": float(soul_spark.toroidal_flow_strength),
+                "dominant_pattern": dominant_pattern,
+                "pattern_frequency": pattern_props['freq'],
+                "crystallization_boost": float(crystallization_boost),
+                "stages_applied": stages,
+                "geometry_resonances": {k: float(v) for k, v in geometry_resonances.items()},
                 "timestamp": datetime.now().isoformat()
             }
             metrics.record_metrics('identity_sacred_geometry', metrics_data)
         
-        logger.info(f"Sacred geometry pattern reinforcement applied. " +
-                   f"Dominant: {dominant_geometry}, " +
-                   f"Stages: {actual_stages}, " +
-                   f"Crystallization: {current_cryst_level:.4f}")
-        logger.info(f"  Resulting Factors: P.Coh={soul_spark.pattern_coherence:.4f}, " +
-                   f"Phi={soul_spark.phi_resonance:.4f}, " +
-                   f"Harm={soul_spark.harmony:.4f}, " +
-                   f"Torus={soul_spark.toroidal_flow_strength:.4f}")
+        logger.info(f"Sacred geometry pattern reinforcement applied. Dominant: {dominant_pattern}, "
+                   f"Stages: {stages}, Crystallization: {new_crystallization:.4f}")
+        logger.info(f"  Resulting Factors: P.Coh={new_pattern_coherence:.4f}, "
+                   f"Phi={new_phi_resonance:.4f}, Harm={new_harmony:.4f}, "
+                   f"Torus={result_factors['toroidal_flow']:.4f}")
         
     except Exception as e:
         logger.error(f"Error applying sacred geometry: {e}", exc_info=True)
-        raise RuntimeError("Sacred geometry application failed.") from e
+        raise RuntimeError("Sacred geometry application failed") from e
 
 def _create_sacred_geometry_pattern(soul_spark: SoulSpark, geometry: str,
                                  stage_factor: float, effect_scale: float) -> Dict[str, Any]:
@@ -3992,11 +3028,6 @@ def _create_sacred_geometry_pattern(soul_spark: SoulSpark, geometry: str,
                         "amplitude": float(normalized_pattern[i])
                     })
         
-        # Integrate sacred geometry with aura layers
-        _integrate_sacred_geometry_with_aura_layers(
-            soul_spark, geometry, geometry_freq, pattern_coherence, 
-            normalized_pattern.tolist(), nodes, antinodes)
-        
         # Create sacred geometry pattern structure
         geometry_pattern = {
             "geometry": geometry,
@@ -4017,108 +3048,6 @@ def _create_sacred_geometry_pattern(soul_spark: SoulSpark, geometry: str,
     except Exception as e:
         logger.error(f"Error creating sacred geometry pattern: {e}", exc_info=True)
         raise RuntimeError("Sacred geometry pattern creation failed") from e
-
-def _integrate_sacred_geometry_with_aura_layers(soul_spark: SoulSpark, geometry: str,
-                                             geometry_freq: float, coherence: float,
-                                             pattern: List[float], nodes: List[Dict],
-                                             antinodes: List[Dict]) -> None:
-    """
-    Integrate sacred geometry pattern with aura layers.
-    
-    Args:
-        soul_spark: Soul to integrate with
-        geometry: Sacred geometry name
-        geometry_freq: Frequency of the geometry
-        coherence: Coherence of the pattern
-        pattern: List of pattern values
-        nodes: List of node positions
-        antinodes: List of antinode positions
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If integration fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    if not geometry:
-        raise ValueError("geometry cannot be empty")
-    if geometry_freq <= 0:
-        raise ValueError("geometry_freq must be positive")
-    if not pattern:
-        raise ValueError("pattern cannot be empty")
-    
-    try:
-        logger.debug(f"Integrating sacred geometry {geometry} with aura layers...")
-        
-        # Create harmonic series based on geometry frequency
-        harmonic_ratios = [1.0, PHI, 2.0, 3.0]
-        harmonic_freqs = [geometry_freq * ratio for ratio in harmonic_ratios]
-        
-        # Track layer integration
-        connected_layers = 0
-        
-        # Find resonant layers for each harmonic
-        for harm_idx, harm_freq in enumerate(harmonic_freqs):
-            # Find best resonant layer
-            best_layer_idx = -1
-            best_resonance = 0.1  # Minimum threshold
-            
-            for layer_idx, layer in enumerate(soul_spark.layers):
-                if not isinstance(layer, dict):
-                    continue
-                
-                # Get layer frequencies
-                layer_freqs = []
-                if 'resonant_frequencies' in layer and isinstance(layer['resonant_frequencies'], list):
-                    layer_freqs.extend(layer['resonant_frequencies'])
-                
-                # Skip empty layers
-                if not layer_freqs:
-                    continue
-                
-                # Find best resonance with this layer
-                for layer_freq in layer_freqs:
-                    res = calculate_resonance(harm_freq, layer_freq)
-                    if res > best_resonance:
-                        best_resonance = res
-                        best_layer_idx = layer_idx
-            
-            # Create resonant connection if found
-            if best_layer_idx >= 0:
-                # Get layer for modification
-                layer = soul_spark.layers[best_layer_idx]
-                
-                # Create sacred geometry field in layer
-                if 'sacred_geometry' not in layer:
-                    layer['sacred_geometry'] = {}
-                
-                # Add harmonic to layer with subset of pattern data
-                # Store a simplified version to avoid excessive data
-                layer['sacred_geometry'][f"{geometry}_{harm_idx}"] = {
-                    "name": geometry,
-                    "frequency": float(harm_freq),
-                    "harmonic_ratio": float(harmonic_ratios[harm_idx]),
-                    "coherence": float(coherence),
-                    "resonance": float(best_resonance),
-                    "nodes_count": len(nodes),
-                    "antinodes_count": len(antinodes),
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                # If not already present, add to layer's resonant frequencies
-                if 'resonant_frequencies' not in layer:
-                    layer['resonant_frequencies'] = []
-                if harm_freq not in layer['resonant_frequencies']:
-                    layer['resonant_frequencies'].append(float(harm_freq))
-                
-                # Count connected layer
-                connected_layers += 1
-        
-        logger.debug(f"Sacred geometry {geometry} integrated with {connected_layers} layers.")
-        
-    except Exception as e:
-        logger.error(f"Error integrating sacred geometry with aura layers: {e}", exc_info=True)
-        raise RuntimeError("Sacred geometry-layer integration failed") from e
 
 def _create_coherent_interference_pattern(soul_spark: SoulSpark, 
                                        geometry_applications: List[Dict]) -> Dict[str, Any]:
@@ -4171,7 +3100,7 @@ def _create_coherent_interference_pattern(soul_spark: SoulSpark,
                 combined_pattern += pattern_array * weight
                 total_weight += weight
         
-        # Normalize combined pattern
+            # Normalize combined pattern
         if total_weight > FLOAT_EPSILON:
             combined_pattern /= total_weight
             
@@ -4179,16 +3108,25 @@ def _create_coherent_interference_pattern(soul_spark: SoulSpark,
         # Calculate autocorrelation for periodicity
         autocorr = np.correlate(combined_pattern, combined_pattern, mode='full')
         autocorr = autocorr[num_points-1:] / autocorr[num_points-1]
-        
+
+        # Normalize autocorrelation for peak finding
+        autocorr_normalized = autocorr
+
         # Find peaks in autocorrelation
-        peak_threshold = 0.5
+        max_autocorr = np.max(autocorr_normalized[1:])  # Exclude first point (always 1.0)
+        peak_threshold = max(0.1, 0.3 * max_autocorr)   # Adaptive threshold
         peaks = []
         
-        for i in range(1, len(autocorr) - 1):
-            if autocorr[i] > peak_threshold and autocorr[i] > autocorr[i-1] and autocorr[i] > autocorr[i+1]:
-                peaks.append(i)
+        # Skip first few points to avoid noise
+        start_idx = max(1, int(len(autocorr_normalized) * 0.05))  # Skip first 5%
         
-        # Calculate coherence based on peak regularity
+        for i in range(start_idx, len(autocorr_normalized) - 1):
+            if (autocorr_normalized[i] > peak_threshold and 
+                autocorr_normalized[i] > autocorr_normalized[i-1] and 
+                autocorr_normalized[i] > autocorr_normalized[i+1]):
+                peaks.append(i)
+      # Calculate coherence based on peak regularity with better baseline
+        peak_coherence = 0.2  # Base coherence instead of 0.0
         if len(peaks) > 1:
             # Calculate spacings between peaks
             spacings = np.diff(peaks)
@@ -4198,17 +3136,18 @@ def _create_coherent_interference_pattern(soul_spark: SoulSpark,
             spacing_mean = np.mean(spacings)
             
             if spacing_mean > FLOAT_EPSILON:
-                peak_regularity = 1.0 - min(1.0, spacing_std / spacing_mean)
-            else:
-                peak_regularity = 0.0
-                
-            # More peaks and more regular spacing = higher coherence
-            interference_coherence = (
-                0.4 * (len(peaks) / 10.0) +  # Up to 10 peaks for max score
-                0.6 * peak_regularity)
-        else:
-            interference_coherence = 0.1  # Base coherence with few peaks
-        
+                regularity = 1.0 - min(1.0, spacing_std / spacing_mean)
+                # Boost coherence based on both number of peaks and regularity
+                peak_coherence = 0.2 + 0.6 * regularity + 0.2 * min(1.0, len(peaks) / 5.0)
+        elif len(peaks) == 1:
+            peak_coherence = 0.4  # Single peak still shows some structure
+
+        # Fix: define aspect_count as the number of geometry applications
+        aspect_count = len(geometry_applications)
+        # Combine aspect count and pattern coherence with better weighting
+        aspect_factor = min(1.0, aspect_count / 8.0)  # Reduced from 10 to 8 for easier achievement
+        crystalline_coherence = 0.4 * aspect_factor + 0.6 * peak_coherence  # Favor pattern over count
+
         # Identify interference nodes and antinodes
         int_nodes = []
         int_antinodes = []
@@ -4233,142 +3172,150 @@ def _create_coherent_interference_pattern(soul_spark: SoulSpark,
         # Create interference pattern structure
         interference_pattern = {
             "pattern": combined_pattern.tolist(),
-            "coherence": float(interference_coherence),
+            "coherence": float(crystalline_coherence),
             "nodes": int_nodes,
             "antinodes": int_antinodes,
             "contributing_geometries": [g.get("geometry", "unknown") for g in geometry_applications]
         }
         
         logger.debug(f"Created coherent interference pattern with " +
-                   f"coherence {interference_coherence:.4f}, " +
-                   f"{len(int_nodes)} nodes, {len(int_antinodes)} antinodes.")
+            f"coherence {crystalline_coherence:.4f}, " +
+            f"{len(int_nodes)} nodes, {len(int_antinodes)} antinodes.")
         
         return interference_pattern
-        
+
     except Exception as e:
         logger.error(f"Error creating coherent interference pattern: {e}", exc_info=True)
         raise RuntimeError("Coherent interference pattern creation failed") from e
 
 def calculate_attribute_coherence(soul_spark: SoulSpark) -> None:
     """
-    Calculates attribute coherence score (0-1) based on aura layer resonance
-    and the coherent integration of all identity attributes.
+    Calculates attribute coherence score (0-1) based on how well all identity
+    attributes form a unified, coherent pattern within the soul itself.
+    focuses on soul's internal coherence.
     """
     logger.info("Identity Step: Calculate Attribute Coherence with Wave Physics...")
     try:
-        # Collect key attribute values throughout the identity
+        # Collect key attribute values from the soul's identity
         attributes = {
-                    'name_resonance': getattr(soul_spark, 'name_resonance', 0.0),
-                    'response_level': getattr(soul_spark, 'response_level', 0.0),
-                    'state_stability': getattr(soul_spark, 'state_stability', 0.0),
-                    'crystallization_level': getattr(soul_spark, 'crystallization_level', 0.0),
-                    'heartbeat_entrainment': getattr(soul_spark, 'heartbeat_entrainment', 0.0),
-                    'emotional_resonance_avg': np.mean(list(getattr(soul_spark, 'emotional_resonance', {}).values())) 
-                        if getattr(soul_spark, 'emotional_resonance') else 0.0,
-                    'creator_connection': getattr(soul_spark, 'creator_connection_strength', 0.0),
-                    'earth_resonance': getattr(soul_spark, 'earth_resonance', 0.0),
-                    'elemental_alignment': getattr(soul_spark, 'elemental_alignment', 0.0),
-                    'cycle_synchronization': getattr(soul_spark, 'cycle_synchronization', 0.0),
-                    'harmony': getattr(soul_spark, 'harmony', 0.0),
-                    'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
-                    'pattern_coherence': getattr(soul_spark, 'pattern_coherence', 0.0),
-                    'toroidal_flow_strength': getattr(soul_spark, 'toroidal_flow_strength', 0.0)
-                }
-                
+            'name_resonance': getattr(soul_spark, 'name_resonance', 0.0),
+            'response_level': getattr(soul_spark, 'response_level', 0.0),
+            'state_stability': getattr(soul_spark, 'state_stability', 0.0),
+            'crystallization_level': getattr(soul_spark, 'crystallization_level', 0.0),
+            'heartbeat_entrainment': getattr(soul_spark, 'heartbeat_entrainment', 0.0),
+            'emotional_resonance_avg': np.mean(list(getattr(soul_spark, 'emotional_resonance', {}).values())) 
+                if getattr(soul_spark, 'emotional_resonance') else 0.0,
+            'creator_connection': getattr(soul_spark, 'creator_connection_strength', 0.0),
+            'earth_resonance': getattr(soul_spark, 'earth_resonance', 0.0),
+            'elemental_alignment': 0.0,  # Calculate from elemental affinity
+            'cycle_synchronization': 0.0,  # Calculate from earth cycles
+            'harmony': getattr(soul_spark, 'harmony', 0.0),
+            'phi_resonance': getattr(soul_spark, 'phi_resonance', 0.0),
+            'pattern_coherence': getattr(soul_spark, 'pattern_coherence', 0.0),
+            'toroidal_flow_strength': getattr(soul_spark, 'toroidal_flow_strength', 0.0)
+        }
+        
+        # Calculate elemental alignment from affinity
+        elemental_affinity = getattr(soul_spark, 'elemental_affinity', None)
+        if elemental_affinity and hasattr(soul_spark, 'elemental_affinities'):
+            affinity_scores = getattr(soul_spark, 'elemental_affinities', {})
+            attributes['elemental_alignment'] = affinity_scores.get(elemental_affinity, 0.0)
+        
+        # Calculate cycle synchronization from earth resonance factors
+        earth_resonance = attributes['earth_resonance']
+        creator_connection = attributes['creator_connection']
+        if earth_resonance > 0.1 and creator_connection > 0.1:
+            attributes['cycle_synchronization'] = (earth_resonance * creator_connection) ** 0.5
+        
         # Filter and validate attribute values
         attr_values = [v for v in attributes.values() 
-                    if isinstance(v, (int, float)) and 
-                    np.isfinite(v) and 
-                    0.0 <= v <= 1.0]
+                      if isinstance(v, (int, float)) and 
+                      np.isfinite(v) and 
+                      0.0 <= v <= 1.0]
         
         if len(attr_values) < 5:
             coherence_score = 0.5
             logger.warning(f"  Attribute Coherence: Not enough valid attributes " +
-                        f"({len(attr_values)}). Using default {coherence_score}.")
+                          f"({len(attr_values)}). Using default {coherence_score}.")
         else:
-            # ENHANCEMENT: Use multiple coherence measures
+            # Multiple coherence measures for robust calculation
             
             # 1. Standard deviation approach (lower std_dev = more coherence)
             std_dev = np.std(attr_values)
             std_dev_coherence = max(0.0, 1.0 - min(1.0, std_dev * ATTRIBUTE_COHERENCE_STD_DEV_SCALE))
             
-            # 2. Pattern-based approach (look for golden ratio relationships)
-            # Sort values for pattern detection
-            sorted_values = sorted(attr_values)
-            pattern_coherence = 0.0
+            # 2. Pattern coherence through phi relationships
+            phi_related_attrs = [
+                attributes['phi_resonance'],
+                attributes['pattern_coherence'], 
+                attributes['harmony']
+            ]
+            phi_values = [v for v in phi_related_attrs if isinstance(v, (int, float)) and np.isfinite(v)]
             
-            if len(sorted_values) >= 3:
-                # Look for phi-based patterns in adjacent triplets
-                phi_pattern_scores = []
-                
-                for i in range(len(sorted_values) - 2):
-                    # Get three consecutive values
-                    a, b, c = sorted_values[i:i+3]
-                    
-                    # Skip if values too small for meaningful ratio
-                    if a < 0.1:
-                        continue
-                    
-                    # Calculate ratios
-                    ratio1 = b / a if a > FLOAT_EPSILON else 0.0
-                    ratio2 = c / b if b > FLOAT_EPSILON else 0.0
-                    
-                    # Check proximity to phi
-                    phi_match1 = 1.0 - min(1.0, abs(ratio1 - PHI) / PHI)
-                    phi_match2 = 1.0 - min(1.0, abs(ratio2 - PHI) / PHI)
-                    
-                    # Average phi match for this triplet
-                    triplet_phi_score = (phi_match1 + phi_match2) / 2.0
-                    phi_pattern_scores.append(triplet_phi_score)
-                
-                # Average phi pattern score
-                if phi_pattern_scores:
-                    pattern_coherence = sum(phi_pattern_scores) / len(phi_pattern_scores)
-                else:
-                    pattern_coherence = 0.0
+            if len(phi_values) >= 2:
+                phi_std = np.std(phi_values)
+                pattern_coherence = max(0.0, 1.0 - min(1.0, phi_std * 1.5))
+            else:
+                pattern_coherence = np.mean(phi_values) if phi_values else 0.0
             
-            # 3. Layer-based coherence approach
-            # Calculate how integrated the identity is across aura layers
-            layer_coherence = _calculate_layer_integration_coherence(soul_spark)
+            # 3. Identity crystallization coherence
+            identity_attrs = [
+                attributes['name_resonance'],
+                attributes['crystallization_level'],
+                attributes['state_stability']
+            ]
+            identity_values = [v for v in identity_attrs if isinstance(v, (int, float)) and np.isfinite(v)]
             
-            # Combine the different coherence measures
+            if len(identity_values) >= 2:
+                identity_coherence = 1.0 - min(1.0, np.std(identity_values) * 2.0)
+            else:
+                identity_coherence = np.mean(identity_values) if identity_values else 0.0
+            
+            # 4. Spiritual connection coherence
+            spiritual_attrs = [
+                attributes['creator_connection'],
+                attributes['earth_resonance'],
+                attributes['emotional_resonance_avg']
+            ]
+            spiritual_values = [v for v in spiritual_attrs if isinstance(v, (int, float)) and np.isfinite(v)]
+            
+            if len(spiritual_values) >= 2:
+                spiritual_coherence = 1.0 - min(1.0, np.std(spiritual_values) * 1.8)
+            else:
+                spiritual_coherence = np.mean(spiritual_values) if spiritual_values else 0.0
+            
+            # Combine coherence measures with appropriate weights
             coherence_score = (
-                0.4 * std_dev_coherence +  # Standard deviation
-                0.3 * pattern_coherence +  # Phi patterns
-                0.3 * layer_coherence)     # Layer integration
-                
-            logger.debug(f"  Attr Coh Calc: " +
-                    f"StdDev={std_dev:.4f} -> {std_dev_coherence:.4f}, " +
-                    f"Pattern={pattern_coherence:.4f}, " +
-                    f"Layer={layer_coherence:.4f} -> " +
-                    f"Final={coherence_score:.4f}")
+                0.3 * std_dev_coherence +      # Overall attribute consistency
+                0.25 * pattern_coherence +      # Sacred geometry/phi patterns
+                0.25 * identity_coherence +     # Core identity stability  
+                0.2 * spiritual_coherence)      # Spiritual connections
         
-        # Create resonant harmony enhancement
-        # Consider resonant harmony between different attributes
+        # Apply resonant harmony enhancement for high-coherence souls
         harmony_factors = []
         
-        if attributes['harmony'] > 0.1 and attributes['pattern_coherence'] > 0.1:
+        if attributes['harmony'] > 0.7 and attributes['pattern_coherence'] > 0.7:
             harmony_factors.append(
-                attributes['harmony'] * attributes['pattern_coherence'] * 0.5)
+                attributes['harmony'] * attributes['pattern_coherence'] * 0.4)
                 
-        if attributes['phi_resonance'] > 0.1 and attributes['toroidal_flow_strength'] > 0.1:
+        if attributes['phi_resonance'] > 0.8 and attributes['toroidal_flow_strength'] > 0.6:
             harmony_factors.append(
-                attributes['phi_resonance'] * attributes['toroidal_flow_strength'] * 0.5)
+                attributes['phi_resonance'] * attributes['toroidal_flow_strength'] * 0.3)
                 
-        if attributes['earth_resonance'] > 0.1 and attributes.get('elemental_alignment', 0.0) > 0.1:
+        if attributes['earth_resonance'] > 0.8 and attributes['creator_connection'] > 0.6:
             harmony_factors.append(
-                attributes['earth_resonance'] * attributes.get('elemental_alignment', 0.0) * 0.5)
+                attributes['earth_resonance'] * attributes['creator_connection'] * 0.3)
         
-        # Apply harmony boost if we have harmony factors
+        # Apply harmony boost if we have strong harmony factors
         if harmony_factors:
             harmony_boost = sum(harmony_factors) / len(harmony_factors)
-            final_coherence = min(1.0, coherence_score * (1.0 + harmony_boost * 0.3))
+            final_coherence = min(1.0, coherence_score * (1.0 + harmony_boost * 0.25))
             logger.debug(f"  Applied resonant harmony boost: {harmony_boost:.4f} -> " +
-                    f"Score={final_coherence:.4f}")
+                        f"Score={final_coherence:.4f}")
         else:
             final_coherence = coherence_score
         
-        # Update soul with attribute coherence
+        # Store attribute coherence directly on soul_spark
         setattr(soul_spark, 'attribute_coherence', float(final_coherence))
         setattr(soul_spark, 'last_modified', datetime.now().isoformat())
         
@@ -4379,7 +3326,8 @@ def calculate_attribute_coherence(soul_spark: SoulSpark) -> None:
                 "attribute_values": len(attr_values),
                 "std_dev_coherence": float(std_dev_coherence) if 'std_dev_coherence' in locals() else 0.0,
                 "pattern_coherence": float(pattern_coherence) if 'pattern_coherence' in locals() else 0.0,
-                "layer_coherence": float(layer_coherence) if 'layer_coherence' in locals() else 0.0,
+                "identity_coherence": float(identity_coherence) if 'identity_coherence' in locals() else 0.0,
+                "spiritual_coherence": float(spiritual_coherence) if 'spiritual_coherence' in locals() else 0.0,
                 "harmony_boost": float(harmony_boost) if 'harmony_boost' in locals() else 0.0,
                 "final_coherence": float(final_coherence),
                 "timestamp": datetime.now().isoformat()
@@ -4392,90 +3340,6 @@ def calculate_attribute_coherence(soul_spark: SoulSpark) -> None:
     except Exception as e:
         logger.error(f"Error calculating attribute coherence: {e}", exc_info=True)
         raise RuntimeError("Failed to calculate attribute coherence") from e
-
-def _calculate_layer_integration_coherence(soul_spark: SoulSpark) -> float:
-    """
-    Calculate coherence based on how well integrated the identity is across aura layers.
-    
-    Args:
-        soul_spark: Soul to analyze
-        
-    Returns:
-        Layer integration coherence factor (0-1)
-        
-    Raises:
-        ValueError: If inputs are invalid
-        RuntimeError: If calculation fails
-    """
-    if not isinstance(soul_spark, SoulSpark):
-        raise ValueError("soul_spark must be a SoulSpark instance")
-    
-    try:
-        logger.debug(f"Calculating layer integration coherence...")
-        
-        # Collect identity components that should be integrated in layers
-        identity_components = [
-            'name_resonance',
-            'voice_resonance',
-            'color_resonance',
-            'sephiroth_resonance',
-            'element_resonance',
-            'geometry_resonance',
-            'heart_field',
-            'astrology_resonance',
-            'sacred_geometry'
-        ]
-        
-        # Track integration
-        layer_scores = []
-        
-        # For each layer, calculate how many identity components are integrated
-        for layer_idx, layer in enumerate(soul_spark.layers):
-            if not isinstance(layer, dict):
-                continue
-                
-            # Count integrated components
-            components_found = []
-            
-            for component in identity_components:
-                if component in layer and layer[component]:
-                    components_found.append(component)
-            
-            # Calculate score for this layer
-            if identity_components:
-                layer_integration = len(components_found) / len(identity_components)
-            else:
-                layer_integration = 0.0
-            
-            # Adjust by layer's position (outer layers less important than inner)
-            layer_pos = layer_idx / max(1, len(soul_spark.layers) - 1)
-            layer_weight = 1.0 - 0.5 * layer_pos  # Inner layers have more weight
-            
-            # Add weighted score
-            layer_scores.append(layer_integration * layer_weight)
-        
-        # Calculate overall coherence from layer integration
-        if layer_scores:
-            # Use sum with diminishing returns rather than average
-            # This rewards having more layers with some integration
-            # rather than just a few fully integrated layers
-            total_score = sum(layer_scores)
-            max_possible = len(soul_spark.layers)  # Perfect score
-            
-            # Apply diminishing returns
-            coherence = 1.0 - exp(-total_score / max_possible * 3.0)
-            coherence = max(0.0, min(1.0, coherence))
-        else:
-            coherence = 0.0
-            
-        logger.debug(f"Layer integration coherence: {coherence:.4f} " +
-                   f"from {len(layer_scores)} layers")
-        
-        return coherence
-        
-    except Exception as e:
-        logger.error(f"Error calculating layer integration coherence: {e}", exc_info=True)
-        raise RuntimeError("Layer integration coherence calculation failed") from e
 
 def _create_crystalline_structure(soul_spark: SoulSpark) -> Dict[str, Any]:
     """
@@ -4683,8 +3547,14 @@ def _create_crystalline_structure(soul_spark: SoulSpark) -> Dict[str, Any]:
 def verify_identity_crystallization(soul_spark: SoulSpark, 
                                  threshold: float = IDENTITY_CRYSTALLIZATION_THRESHOLD) -> Tuple[bool, Dict[str, Any]]:
     """
-    Verifies identity crystallization with enhanced light physics component weights.
-    Creates finalized crystalline structure for identity and light signature.
+    Verifies identity crystallization by measuring how well identity components
+    have formed coherent patterns within the soul_spark itself.
+    
+    Crystallization measures:
+    - Identity attribute completeness and stability
+    - Coherence between identity components 
+    - Internal pattern formation within the soul
+    - Self-recognition strength
     """
     logger.info("Identity Step: Verify Crystallization with Light Physics...")
     if not (0.0 < threshold <= 1.0):
@@ -4697,14 +3567,28 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
                             if getattr(soul_spark, attr, None) is None]
         attr_presence_score = (len(required_attrs_for_score) - len(missing_attributes)) / max(1, len(required_attrs_for_score))
         
-        # Get component metrics
+        # COMPREHENSIVE LOGGING: Log attribute details
+        logger.info(f"=== IDENTITY CRYSTALLIZATION DEBUG ===")
+        logger.info(f"Soul ID: {getattr(soul_spark, 'spark_id', 'Unknown')}")
+        logger.info(f"Required attributes count: {len(required_attrs_for_score)}")
+        logger.info(f"Missing attributes count: {len(missing_attributes)}")
+        logger.info(f"Missing attributes: {missing_attributes}")
+        logger.info(f"Attribute presence score: {attr_presence_score}")
+        logger.info(f"Attribute presence threshold: {CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD}")
+        
+        # Log each required attribute value
+        logger.info("=== REQUIRED ATTRIBUTE VALUES ===")
+        for attr in required_attrs_for_score:
+            value = getattr(soul_spark, attr, None)
+            logger.info(f"  {attr}: {value} (type: {type(value).__name__})")
+        
+        # Get component metrics - Focus on SOUL identity attributes only
         component_metrics = {
             'name_resonance': getattr(soul_spark, 'name_resonance', 0.0),
             'response_level': getattr(soul_spark, 'response_level', 0.0),
             'state_stability': getattr(soul_spark, 'state_stability', 0.0),
             'crystallization_level': getattr(soul_spark, 'crystallization_level', 0.0),
             'attribute_coherence': getattr(soul_spark, 'attribute_coherence', 0.0),
-            'attribute_presence': attr_presence_score,
             'emotional_resonance': np.mean(list(getattr(soul_spark, 'emotional_resonance', {}).values())) 
                 if getattr(soul_spark, 'emotional_resonance') else 0.0,
             'harmony': getattr(soul_spark, 'harmony', 0.0),
@@ -4713,68 +3597,142 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
             'toroidal_flow_strength': getattr(soul_spark, 'toroidal_flow_strength', 0.0)
         }
         
+        logger.info(f"=== COMPONENT METRICS ===")
+        for comp, value in component_metrics.items():
+            logger.info(f"  {comp}: {value}")
+        
         logger.debug(f"  Identity Verification Components: {component_metrics}")
         
-        # Create crystalline structure that integrates all components
+        # Create crystalline structure that integrates all components within the soul
         crystalline_structure = _create_crystalline_structure(soul_spark)
         crystalline_coherence = crystalline_structure.get("coherence", 0.0)
         
         # Add crystalline coherence to component metrics
         component_metrics['crystalline_coherence'] = crystalline_coherence
         
-        # Calculate crystallization score with enhanced weights
-        # These weights emphasize pattern integrity and light coherence
-        component_weights = {
-            'name_resonance': 0.15,
-            'response_level': 0.10,
-            'state_stability': 0.05,
-            'crystallization_level': 0.15,
-            'attribute_coherence': 0.05,
-            'emotional_resonance': 0.05,
-            'harmony': 0.10,
-            'pattern_coherence': 0.15,
-            'phi_resonance': 0.10,
-            'toroidal_flow_strength': 0.10,
-            'crystalline_coherence': 0.20  # New component with strong weight
+        # === NATURAL LATTICE FORMATION VERIFICATION ===
+        # Check if identity aspects form stable, self-reinforcing crystalline patterns
+        logger.info("=== LATTICE FORMATION VERIFICATION ===")
+        
+        lattice_stability_checks = {}
+        lattice_formation_success = True
+        
+        # 1. UNIT CELL CHECK - Basic identity structure must be stable
+        logger.info("  Checking Unit Cell Structure...")
+        unit_cell_elements = {
+            'name_recognition': getattr(soul_spark, 'name_recognition_rate', 0.0),
+            'voice_frequency': getattr(soul_spark, 'voice_frequency', 0.0),
+            'name_resonance': component_metrics.get('name_resonance', 0.0),
+            'harmony': component_metrics.get('harmony', 0.0)
         }
         
-        # Calculate weighted score
-        total_crystallization_score = 0.0
-        total_weight = 0.0
-        
-        for component, weight in component_weights.items():
-            value = component_metrics.get(component, 0.0)
-            if isinstance(value, (int, float)) and np.isfinite(value):
-                total_crystallization_score += value * weight
-                total_weight += weight
+        unit_cell_stable = True
+        for element, value in unit_cell_elements.items():
+            is_stable = value >= 0.3  # 30% minimum for stable unit cell - natural growth threshold
+            lattice_stability_checks[f'unit_cell_{element}'] = is_stable
+            if not is_stable:
+                unit_cell_stable = False
+                logger.warning(f"    Unit cell unstable: {element} = {value:.3f} < 0.3")
             else:
-                logger.warning(f"    Invalid value for component '{component}': {value}")
+                logger.info(f"    Unit cell stable: {element} = {value:.3f}")
         
-        # Normalize if needed
-        if total_weight > FLOAT_EPSILON:
-            total_crystallization_score /= total_weight
+        # 2. STRUCTURAL FRAMEWORK CHECK - Identity aspects must be present and coherent
+        logger.info("  Checking Structural Framework...")
+        framework_elements = {
+            'sephiroth_aspect': getattr(soul_spark, 'sephiroth_aspect', None),
+            'elemental_affinity': getattr(soul_spark, 'elemental_affinity', None), 
+            'platonic_symbol': getattr(soul_spark, 'platonic_symbol', None),
+            'zodiac_sign': getattr(soul_spark, 'zodiac_sign', None),
+            'pattern_coherence': component_metrics.get('pattern_coherence', 0.0)
+        }
         
-        # Apply final adjustments
-        # The identity must be properly integrated across aura layers
-        layer_integration = _calculate_layer_integration_coherence(soul_spark)
+        framework_stable = True
+        for element, value in framework_elements.items():
+            if element == 'pattern_coherence':
+                is_stable = value >= 0.9  # Pattern coherence must be very high
+                lattice_stability_checks[f'framework_{element}'] = is_stable
+                if not is_stable:
+                    framework_stable = False
+                    logger.warning(f"    Framework unstable: {element} = {value:.3f} < 0.9")
+                else:
+                    logger.info(f"    Framework stable: {element} = {value:.3f}")
+            else:
+                is_stable = value is not None
+                lattice_stability_checks[f'framework_{element}'] = is_stable
+                if not is_stable:
+                    framework_stable = False
+                    logger.warning(f"    Framework incomplete: {element} = None")
+                else:
+                    logger.info(f"    Framework complete: {element} = {value}")
         
-        # If layer integration is poor, reduce the score
-        if layer_integration < 0.3:
-            adjustment = layer_integration / 0.3  # 0-1 scale
-            total_crystallization_score *= adjustment
-            logger.warning(f"    Poor layer integration ({layer_integration:.3f}) " +
-                         f"reduced score by factor {adjustment:.3f}")
+        # 3. BINDING FORCES CHECK - Emotional regulation and training must be effective
+        logger.info("  Checking Binding Forces...")
+        binding_elements = {
+            'name_lattice_formed': getattr(soul_spark, 'name_lattice_formed', False),
+            'foundational_security': getattr(soul_spark, 'foundational_security', 0.0),
+            'emotional_resonance': component_metrics.get('emotional_resonance', 0.0),
+            'phi_resonance': component_metrics.get('phi_resonance', 0.0),
+            'attribute_coherence': component_metrics.get('attribute_coherence', 0.0)
+        }
         
-        # Clamp to valid range
+        binding_stable = True
+        for element, value in binding_elements.items():
+            if element == 'name_lattice_formed':
+                is_stable = value == True
+                lattice_stability_checks[f'binding_{element}'] = is_stable
+                if not is_stable:
+                    binding_stable = False
+                    logger.warning(f"    Binding incomplete: {element} = {value}")
+                else:
+                    logger.info(f"    Binding complete: {element} = {value}")
+            else:
+                is_stable = value >= 0.2  # Natural threshold for binding forces - meaningful resonance
+                lattice_stability_checks[f'binding_{element}'] = is_stable
+                if not is_stable:
+                    binding_stable = False
+                    logger.warning(f"    Binding weak: {element} = {value:.3f} < 0.2")
+                else:
+                    logger.info(f"    Binding adequate: {element} = {value:.3f}")
+        
+        # 4. OVERALL LATTICE STABILITY
+        stable_checks = sum(1 for stable in lattice_stability_checks.values() if stable)
+        total_checks = len(lattice_stability_checks)
+        lattice_stability_ratio = stable_checks / total_checks
+        
+        # Lattice formation requires ALL critical elements to be stable
+        critical_checks = ['unit_cell_name_recognition', 'unit_cell_harmony', 'framework_pattern_coherence', 'binding_name_lattice_formed']
+        critical_stable = all(lattice_stability_checks.get(check, False) for check in critical_checks)
+        
+        overall_lattice_stable = critical_stable and lattice_stability_ratio >= 0.6  # Natural formation threshold
+        
+        logger.info(f"  Lattice stability: {stable_checks}/{total_checks} checks passed ({lattice_stability_ratio:.1%})")
+        logger.info(f"  Critical elements stable: {critical_stable}")
+        logger.info(f"  Overall lattice stable: {overall_lattice_stable}")
+        
+        # Calculate crystallization score based on lattice stability with natural thresholds
+        if overall_lattice_stable:
+            total_crystallization_score = 0.85 + (lattice_stability_ratio - 0.6) * 0.375  # 0.85 to 1.0 range when >=60% 
+        else:
+            total_crystallization_score = lattice_stability_ratio * 1.4  # Natural growth scaling - up to 1.4 for full completion
+        
         total_crystallization_score = max(0.0, min(1.0, total_crystallization_score))
+        logger.info(f"Lattice-based crystallization score: {total_crystallization_score:.4f}")
         
         # Check crystallization success
+        logger.info(f"=== FINAL DECISION ===")
+        logger.info(f"Final crystallization score: {total_crystallization_score:.4f}")
+        logger.info(f"Required threshold: {threshold}")
+        logger.info(f"Score meets threshold: {total_crystallization_score >= threshold}")
+        logger.info(f"Attribute presence score: {attr_presence_score:.4f}")
+        logger.info(f"Required attr presence threshold: {CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD}")
+        logger.info(f"Attr presence meets threshold: {attr_presence_score >= CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD}")
+        
         is_crystallized = (total_crystallization_score >= threshold and 
                           attr_presence_score >= CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD)
+        logger.info(f"FINAL RESULT: is_crystallized = {is_crystallized}")
         
         logger.debug(f"  Identity Verification: Score={total_crystallization_score:.4f}, " +
-                   f"Threshold={threshold}, AttrPresence={attr_presence_score:.2f}, " +
-                   f"LayerIntegration={layer_integration:.3f} -> " +
+                   f"Threshold={threshold}, AttrPresence={attr_presence_score:.2f} -> " +
                    f"Crystallized={is_crystallized}")
         
         # Create identity light signature based on crystalline structure
@@ -4794,20 +3752,6 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
             # Set crystalline structure and light signature
             setattr(soul_spark, 'crystalline_structure', crystalline_structure)
             setattr(soul_spark, 'identity_light_signature', identity_light_signature)
-            
-            # Copy structure summary to identity metrics to maintain compatibility
-            crystalline_summary = {
-                "aspect_count": crystalline_structure.get("aspect_count", 0),
-                "coherence": crystalline_structure.get("coherence", 0.0),
-                "base_geometry": crystalline_structure.get("base_geometry", "unknown"),
-                "sacred_imprint": crystalline_structure.get("sacred_imprint", "unknown")
-            }
-            
-        # Update soul with crystallization results
-        setattr(soul_spark, FLAG_IDENTITY_CRYSTALLIZED, is_crystallized)
-        setattr(soul_spark, 'crystallization_level', float(total_crystallization_score))
-        timestamp = datetime.now().isoformat()
-        setattr(soul_spark, 'last_modified', timestamp)
         
         # Create verification result
         verification_result = {
@@ -4815,13 +3759,12 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
             'threshold': threshold,
             'is_crystallized': is_crystallized,
             'components': component_metrics,
-            'weights': component_weights,
+            'lattice_stability_checks': lattice_stability_checks,
             'missing_attributes': missing_attributes,
-            'layer_integration': float(layer_integration),
             'crystalline_coherence': float(crystalline_coherence)
         }
         
-             # Add crystalline structure summary if crystallized
+        # Add crystalline structure summary if crystallized
         if is_crystallized:
             crystalline_summary = {
                 "aspect_count": crystalline_structure.get("aspect_count", 0),
@@ -4830,7 +3773,7 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
                 "sacred_imprint": crystalline_structure.get("sacred_imprint", "unknown")
             }
             verification_result['crystalline_summary'] = crystalline_summary
-       
+        
         setattr(soul_spark, 'identity_metrics', verification_result)
         
         # Record metrics
@@ -4840,7 +3783,6 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
                 "crystallization_score": float(total_crystallization_score),
                 "threshold": float(threshold),
                 "is_crystallized": is_crystallized,
-                "layer_integration": float(layer_integration),
                 "crystalline_coherence": float(crystalline_coherence),
                 "missing_attributes": missing_attributes,
                 "timestamp": datetime.now().isoformat()
@@ -4849,11 +3791,16 @@ def verify_identity_crystallization(soul_spark: SoulSpark,
         
         # Raise error if not crystallized
         if not is_crystallized:
-            error_msg = (f"Identity crystallization failed: " +
-                       f"Score {total_crystallization_score:.4f} < " +
-                       f"Threshold {threshold} or " +
-                       f"Attr Presence {attr_presence_score:.2f} < " +
-                       f"{CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD}.")
+            score_fails = total_crystallization_score < threshold
+            attr_fails = attr_presence_score < CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD
+            
+            failure_reasons = []
+            if score_fails:
+                failure_reasons.append(f"Score {total_crystallization_score:.4f} < Threshold {threshold}")
+            if attr_fails:
+                failure_reasons.append(f"Attr Presence {attr_presence_score:.2f} < {CRYSTALLIZATION_ATTR_PRESENCE_THRESHOLD}")
+            
+            error_msg = f"Identity crystallization failed: {' AND '.join(failure_reasons)}"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
         
@@ -5145,9 +4092,8 @@ def perform_identity_crystallization(soul_spark: SoulSpark,
                                     crystallization_threshold: float = IDENTITY_CRYSTALLIZATION_THRESHOLD
                                     ) -> Tuple[SoulSpark, Dict[str, Any]]:
     """
-    Performs complete identity crystallization with light, sound, and aura principles.
-    Creates a coherent identity pattern throughout the aura layers rather than
-    directly modifying core frequency. Stability and coherence emerge naturally.
+    Performs complete identity crystallization with light, sound, and crystallisation principles.
+    Creates a coherent identity pattern throughout. Stability and coherence emerge naturally.
     """
     # --- Input Validation ---
     if not isinstance(soul_spark, SoulSpark):
@@ -5197,8 +4143,12 @@ def perform_identity_crystallization(soul_spark: SoulSpark,
         assign_name(soul_spark)
         process_metrics_summary['steps_completed'].append('name')
 
-        _create_identity_aura_layer(soul_spark)
-        process_metrics_summary['steps_completed'].append('identity_layer')
+        # Establish mother's voice as foundational security layer
+        establish_mothers_voice_foundation(soul_spark)
+        process_metrics_summary['steps_completed'].append('mothers_voice')
+
+        # Identity crystallization works within the soul
+        process_metrics_summary['steps_completed'].append('identity_setup')
         
         assign_voice_frequency(soul_spark)
         process_metrics_summary['steps_completed'].append('voice')

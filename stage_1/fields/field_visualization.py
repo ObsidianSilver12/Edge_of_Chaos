@@ -95,51 +95,55 @@ class FieldVisualizer:
         """
         fig = plt.figure(figsize=(10, 8))
         
-        try:
-            # Get the grid data
-            if hasattr(void_field, 'grid') and hasattr(void_field.grid, property_name):
-                grid_data = getattr(void_field.grid, property_name)
-            else:
-                logger.error(f"Property {property_name} not found in void_field.grid")
-                return None
-                
-            # Determine slice index if not provided
-            if slice_idx is None:
-                slice_idx = grid_data.shape[slice_axis] // 2
-                
-            # Select the appropriate colormap
-            cmap = getattr(self, f"{property_name}_cmap", plt.colormaps.get('viridis'))
+        # Get the grid data - HARD FAIL if missing
+        # Try both direct access and grid access
+        if hasattr(void_field, property_name):
+            grid_data = getattr(void_field, property_name)
+        elif hasattr(void_field, 'grid') and hasattr(void_field.grid, property_name):
+            grid_data = getattr(void_field.grid, property_name)
+        else:
+            raise RuntimeError(f"CRITICAL: Property {property_name} not found in void_field or void_field.grid. Cannot create visualization without real field data.")
             
-            # Create the slice view
-            slices = [slice(None)] * 3
-            slices[slice_axis] = slice(slice_idx, slice_idx + 1)
-            slice_data = grid_data[tuple(slices)].squeeze()
+        # Validate data shape for 3D visualization
+        if grid_data is None:
+            raise RuntimeError(f"CRITICAL: Property {property_name} exists but is None. Cannot visualize null data.")
             
-            # Apply Gaussian smoothing for better visualization
-            smoothed_data = gaussian_filter(slice_data, sigma=1.0)
+        if not hasattr(grid_data, 'shape') or len(grid_data.shape) != 3:
+            raise RuntimeError(f"CRITICAL: Property {property_name} must be 3D array for visualization. Got shape: {getattr(grid_data, 'shape', 'no shape attribute')}")
             
-            # Create heat map
-            ax = fig.add_subplot(111)
-            im = ax.imshow(smoothed_data.T, origin='lower', cmap=cmap, interpolation='bilinear')
-            cbar = fig.colorbar(im, ax=ax)
-            cbar.set_label(property_name.capitalize())
+        # Determine slice index if not provided
+        if slice_idx is None:
+            slice_idx = grid_data.shape[slice_axis] // 2
             
-            # Determine axis labels
-            axis_labels = ['X', 'Y', 'Z']
-            visible_axes = [i for i in range(3) if i != slice_axis]
-            ax.set_xlabel(f"{axis_labels[visible_axes[0]]} Position")
-            ax.set_ylabel(f"{axis_labels[visible_axes[1]]} Position")
-            
-            # Set title
-            ax.set_title(f"Void Field {property_name.capitalize()} (Slice at {axis_labels[slice_axis]}={slice_idx})")
-            
-            self._save_or_show(fig, f"void_field_{property_name}_slice_{axis_labels[slice_axis]}{str(slice_idx)}.png", show, save)
-            return fig
-        except Exception as e:
-            logger.error(f"Error generating void field slice visualization: {e}", exc_info=True)
-            if 'fig' in locals() and fig:
-                plt.close(fig)
-            return None
+        # Select the appropriate colormap
+        cmap = getattr(self, f"{property_name}_cmap", plt.colormaps.get('viridis'))
+        
+        # Create the slice view
+        slices = [slice(None)] * 3
+        slices[slice_axis] = slice(slice_idx, slice_idx + 1)
+        slice_data = grid_data[tuple(slices)].squeeze()
+        
+        # Apply Gaussian smoothing for better visualization
+        smoothed_data = gaussian_filter(slice_data, sigma=1.0)
+        
+        # Create heat map
+        ax = fig.add_subplot(111)
+        im = ax.imshow(smoothed_data.T, origin='lower', cmap=cmap, interpolation='bilinear')
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.set_label(property_name.capitalize())
+        
+        # Determine axis labels
+        axis_labels = ['X', 'Y', 'Z']
+        visible_axes = [i for i in range(3) if i != slice_axis]
+        ax.set_xlabel(f"{axis_labels[visible_axes[0]]} Position")
+        ax.set_ylabel(f"{axis_labels[visible_axes[1]]} Position")
+        
+        # Set title
+        ax.set_title(f"Void Field {property_name.capitalize()} (Slice at {axis_labels[slice_axis]}={slice_idx})")
+        
+        self._save_or_show(fig, f"void_field_{property_name}_slice_{axis_labels[slice_axis]}{str(slice_idx)}.png", show, save)
+        return fig
+        # No exception handling - let errors propagate for hard failure
     
     def visualize_edge_of_chaos(self, void_field, show: bool = True, save: bool = True) -> Optional[plt.Figure]:
         """Visualize the Edge of Chaos regions in the void field.
@@ -210,78 +214,121 @@ class FieldVisualizer:
         """
         fig = plt.figure(figsize=(12, 10))
         
-        try:
-            # Get field properties
-            name = getattr(sephiroth_field, 'name', 'Unknown')
-            base_frequency = getattr(sephiroth_field, 'base_frequency', 0.0)
-            sephiroth_color = getattr(sephiroth_field, 'color', [0.5, 0.5, 0.5])
-            pattern_type = getattr(sephiroth_field, 'pattern_type', 'Unknown')
-            pattern_influence = getattr(sephiroth_field, 'pattern_influence', None)
+        # Get field properties - HARD FAIL if critical data missing
+        name = getattr(sephiroth_field, 'name', None)
+        if not name:
+            raise RuntimeError("CRITICAL: Sephiroth field name is required but missing")
             
-            # Convert color to hex for visualization
+        base_frequency = getattr(sephiroth_field, 'base_frequency', None)
+        if base_frequency is None:
+            raise RuntimeError("CRITICAL: Sephiroth field base_frequency is required but missing")
+            
+        sephiroth_color = getattr(sephiroth_field, 'color', None)
+        if sephiroth_color is None:
+            raise RuntimeError("CRITICAL: Sephiroth field color is required but missing")
+            
+        pattern_type = getattr(sephiroth_field, 'pattern_type', None)
+        if pattern_type is None:
+            raise RuntimeError("CRITICAL: Sephiroth field pattern_type is required but missing")
+            
+        pattern_influence = getattr(sephiroth_field, 'pattern_influence', None)
+        
+        logger.info(f"Visualizing Sephiroth field: {name}")
+        logger.info(f"  Frequency: {base_frequency}, Color: {sephiroth_color}")
+        logger.info(f"  Pattern: {pattern_type}, Influence available: {pattern_influence is not None}")
+        
+        # Convert color to hex for visualization
+        if isinstance(sephiroth_color, (list, tuple)) and len(sephiroth_color) >= 3:
             color_hex = f"#{int(sephiroth_color[0]*255):02x}{int(sephiroth_color[1]*255):02x}{int(sephiroth_color[2]*255):02x}"
+        else:
+            color_hex = "#8A2BE2"  # Default purple for sephiroth
+        
+        # Create visualization based on available data
+        if pattern_influence is not None and hasattr(pattern_influence, 'shape') and pattern_influence.size > 0:
+            logger.info(f"Using pattern_influence data with shape: {pattern_influence.shape}")
+            ax = fig.add_subplot(111, projection='3d')
             
-            # Create a 3D visualization of the pattern influence
-            if pattern_influence is not None and hasattr(pattern_influence, 'shape'):
-                ax = fig.add_subplot(111, projection='3d')
-                
-                # Downsample if grid is too large
-                x_step = max(1, pattern_influence.shape[0] // 20)
-                y_step = max(1, pattern_influence.shape[1] // 20)
-                z_step = max(1, pattern_influence.shape[2] // 20)
-                
-                # Create grid points
-                x, y, z = np.meshgrid(
-                    np.arange(0, pattern_influence.shape[0], x_step),
-                    np.arange(0, pattern_influence.shape[1], y_step),
-                    np.arange(0, pattern_influence.shape[2], z_step)
-                )
-                
-                # Get values at grid points
-                values = pattern_influence[::x_step, ::y_step, ::z_step]
-                
-                # Normalize for scaling points
-                norm_values = values / np.max(values) if np.max(values) > 0 else values
-                
-                # Plot points with size and color based on pattern influence
-                scatter = ax.scatter(
-                    x, y, z, 
-                    c=values.flatten(), 
-                    cmap='plasma',
-                    alpha=0.6
-                )
-                
-                # Add colorbar
-                cbar = fig.colorbar(scatter, ax=ax, shrink=0.5, aspect=10)
-                cbar.set_label("Pattern Influence Strength")
-                
-                # Set labels and title
-                ax.set_xlabel("X")
-                ax.set_ylabel("Y")
-                ax.set_zlabel("Z")
-                ax.set_title(f"Sephiroth: {name}\nPattern: {pattern_type}, Frequency: {base_frequency:.2f} Hz")
-                
-                # Add color indicator
-                color_label = fig.text(
-                    0.85, 0.90, 
-                    f"Sephiroth Color", 
-                    fontsize=10,
-                    ha='center',
-                    bbox=dict(facecolor=color_hex, alpha=0.8, pad=4)
-                )
-            else:
-                ax = fig.add_subplot(111)
-                ax.text(0.5, 0.5, "No pattern influence data available", 
-                       ha='center', va='center', transform=ax.transAxes, fontsize=14)
-                ax.set_title(f"Sephiroth: {name}")
+            # Downsample if grid is too large
+            x_step = max(1, pattern_influence.shape[0] // 20)
+            y_step = max(1, pattern_influence.shape[1] // 20)
+            z_step = max(1, pattern_influence.shape[2] // 20)
             
-            self._save_or_show(fig, f"sephiroth_field_{name.lower()}.png", show, save)
-            return fig
-        except Exception as e:
-            logger.error(f"Error generating Sephiroth field visualization: {e}", exc_info=True)
-            if 'fig' in locals() and fig:
-                plt.close(fig)
-            return None
+            # Create grid points
+            x, y, z = np.meshgrid(
+                np.arange(0, pattern_influence.shape[0], x_step),
+                np.arange(0, pattern_influence.shape[1], y_step),
+                np.arange(0, pattern_influence.shape[2], z_step)
+            )
+            
+            # Get values at grid points
+            values = pattern_influence[::x_step, ::y_step, ::z_step]
+            
+            # Normalize for scaling points
+            norm_values = values / np.max(values) if np.max(values) > 0 else values
+            
+            # Plot points with size and color based on pattern influence
+            scatter = ax.scatter(
+                x, y, z, 
+                c=values.flatten(), 
+                cmap='plasma',
+                alpha=0.6
+            )
+            
+            # Add colorbar
+            cbar = fig.colorbar(scatter, ax=ax, shrink=0.5, aspect=10)
+            cbar.set_label("Pattern Influence Strength")
+            
+            # Set labels and title
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.set_zlabel("Z")
+            ax.set_title(f"Sephiroth: {name}\nPattern: {pattern_type}, Frequency: {base_frequency:.2f} Hz")
+            
+            # Add color indicator
+            color_label = fig.text(
+                0.85, 0.90, 
+                f"Sephiroth Color", 
+                fontsize=10,
+                ha='center',
+                bbox=dict(facecolor=color_hex, alpha=0.8, pad=4)
+            )
+        else:
+            logger.info(f"No pattern_influence data, creating symbolic visualization")
+            # Create a symbolic 3D visualization based on sephiroth properties
+            ax = fig.add_subplot(111, projection='3d')
+            
+            # Create a geometric representation based on the sephiroth's properties
+            theta = np.linspace(0, 2*np.pi, 100)
+            phi = np.linspace(0, np.pi, 50)
+            THETA, PHI = np.meshgrid(theta, phi)
+            
+            # Create sphere with frequency-based modulations
+            freq_mod = base_frequency / 432.0  # Normalize to 432Hz
+            radius = 1.0 + 0.3 * np.sin(freq_mod * 5 * THETA) * np.cos(freq_mod * 3 * PHI)
+            
+            X = radius * np.sin(PHI) * np.cos(THETA)
+            Y = radius * np.sin(PHI) * np.sin(THETA) 
+            Z = radius * np.cos(PHI)
+            
+            # Color based on sephiroth color and position
+            colors = np.sqrt(X**2 + Y**2 + Z**2)
+            
+            # Plot the symbolic field
+            surf = ax.plot_surface(X, Y, Z, facecolors=plt.cm.plasma(colors/colors.max()), 
+                                 alpha=0.7, linewidth=0, antialiased=True)
+            
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y") 
+            ax.set_zlabel("Z")
+            ax.set_title(f"Sephiroth: {name} (Symbolic)\nPattern: {pattern_type}, Frequency: {base_frequency:.2f} Hz")
+            
+            # Add text indicating this is symbolic
+            fig.text(0.02, 0.95, "Symbolic Visualization", fontsize=10, 
+                    bbox=dict(facecolor='yellow', alpha=0.8, pad=2))
+        
+        self._save_or_show(fig, f"sephiroth_field_{name.lower()}.png", show, save)
+        return fig
+        # No exception handling - let errors propagate for hard failure
     
     def visualize_sephiroth_tree(self, field_controller, show: bool = True, save: bool = True) -> Optional[plt.Figure]:
         """Visualize the Tree of Life structure with all Sephiroth.

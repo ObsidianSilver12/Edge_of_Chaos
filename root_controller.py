@@ -76,8 +76,27 @@ def run_simulation(**kwargs):
 
         # --- Step 3: Run the main process ---
         logger.info("RootController Step 3: Executing soul completion process...")
+        
+        # Log visualization directories that will be created
+        visualization_base = soul_controller.visualization_dir
+        logger.info(f"RootController: Visualizations will be saved to: {visualization_base}")
+        logger.info("  - Soul evolution stages in: soul_evolution/")
+        logger.info("  - Brain structures in: brain_structure/")  
+        logger.info("  - Field states in: fields/")
+        
         soul_controller.run_full_soul_completion(**kwargs)
         logger.info("RootController: Soul completion process finished.")
+        
+        # Log visualization summary
+        try:
+            viz_summary = {
+                'soul_viz_success': len([f for f in os.listdir(os.path.join(visualization_base, "soul_evolution")) if f.endswith('.json')]) if os.path.exists(os.path.join(visualization_base, "soul_evolution")) else 0,
+                'brain_viz_success': len([f for f in os.listdir(os.path.join(visualization_base, "brain_structure")) if f.endswith('.json')]) if os.path.exists(os.path.join(visualization_base, "brain_structure")) else 0,
+                'field_viz_success': len([f for f in os.listdir(os.path.join(visualization_base, "fields")) if f.endswith('.png')]) if os.path.exists(os.path.join(visualization_base, "fields")) else 0
+            }
+            logger.info(f"RootController: Visualization Summary: {viz_summary}")
+        except Exception as viz_summary_err:
+            logger.warning(f"Could not create visualization summary: {viz_summary_err}")
 
 
         # --- Final Summary ---
@@ -86,9 +105,92 @@ def run_simulation(**kwargs):
         logger.info("--- Simulation Run %s Finished ---", sim_id)
         logger.info("Total Duration: %.2f seconds", total_duration)
         logger.info("Final Status: %s", 'SUCCESS' if success_status else 'FAILED')
-        if not success_status:
+        
+        if success_status:
+            # Organize completed soul data and cleanup for successful simulations
+            try:
+                logger.info("RootController: Organizing completed soul data...")
+                import subprocess
+                import sys
+                
+                # Extract soul information for proper naming
+                soul_name = "Unknown"
+                birth_date = "Unknown"
+                soul_summary = soul_controller.results.get('soul_summary', {})
+                
+                # Try to extract soul name and birth date from various sources
+                if 'soul_data' in soul_summary:
+                    soul_name = soul_summary['soul_data'].get('name', soul_name)
+                    birth_date = soul_summary['soul_data'].get('birth_date', birth_date)
+                elif 'name' in soul_summary:
+                    soul_name = soul_summary.get('name', soul_name)
+                elif 'soul_id' in soul_summary:
+                    # Fallback: use soul_id if available
+                    soul_name = soul_summary.get('soul_id', f'soul_{sim_id}')
+                
+                # Create meaningful model name: SoulName_BirthDate
+                if birth_date != "Unknown":
+                    model_name = f"{soul_name}_{birth_date.replace('-', '')}"
+                else:
+                    model_name = f"{soul_name}_{sim_id}"
+                
+                logger.info(f"Organizing soul data for: {model_name}")
+                
+                # Call cleanup script to organize data
+                cleanup_result = subprocess.run([
+                    sys.executable, 'simulation_cleanup.py', 
+                    '--model-name', model_name
+                ], capture_output=True, text=True, cwd='.')
+                
+                if cleanup_result.returncode == 0:
+                    logger.info("RootController: Soul data organization completed successfully")
+                    print(f"\n{'='*80}")
+                    print("SOUL DATA ORGANIZED SUCCESSFULLY")
+                    print(f"{'='*80}")
+                    print(f"Soul Name: {soul_name}")
+                    print(f"Birth Date: {birth_date}")
+                    print(f"Simulation ID: {sim_id}")
+                    print(f"Data organized in: shared/output/completed_souls/{model_name}_*")
+                    print(f"System cleaned and ready for next simulation")
+                    print(f"{'='*80}")
+                else:
+                    logger.warning(f"RootController: Data organization completed with warnings: {cleanup_result.stderr}")
+                    
+            except Exception as cleanup_err:
+                logger.error(f"RootController: Failed to organize soul data: {cleanup_err}")
+                print(f"WARNING: Could not organize completed soul data: {cleanup_err}")
+        else:
             logger.error("Failed at stage: %s", soul_controller.results.get('failed_stage', 'Unknown'))
             logger.error("Error: %s", soul_controller.results.get('error', 'Unknown'))
+            
+            # Clean up failed simulation data
+            try:
+                logger.info("RootController: Cleaning up failed simulation data...")
+                import subprocess
+                import sys
+                
+                # Call cleanup script with --failed flag to delete files instead of organizing them
+                cleanup_result = subprocess.run([
+                    sys.executable, 'simulation_cleanup.py', 
+                    '--model-name', f'failed_soul_{sim_id}',
+                    '--failed'
+                ], capture_output=True, text=True, cwd='.')
+                
+                if cleanup_result.returncode == 0:
+                    logger.info("RootController: Failed simulation cleanup completed successfully")
+                    print(f"\n{'='*80}")
+                    print("FAILED SIMULATION CLEANED UP")
+                    print(f"{'='*80}")
+                    print(f"Simulation ID: {sim_id}")
+                    print("All output files deleted, cache cleared")
+                    print("System ready for next simulation attempt")
+                    print(f"{'='*80}")
+                else:
+                    logger.warning(f"RootController: Failed simulation cleanup completed with warnings: {cleanup_result.stderr}")
+                    
+            except Exception as cleanup_err:
+                logger.error(f"RootController: Failed to cleanup failed simulation: {cleanup_err}")
+                print(f"WARNING: Could not cleanup failed simulation data: {cleanup_err}")
 
     except (RuntimeError, ValueError, TypeError, AttributeError) as e:
         logger.critical("RootController: Simulation %s aborted due to a critical error: %s",
@@ -117,7 +219,7 @@ if __name__ == "__main__":
         'entrainment_duration': 120.0,
         'love_cycles': 5,
         'geometry_stages': 2,
-        'crystallization_threshold': 0.85,  # Replace with the appropriate default value or import the constant
+        'crystallization_threshold': IDENTITY_CRYSTALLIZATION_THRESHOLD,  # Use constant from shared/constants
         'birth_intensity': 0.7,
     }
     run_simulation(**simulation_params)
@@ -1465,31 +1567,31 @@ if __name__ == "__main__":
 #     logger.warning("Mother resonance module not found. Birth will proceed without mother influence.")
 #     MOTHER_RESONANCE_AVAILABLE = False
 
-# # --- Visualization Import & Setup ---
-# VISUALIZATION_ENABLED = False
-# VISUALIZATION_OUTPUT_DIR = os.path.join("output", "visuals")
-# try:
-#     # Import visualization functions
-#     from stage_1.soul_formation.soul_visualizer import (
-#         visualize_soul_state,
-#         visualize_state_comparison
-#     )
-#     VISUALIZATION_ENABLED = True
+# --- Visualization Import & Setup ---
+VISUALIZATION_ENABLED = False
+VISUALIZATION_OUTPUT_DIR = os.path.join("output", "visuals")
+try:
+    # Import visualization functions
+    from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+    VISUALIZATION_ENABLED = True
 
-#     # Ensure visualization directories exist
-#     os.makedirs(VISUALIZATION_OUTPUT_DIR, exist_ok=True)
-#     os.makedirs(os.path.join("output", "completed"), exist_ok=True)
+    # Ensure visualization directories exist
+    os.makedirs(VISUALIZATION_OUTPUT_DIR, exist_ok=True)
+    os.makedirs(os.path.join("output", "completed"), exist_ok=True)
 
-#     logger.info("Soul visualization module loaded successfully.")
-# except ImportError as ie:
-#     logger.critical(f"CRITICAL ERROR: Soul visualization module not found: {ie}")
-#     logger.critical("Visualizations are required for the simulation. Please install the visualization module.")
-#     logger.critical("Aborting simulation.")
-#     sys.exit(1)
-# except Exception as e:
-#     logger.critical(f"CRITICAL ERROR: Error setting up visualization: {e}", exc_info=True)
-#     logger.critical("Aborting simulation.")
-#     sys.exit(1)
+    # Initialize visualizer
+    soul_visualizer = SoulVisualizer(VISUALIZATION_OUTPUT_DIR)
+
+    logger.info("Soul visualization module loaded successfully.")
+except ImportError as ie:
+    logger.critical(f"CRITICAL ERROR: Soul visualization module not found: {ie}")
+    logger.critical("Visualizations are required for the simulation. Please install the visualization module.")
+    logger.critical("Aborting simulation.")
+    sys.exit(1)
+except Exception as e:
+    logger.critical(f"CRITICAL ERROR: Error setting up visualization: {e}", exc_info=True)
+    logger.critical("Aborting simulation.")
+    sys.exit(1)
 
 # # --- Metrics Import & Setup ---
 # METRICS_AVAILABLE = False

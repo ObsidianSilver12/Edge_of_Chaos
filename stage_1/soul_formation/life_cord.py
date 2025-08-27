@@ -76,14 +76,14 @@ except ImportError as e:
     logger.critical(f"CRITICAL ERROR: Failed to import dependencies: {e}.")
     raise ImportError(f"Core dependencies missing: {e}") from e
 
-# --- Sound Module Imports ---
+# --- Sound Module Imports - HARD FAIL if not available ---
 try:
-    from sound.sound_generator import SoundGenerator
-    from sound.sounds_of_universe import UniverseSounds
+    from shared.sound.sound_generator import SoundGenerator
+    from shared.sound.sounds_of_universe import UniverseSounds
     SOUND_MODULES_AVAILABLE = True
-except ImportError:
-    logger.warning("Sound modules not available. Life cord formation will use simulated sound.")
-    SOUND_MODULES_AVAILABLE = False
+except ImportError as e:
+    logger.critical("CRITICAL: Sound modules are required for Life cord formation but not available. Cannot continue without sound generation capabilities.")
+    raise ImportError("CRITICAL: Sound modules are required for Life cord formation but not available. Cannot continue without sound generation capabilities.") from e
 
 # --- Metrics Tracking ---
 try:
