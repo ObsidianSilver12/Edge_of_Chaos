@@ -67,7 +67,7 @@ def test_soul_visualizer_import():
     
     try:
         sys.path.append('.')
-        from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+        from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
         print("✓ SoulVisualizer imported successfully")
         
         # Test initialization

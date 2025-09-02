@@ -11,7 +11,7 @@ import uuid
 
 # Import system components
 from stage_1.brain_formation.brain_structure import AnatomicalBrain
-from stage_3_system.basic.basic_mycelial import BasicMycelialNetwork
+from stage_2.basic.basic_mycelial import BasicMycelialNetwork
 
 # --- Logging Setup ---
 logger = logging.getLogger("BasicNeural")

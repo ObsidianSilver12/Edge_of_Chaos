@@ -16,6 +16,8 @@ Key Features:
 - First breath simulation
 """
 
+from stage_2.basic.basic_mycelial import BasicMycelialNetwork
+from stage_2.basic.basic_neural import BasicNeuralNetwork
 from datetime import datetime
 from typing import Dict, Any
 import logging
@@ -32,8 +34,6 @@ from stage_1.brain_formation.energy_storage import create_energy_storage_with_br
 
 # Import Stage 3 systems
 from stage_3_system.energy.energy_system import EnergySystem
-from stage_3_system.basic.basic_mycelial import BasicMycelialNetwork
-from stage_3_system.basic.basic_neural import BasicNeuralNetwork
 from stage_3_system.mycelial_network.memory_3d.mycelial_seeds import create_mycelial_seeds_system
 from stage_3_system.integration_methods import apply_integration_methods
 

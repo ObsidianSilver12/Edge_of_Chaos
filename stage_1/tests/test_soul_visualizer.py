@@ -20,7 +20,7 @@ def test_soul_visualizer():
     """Test the SoulVisualizer with sample data"""
     
     try:
-        from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+        from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
         
         # Create test output directory
         test_output_dir = "output/visuals/test_visualization"

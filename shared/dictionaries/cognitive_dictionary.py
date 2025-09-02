@@ -21,7 +21,7 @@ COGNITIVE_STATES = {
             'coherence_pattern': 'hippocampal_cortical_synchrony'
         },
         'brain_sub_region_involvement': ['prefrontal_cortex', 'hippocampus', 'temporal_lobe'],
-        'grid': 'brain_grid',
+        'grid': ['brain_grid', 'mirror_grid'],
         'controller': 'mycelial_network',
         'controller_description': 'Controls learning state through pattern recognition and memory consolidation',
         'tools': {

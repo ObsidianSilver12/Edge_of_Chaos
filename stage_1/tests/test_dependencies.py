@@ -39,7 +39,7 @@ def test_imports():
     # Test SoulVisualizer import
     try:
         sys.path.append('.')
-        from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+        from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
         results['SoulVisualizer'] = "✓ OK"
     except Exception as e:
         results['SoulVisualizer'] = f"✗ FAILED: {e}"
@@ -51,7 +51,7 @@ def test_soul_visualizer():
     """Test SoulVisualizer functionality"""
     try:
         sys.path.append('.')
-        from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+        from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
         
         # Try to create visualizer
         visualizer = SoulVisualizer("test_output")

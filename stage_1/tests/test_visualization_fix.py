@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append('.')
 
-from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
 
 def test_visualizer_with_early_stage():
     """Test visualizer with early stage data (no identity yet)"""

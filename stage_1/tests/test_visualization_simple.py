@@ -52,7 +52,7 @@ def test_basic_visualization():
     try:
         # Test the SoulVisualizer date fix (should work)
         sys.path.append('.')
-        from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+        from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
         
         viz = SoulVisualizer("output/visuals/test_soul")
         

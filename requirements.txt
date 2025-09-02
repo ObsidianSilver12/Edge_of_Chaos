@@ -17,6 +17,7 @@ seaborn>=0.12.0           # Statistical data visualization
 
 # 3D visualization and advanced graphics
 plotly==5.17.0            # Interactive 3D visualizations
+kaleido>=0.2.1            # Static image export
 vpython==7.6.5             # 3D visualization of geometric objects
 # mayavi==4.8.1             # 3D scientific data visualization
 pyvista==0.42.3           # 3D mesh and point cloud processing

@@ -1,11 +1,13 @@
-# --- START OF FILE stage_1/soul_formation/soul_completion_controller.py (CORRECTED V5.3) ---
+# --- START OF FILE stage_1/soul_formation/soul_completion_controller.py (V5.4 - With Comprehensive Visualizations) ---
 """
-Soul Completion Controller (V5.3 - Corrected with Dependency Injection)
+Soul Completion Controller (V5.4 - With Comprehensive Visualizations)
 
 Orchestrates the entire soul development and formation process. This controller
 RECEIVES a pre-initialized FieldController from a higher-level orchestrator
 (e.g., root_controller.py), thus avoiding circular dependencies and ensuring a
 clean separation of concerns between environment and agent.
+
+Added comprehensive soul evolution and brain structure visualizations using Plotly.
 """
 
 import logging
@@ -27,8 +29,6 @@ except ImportError as e:
 logger = logging.getLogger("SoulCompletionController")
 
 # --- Core Component & Stage Function Imports ---
-# NOTE: We can now safely import FieldController and SephirothField here because
-# they are no longer part of a circular dependency chain with this file.
 try:
     from stage_1.fields.field_controller import FieldController
     from stage_1.soul_spark.soul_spark import SoulSpark
@@ -43,13 +43,25 @@ try:
     from stage_1.soul_formation.identity_crystallization import perform_identity_crystallization
     from stage_1.womb.womb_environment import Womb
     from stage_1.soul_formation.birth import BirthProcess
-    from stage_1.soul_formation.soul_visualizer import SoulVisualizer
+    from stage_1.soul_formation.soul_evolution_visualizer import SoulVisualizer
     from stage_1.fields.field_visualization import FieldVisualizer
-    from stage_1.brain_formation.brain_visualizer import BrainVisualizer
+    from stage_1.brain_formation.brain_structure_visualizer import BrainVisualizer
     import metrics_tracking as metrics
 except ImportError as e:
     logger.critical("FATAL: Could not import a required module: %s.", e, exc_info=True)
     sys.exit(1)
+
+# --- New Comprehensive Visualizer Imports ---
+try:
+    from stage_1.soul_formation.soul_evolution_visualizer import SoulEvolutionVisualizer
+    from stage_1.brain_formation.brain_structure_visualizer import BrainStructureVisualizer
+    COMPREHENSIVE_VISUALIZERS_AVAILABLE = True
+    logger.info("Comprehensive visualization modules loaded successfully")
+except ImportError as e:
+    logger.warning(f"Comprehensive visualization modules not available: {e}")
+    SoulEvolutionVisualizer = None
+    BrainStructureVisualizer = None
+    COMPREHENSIVE_VISUALIZERS_AVAILABLE = False
 
 
 class SoulCompletionController:
@@ -76,17 +88,29 @@ class SoulCompletionController:
         self.visualization_dir = os.path.join(DATA_DIR_BASE, "visuals", self.simulation_id)
         os.makedirs(self.visualization_dir, exist_ok=True)
         
-        # Initialize field visualizer
+        # Initialize existing visualizers
         field_viz_dir = os.path.join(self.visualization_dir, "fields")
         self.field_visualizer = FieldVisualizer(output_dir=field_viz_dir)
         
-        # Initialize soul visualizer
         soul_viz_dir = os.path.join(self.visualization_dir, "soul_evolution")
         self.soul_visualizer = SoulVisualizer(output_dir=soul_viz_dir)
         
-        # Initialize brain visualizer
         brain_viz_dir = os.path.join(self.visualization_dir, "brain_structure")
         self.brain_visualizer = BrainVisualizer(output_dir=brain_viz_dir)
+        
+        # Initialize comprehensive visualizers if available
+        if COMPREHENSIVE_VISUALIZERS_AVAILABLE:
+            soul_evolution_viz_dir = os.path.join(self.visualization_dir, "soul_evolution_complete")
+            self.soul_evolution_visualizer = SoulEvolutionVisualizer(soul_evolution_viz_dir)
+            
+            brain_structure_viz_dir = os.path.join(self.visualization_dir, "brain_structure_complete")  
+            self.brain_structure_visualizer = BrainStructureVisualizer(brain_structure_viz_dir)
+            
+            logger.info("Comprehensive visualizers initialized")
+        else:
+            self.soul_evolution_visualizer = None
+            self.brain_structure_visualizer = None
+            logger.warning("Comprehensive visualizers not available")
         
         # These will be updated later when we have soul identity
         self.final_visualization_dir = None
@@ -171,51 +195,352 @@ class SoulCompletionController:
             }
     
     def _visualize_soul_evolution_stage(self, soul_spark: SoulSpark, stage: str):
-        """Create visualization for current soul evolution stage - HARD FAIL on errors"""
+        """Create visualization for current soul evolution stage"""
         logger.info(f"Starting visualization for stage: {stage}")
-        soul_data = self._prepare_soul_data_for_visualization(soul_spark, stage)
-        stage_key = stage.lower().replace(' ', '_').replace('-', '_')
-        logger.info(f"Stage key mapped: {stage} -> {stage_key}")
         
-        # Map stage names to visualizer stage names
-        stage_mapping = {
-            'spark_emergence': 'soul_spark',
-            'creator_entanglement': 'creator_entanglement',
-            'sephiroth_journey': 'sephiroth_journey',
-            'post_sephiroth_journey': 'sephiroth_journey',
-            'identity_crystallization': 'pre_identity_crystallization',
-            'pre_identity_crystallization': 'pre_identity_crystallization',
-            'post_identity_crystallization': 'post_identity_crystallization',
-            'post_birth': 'post_identity_crystallization'
-        }
-        
-        mapped_stage = stage_mapping.get(stage_key, 'soul_spark')
-        logger.info(f"Mapped stage: {stage_key} -> {mapped_stage}")
-        
-        result = self.soul_visualizer.visualize_stage(mapped_stage, soul_data, save_plots=True)
-        
-        if not result.get('success'):
-            error_msg = result.get('error', 'Unknown visualization error')
-            raise RuntimeError(f"CRITICAL: Soul visualization failed for stage {stage}: {error_msg}")
+        try:
+            # Create stage-specific visualization based on current stage
+            if stage == "Spark Emergence":
+                result = self.soul_visualizer.create_soul_spark_visualization(soul_spark, stage)
+            elif stage == "Sephiroth Journey":
+                result = self.soul_visualizer.create_sephiroth_journey_visualization(soul_spark, stage)
+            elif stage == "Creator Entanglement":
+                result = self.soul_visualizer.create_creator_entanglement_visualization(soul_spark, stage)
+            elif stage == "Identity Crystallization":
+                result = self.soul_visualizer.create_identity_crystallization_visualization(soul_spark, stage)
+            else:
+                raise ValueError(f"Unknown stage: {stage}")
+                
+            if not result.get('success'):
+                raise RuntimeError(f"Visualization failed for stage {stage}")
+                
+            logger.info(f"Soul visualization completed successfully for stage: {stage}")
             
-        logger.info(f"✓ Soul visualization completed successfully for stage: {stage}")
-        logger.info(f"  Files created: {list(result.keys())}")
+        except Exception as e:
+            logger.error(f"CRITICAL: Soul visualization failed for stage {stage}: {e}")
+            raise RuntimeError(f"CRITICAL: Soul visualization failed for stage {stage}: {e}") from e
     
     def _create_final_evolution_visualization(self, soul_spark: SoulSpark):
         """Create complete evolution visualization at the end"""
         try:
-            soul_data = self._prepare_soul_data_for_visualization(soul_spark, "Final")
-            result = self.soul_visualizer.create_complete_evolution_visualization(soul_data, save_plots=True)
+            logger.info("Creating final complete soul evolution visualization...")
             
-            if result.get('success'):
+            # Use the existing comprehensive Plotly visualization system
+            result_paths = self.soul_visualizer.create_complete_soul_progression(soul_spark)
+            
+            if result_paths:
                 logger.info("Complete soul evolution visualization created successfully")
                 self.results['soul_summary']['visualization_complete'] = True
-                self.results['soul_summary']['visualization_path'] = result.get('overview', {}).get('timeline')
+                self.results['soul_summary']['final_visualizations'] = result_paths
+                
+                for viz_type, path in result_paths.items():
+                    logger.info(f"  - {viz_type}: {path}")
             else:
-                logger.warning(f"Complete evolution visualization failed: {result.get('error')}")
+                logger.warning("Complete evolution visualization failed - no visualizations created")
                 
         except Exception as e:
             logger.error(f"Error creating complete evolution visualization: {e}")
+    
+    def _create_comprehensive_field_dashboard(self, soul_spark: SoulSpark):
+        """Create comprehensive field system dashboard showing complete field evolution."""
+        try:
+            logger.info("Creating comprehensive field system dashboard...")
+            
+            # Create the field dashboard using the field visualizer
+            dashboard_result = self.field_visualizer.create_field_dashboard(
+                self.field_controller, show=False, save=True
+            )
+            
+            if dashboard_result:
+                logger.info("Comprehensive field dashboard created successfully")
+                self.results['field_dashboard_complete'] = True
+                return True
+            else:
+                logger.warning("Field dashboard creation failed")
+                self.results['field_dashboard_complete'] = False
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error creating field dashboard: {e}")
+            self.results['field_dashboard_complete'] = False
+            return False
+
+    def _create_comprehensive_visualizations(self, soul_spark: SoulSpark):
+        """Create comprehensive soul evolution and brain structure visualizations using the new Plotly system."""
+        try:
+            soul_name = getattr(soul_spark, 'name', 'Unknown')
+            spark_id = getattr(soul_spark, 'spark_id', 'unknown')
+            
+            logger.info(f"Creating comprehensive visualizations for {soul_name} ({spark_id})")
+            
+            visualization_results = {
+                'soul_evolution': {'success': False, 'files': []},
+                'brain_structure': {'success': False, 'files': []},
+                'field_system': {'success': False, 'dashboard_created': False}
+            }
+            
+            # Create comprehensive soul evolution visualization
+            if self.soul_evolution_visualizer:
+                try:
+                    logger.info("Creating comprehensive soul evolution visualization...")
+                    soul_result = self.soul_evolution_visualizer.create_complete_soul_evolution(soul_spark)
+                    if soul_result.get('success'):
+                        visualization_results['soul_evolution'] = soul_result
+                        logger.info(f"Soul evolution visualization completed: {soul_result['total_visualizations']} files")
+                        
+                        # Log each file created
+                        for file_info in soul_result.get('files_created', []):
+                            logger.info(f"  - {file_info['stage']}: {file_info['filename']}")
+                    else:
+                        raise RuntimeError("Soul evolution visualization returned success=False")
+                        
+                except Exception as soul_viz_error:
+                    logger.error(f"CRITICAL: Soul evolution visualization failed: {soul_viz_error}", exc_info=True)
+                    # Hard fail as requested - do not continue if critical visualization fails
+                    raise RuntimeError(f"Soul evolution visualization failed: {soul_viz_error}") from soul_viz_error
+            else:
+                logger.warning("Comprehensive soul evolution visualizer not available")
+            
+            # Create comprehensive brain structure visualization
+            if self.brain_structure_visualizer and hasattr(soul_spark, 'brain_structure'):
+                try:
+                    logger.info("Creating comprehensive brain structure visualization...")
+                    brain_result = self.brain_structure_visualizer.create_complete_brain_visualization(soul_spark)
+                    if brain_result.get('success'):
+                        visualization_results['brain_structure'] = brain_result
+                        logger.info(f"Brain structure visualization completed: {brain_result['total_visualizations']} files")
+                        
+                        # Log each file created
+                        for file_info in brain_result.get('files_created', []):
+                            logger.info(f"  - {file_info['visualization']}: {file_info['filename']}")
+                    else:
+                        raise RuntimeError("Brain structure visualization returned success=False")
+                        
+                except Exception as brain_viz_error:
+                    logger.error(f"CRITICAL: Brain structure visualization failed: {brain_viz_error}", exc_info=True)
+                    # Hard fail as requested - do not continue if critical visualization fails
+                    raise RuntimeError(f"Brain structure visualization failed: {brain_viz_error}") from brain_viz_error
+            else:
+                if not self.brain_structure_visualizer:
+                    logger.warning("Comprehensive brain structure visualizer not available")
+                else:
+                    logger.info("No brain structure available for comprehensive visualization")
+            
+            # Create comprehensive field system dashboard
+            try:
+                logger.info("Creating comprehensive field system dashboard...")
+                field_dashboard_success = self._create_comprehensive_field_dashboard(soul_spark)
+                visualization_results['field_system'] = {
+                    'success': field_dashboard_success,
+                    'dashboard_created': field_dashboard_success
+                }
+                if field_dashboard_success:
+                    logger.info("Field system dashboard completed successfully")
+                else:
+                    logger.warning("Field system dashboard creation failed")
+                    
+            except Exception as field_viz_error:
+                logger.error(f"CRITICAL: Field system dashboard failed: {field_viz_error}", exc_info=True)
+                # Hard fail as requested - do not continue if critical visualization fails
+                raise RuntimeError(f"Field system dashboard failed: {field_viz_error}") from field_viz_error
+            
+            # Store results in controller
+            self.results['comprehensive_visualizations'] = visualization_results
+            
+            # Update final visualization paths for moving to completed souls
+            if visualization_results['soul_evolution'].get('success') or visualization_results['brain_structure'].get('success'):
+                # Ensure final visualization directory is set
+                if not self.final_visualization_dir:
+                    birth_date = getattr(soul_spark, 'conceptual_birth_datetime', None) or getattr(soul_spark, 'birth_date', 'Unknown')
+                    self._update_visualization_paths_for_final_location(soul_name, birth_date)
+            
+            logger.info("Comprehensive visualizations completed successfully")
+            return visualization_results
+            
+        except Exception as e:
+            logger.error(f"CRITICAL: Comprehensive visualization creation failed: {e}", exc_info=True)
+            raise RuntimeError(f"Comprehensive visualization failed: {e}") from e
+
+    def _move_comprehensive_visualizations_to_final_location(self, soul_spark: SoulSpark):
+        """Move comprehensive visualization files to the final completed souls directory."""
+        try:
+            soul_name = getattr(soul_spark, 'name', 'Unknown')
+            spark_id = getattr(soul_spark, 'spark_id', 'unknown')
+            
+            if not self.final_visualization_dir:
+                logger.warning("Final visualization directory not set, cannot move comprehensive visualizations")
+                return
+                
+            # Extract base completed souls directory from final_visualization_dir
+            # final_visualization_dir is like: .../completed_souls/ModelName_ID_Date/visuals
+            base_completed_dir = os.path.dirname(os.path.dirname(self.final_visualization_dir))
+            
+            moved_successfully = True
+            
+            # Move comprehensive soul evolution visualizations
+            if self.soul_evolution_visualizer:
+                try:
+                    soul_moved = self.soul_evolution_visualizer.move_to_completed_souls(
+                        soul_name, spark_id, base_completed_dir
+                    )
+                    if not soul_moved:
+                        moved_successfully = False
+                        logger.error("Failed to move comprehensive soul evolution visualizations")
+                except Exception as e:
+                    logger.error(f"Error moving comprehensive soul evolution visualizations: {e}")
+                    moved_successfully = False
+            
+            # Move comprehensive brain structure visualizations
+            if self.brain_structure_visualizer:
+                try:
+                    brain_moved = self.brain_structure_visualizer.move_to_completed_souls(
+                        soul_name, spark_id, base_completed_dir
+                    )
+                    if not brain_moved:
+                        moved_successfully = False
+                        logger.error("Failed to move comprehensive brain structure visualizations")
+                except Exception as e:
+                    logger.error(f"Error moving comprehensive brain structure visualizations: {e}")
+                    moved_successfully = False
+            
+            if moved_successfully:
+                logger.info("All comprehensive visualizations moved to final location")
+            else:
+                logger.warning("Some comprehensive visualizations failed to move")
+                
+        except Exception as e:
+            logger.error(f"Failed to move comprehensive visualizations: {e}", exc_info=True)
+    
+    def _create_final_plotly_health_scan(self, soul_spark: SoulSpark):
+        """Create comprehensive Plotly health scan visualizations for the completed soul"""
+        try:
+            logger.info("Creating comprehensive Plotly health scan visualizations...")
+            
+            # Create all the Plotly visualizations
+            plotly_results = self.soul_visualizer.create_complete_soul_progression(soul_spark)
+            
+            if plotly_results:
+                logger.info("Plotly health scan visualizations created successfully:")
+                for viz_type, file_path in plotly_results.items():
+                    logger.info(f"  - {viz_type}: {file_path}")
+                
+                # Update results with Plotly visualization paths
+                self.results['soul_summary']['plotly_visualizations'] = plotly_results
+                self.results['soul_summary']['health_scan_complete'] = True
+                
+                # Get summary of all visualizations
+                viz_summary = self.soul_visualizer.get_visualization_summary()
+                self.results['soul_summary']['visualization_summary'] = viz_summary
+                
+                logger.info(f"Total visualizations created: {viz_summary.get('html_visualizations', 0)} HTML, {viz_summary.get('png_visualizations', 0)} PNG")
+                
+            else:
+                logger.warning("No Plotly visualizations were created")
+                self.results['soul_summary']['health_scan_complete'] = False
+                
+        except Exception as e:
+            logger.error(f"Error creating Plotly health scan visualizations: {e}")
+            self.results['soul_summary']['health_scan_complete'] = False
+
+    def _create_final_brain_health_scan(self, soul_spark: SoulSpark):
+        """Create comprehensive Plotly brain health scan visualizations"""
+        try:
+            logger.info("Creating comprehensive brain health scan visualizations...")
+            
+            # Check if soul has brain structure
+            brain_structure = getattr(soul_spark, 'brain_structure', None)
+            if not brain_structure:
+                raise RuntimeError("CRITICAL: Brain structure is required for health scan visualization but not available. Brain formation code failed to create brain structure.")
+            
+            # Create all the brain visualizations - will HARD FAIL if data is missing
+            brain_results = self.brain_visualizer.create_complete_brain_progression(brain_structure)
+            
+            if brain_results:
+                logger.info("Brain health scan visualizations created successfully:")
+                for viz_type, file_path in brain_results.items():
+                    logger.info(f"  - {viz_type}: {file_path}")
+                
+                # Update results with brain visualization paths
+                self.results['soul_summary']['brain_visualizations'] = brain_results
+                self.results['soul_summary']['brain_health_scan_complete'] = True
+                
+                logger.info(f"Total brain visualizations created: {len(brain_results)}")
+                
+            else:
+                raise RuntimeError("CRITICAL: Brain visualization creation failed - no visualizations were created")
+                
+        except Exception as e:
+            logger.error(f"CRITICAL FAILURE: Brain health scan visualization failed: {e}")
+            # Re-raise the exception to fail the entire simulation
+            raise RuntimeError(f"CRITICAL: Brain health scan visualization failed: {e}") from e
+
+    def _visualize_field_state(self, soul_spark: SoulSpark, stage: str):
+        """Create field visualization for current stage - shows field evolution throughout soul formation."""
+        try:
+            logger.info(f"Creating field visualization for stage: {stage}")
+            
+            # Get void field for visualization
+            void_field = self.field_controller.get_field('void')
+            if not void_field:
+                logger.warning(f"No void field available for visualization in stage: {stage}")
+                return
+            
+            # 1. Visualize void field energy state
+            self.field_visualizer.visualize_void_field_slice(
+                void_field, property_name='energy',
+                show=False, save=True
+            )
+            
+            # 2. Visualize void field coherence if stage involves coherence changes
+            if stage in ['Creator Entanglement', 'Identity Crystallization', 'Harmonic Strengthening']:
+                self.field_visualizer.visualize_void_field_slice(
+                    void_field, property_name='coherence',
+                    show=False, save=True
+                )
+            
+            # 3. Visualize Edge of Chaos for development stages
+            if stage in ['Spark Emergence', 'Guff Strengthening', 'Harmonic Strengthening']:
+                self.field_visualizer.visualize_edge_of_chaos(void_field, show=False, save=True)
+            
+            # 4. Visualize soul-field interaction if soul has established position
+            if hasattr(soul_spark, 'position') and hasattr(soul_spark, 'current_field_key'):
+                current_field = self.field_controller.get_field(soul_spark.current_field_key)
+                if current_field:
+                    self.field_visualizer.visualize_soul_field_interaction(
+                        soul_spark, current_field, show=False, save=True
+                    )
+            
+            # 5. Stage-specific field visualizations
+            if stage == 'Sephiroth Journey':
+                # Visualize the Tree of Life structure during journey
+                self.field_visualizer.visualize_sephiroth_tree(
+                    self.field_controller, show=False, save=True
+                )
+                
+                # Visualize current Sephiroth field if soul is in one
+                if hasattr(soul_spark, 'current_field_key') and soul_spark.current_field_key != 'void':
+                    sephiroth_field = self.field_controller.get_field(soul_spark.current_field_key)
+                    if sephiroth_field:
+                        self.field_visualizer.visualize_sephiroth_field(
+                            sephiroth_field, show=False, save=True
+                        )
+            
+            # 6. Frequency spectrum analysis for frequency-related stages
+            if stage in ['Creator Entanglement', 'Harmonic Strengthening', 'Identity Crystallization']:
+                current_field = self.field_controller.get_field(soul_spark.current_field_key or 'void')
+                if current_field:
+                    position = getattr(soul_spark, 'position', None)
+                    if position:
+                        position_int = [int(p) for p in position[:3]]
+                        self.field_visualizer.visualize_field_frequency_spectrum(
+                            current_field, position=position_int, show=False, save=True
+                        )
+            
+            logger.info(f"Field visualization completed for stage: {stage}")
+            
+        except Exception as e:
+            logger.error(f"CRITICAL: Field visualization failed for stage {stage}: {e}")
+            raise RuntimeError(f"Field visualization failed for stage {stage}: {e}") from e
 
     def _visualize_brain_state(self, soul_spark: SoulSpark, stage: str):
         """Create visualization for current brain state - HARD FAIL if brain expected but missing"""
@@ -238,7 +563,7 @@ class SoulCompletionController:
         brain_file_path = os.path.join(self.brain_visualizer.output_dir, brain_filename)
         brain_fig.write_image(brain_file_path, width=1920, height=1080, scale=2)
         
-        logger.info(f"✓ Brain visualization saved: {brain_file_path}")
+        logger.info(f"Brain visualization saved: {brain_file_path}")
 
     def _update_visualization_paths_for_final_location(self, soul_name: str, birth_date: str):
         """Update visualization paths to point to the final completed souls directory"""
@@ -289,7 +614,7 @@ class SoulCompletionController:
             soul_dst = os.path.join(self.final_visualization_dir, "soul_evolution")
             if os.path.exists(soul_src):
                 for file in os.listdir(soul_src):
-                    if file.endswith(('.json', '.png')):
+                    if file.endswith(('.json', '.png', '.html')):
                         shutil.copy2(os.path.join(soul_src, file), os.path.join(soul_dst, file))
                         logger.info(f"Copied soul visualization: {file}")
             
@@ -298,7 +623,7 @@ class SoulCompletionController:
             brain_dst = os.path.join(self.final_visualization_dir, "brain_structure")
             if os.path.exists(brain_src):
                 for file in os.listdir(brain_src):
-                    if file.endswith(('.json', '.png')):
+                    if file.endswith(('.json', '.png', '.html')):
                         shutil.copy2(os.path.join(brain_src, file), os.path.join(brain_dst, file))
                         logger.info(f"Copied brain visualization: {file}")
                         
@@ -307,7 +632,7 @@ class SoulCompletionController:
             field_dst = os.path.join(self.final_visualization_dir, "fields")
             if os.path.exists(field_src):
                 for file in os.listdir(field_src):
-                    if file.endswith(('.json', '.png')):
+                    if file.endswith(('.json', '.png', '.html')):
                         shutil.copy2(os.path.join(field_src, file), os.path.join(field_dst, file))
                         logger.info(f"Copied field visualization: {file}")
                         
@@ -329,26 +654,16 @@ class SoulCompletionController:
             soul_spark = SoulSpark.create_from_field_emergence(self.field_controller)
             self.results['soul_summary']['soul_id'] = soul_spark.spark_id
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
             self._visualize_brain_state(soul_spark, current_stage)
-            
-            # Visualize field state after spark emergence - HARD FAIL on errors
-            void_field = self.field_controller.get_field('void')
-            if not void_field:
-                raise RuntimeError(f"CRITICAL: Void field required for visualization but not found")
-            
-            self.field_visualizer.visualize_void_field_slice(
-                void_field, property_name='energy', 
-                show=False, save=True
-            )
 
             # --- STAGES 2-11: SPIRITUAL JOURNEY (PRE-INCARNATION) ---
-            # The logic for these stages remains the same, but now uses the controller's
-            # instance of the field_controller.
 
             current_stage = "Spark Harmonization"
             logger.info("--- STAGE: %s ---", current_stage)
             soul_spark, _ = perform_spark_harmonization(soul_spark)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Guff Strengthening"
             logger.info("--- STAGE: %s ---", current_stage)
@@ -358,6 +673,7 @@ class SoulCompletionController:
             soul_spark, _ = perform_guff_strengthening(soul_spark, self.field_controller)
             self.field_controller.release_soul_from_guff(soul_spark)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Sephiroth Journey"
             logger.info("--- STAGE: %s ---", current_stage)
@@ -371,8 +687,7 @@ class SoulCompletionController:
             setattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, True)
             setattr(soul_spark, FLAG_READY_FOR_ENTANGLEMENT, True)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
-            
-            # Focus on soul-specific visualizations only - no generic field visualizations
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Creator Entanglement"
             logger.info("--- STAGE: %s ---", current_stage)
@@ -380,21 +695,25 @@ class SoulCompletionController:
             if not kether_field: raise RuntimeError("KetherField is required.")
             soul_spark, _ = perform_creator_entanglement(soul_spark, kether_field)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Harmonic Strengthening"
             logger.info("--- STAGE: %s ---", current_stage)
             soul_spark, _ = perform_harmonic_strengthening(soul_spark)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Life Cord Formation"
             logger.info("--- STAGE: %s ---", current_stage)
             soul_spark, _ = form_life_cord(soul_spark)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Earth Harmonization"
             logger.info("--- STAGE: %s ---", current_stage)
             soul_spark, _ = perform_earth_harmonization(soul_spark)
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
 
             current_stage = "Identity Crystallization"
             logger.info("--- STAGE: %s ---", current_stage)
@@ -405,6 +724,7 @@ class SoulCompletionController:
             soul_spark, metrics_data = perform_identity_crystallization(soul_spark, **identity_kwargs)
             self.results['soul_summary'][current_stage] = metrics_data
             self._visualize_soul_evolution_stage(soul_spark, current_stage)
+            self._visualize_field_state(soul_spark, current_stage)
             self._visualize_brain_state(soul_spark, current_stage)
             
             # Create special progression visualization for Identity Crystallization - HARD FAIL on errors
@@ -424,6 +744,7 @@ class SoulCompletionController:
             self.results['soul_summary'][current_stage] = birth_metrics
             self._display_stage_metrics(current_stage, birth_metrics)
             self._visualize_soul_evolution_stage(soul_spark, "Post-Birth")
+            self._visualize_field_state(soul_spark, "Post-Birth")
             self._visualize_brain_state(soul_spark, "Post-Birth")
 
             # --- FINAL REPORTING ---
@@ -432,6 +753,21 @@ class SoulCompletionController:
             
             # Create final comprehensive soul evolution visualization
             self._create_final_evolution_visualization(soul_spark)
+            
+            # Create comprehensive Plotly health scan visualizations
+            self._create_final_plotly_health_scan(soul_spark)
+            
+            # Create comprehensive brain health scan visualizations 
+            self._create_final_brain_health_scan(soul_spark)
+            
+            # --- COMPREHENSIVE VISUALIZATIONS (AFTER ALL STAGES) ---
+            logger.info("--- CREATING COMPREHENSIVE VISUALIZATIONS ---")
+            try:
+                self._create_comprehensive_visualizations(soul_spark)
+            except Exception as viz_error:
+                logger.error(f"CRITICAL: Comprehensive visualizations failed: {viz_error}")
+                self._handle_failure("Comprehensive Visualizations", soul_spark.spark_id, viz_error)
+                raise
             
             # Extract final soul identity information
             soul_name = getattr(soul_spark, 'name', 'Unknown')
@@ -445,10 +781,20 @@ class SoulCompletionController:
             logger.info(f"  star_sign: {star_sign}")
             logger.info(f"  available attributes: {[attr for attr in dir(soul_spark) if not attr.startswith('_')]}")
             
-            # Set up final visualization directory and copy files
-            if soul_name != 'Unknown':
-                self._update_visualization_paths_for_final_location(soul_name, birth_date)
-                self._copy_visualizations_to_final_location()
+            # --- MOVE VISUALIZATIONS TO FINAL LOCATION ---
+            logger.info("--- MOVING VISUALIZATIONS TO FINAL LOCATION ---")
+            try:
+                # Set up final visualization directory and copy existing files
+                if soul_name != 'Unknown':
+                    self._update_visualization_paths_for_final_location(soul_name, birth_date)
+                    self._copy_visualizations_to_final_location()
+                    
+                    # Move comprehensive visualizations
+                    self._move_comprehensive_visualizations_to_final_location(soul_spark)
+                
+            except Exception as move_error:
+                logger.error(f"Failed to move visualizations to final location: {move_error}")
+                # Don't hard fail on move errors, just warn
             
             # Store soul identity in results for root controller
             self.results['soul_summary']['name'] = soul_name
@@ -472,7 +818,8 @@ class SoulCompletionController:
                         'coherence': getattr(soul_spark, 'coherence', 0),
                         'stability': getattr(soul_spark, 'stability', 0)
                     },
-                    'visualization_complete': self.results['soul_summary'].get('visualization_complete', False)
+                    'visualization_complete': self.results['soul_summary'].get('visualization_complete', False),
+                    'comprehensive_visualizations': self.results.get('comprehensive_visualizations', {})
                 }
                 
                 with open(final_report_path, 'w') as f:
@@ -487,7 +834,7 @@ class SoulCompletionController:
             self.results['soul_summary']['final_report_path'] = final_report_path
             self.results['success'] = True
             
-            logger.info("Soul completion simulation finished successfully with full 3D visualization suite")
+            logger.info("Soul completion simulation finished successfully with comprehensive visualization suite")
 
         except Exception as e:
             self._handle_failure(current_stage, getattr(soul_spark, 'spark_id', 'unassigned'), e)
@@ -495,1266 +842,22 @@ class SoulCompletionController:
             self.results['end_time'] = datetime.now().isoformat()
             report_path = os.path.join(DATA_DIR_BASE, "reports", f"simulation_report_{self.simulation_id}.json")
             try:
+                import numpy as np
                 class NumpyEncoder(json.JSONEncoder):
                     def default(self, obj):
                         if isinstance(obj, (np.integer, np.floating)):
                             return int(obj) if isinstance(obj, np.integer) else float(obj)
                         if isinstance(obj, np.ndarray): return obj.tolist()
                         return super(NumpyEncoder, self).default(obj)
+                        
+                os.makedirs(os.path.dirname(report_path), exist_ok=True)
                 with open(report_path, 'w', encoding='utf-8') as f:
                     json.dump(self.results, f, indent=2, cls=NumpyEncoder, default=str)
                 logger.info("Full simulation report saved to: %s", report_path)
             except Exception as json_err:
                 logger.error("Failed to save final simulation report: %s", json_err)
-            metrics.persist_metrics()
+            
+            if hasattr(metrics, 'persist_metrics'):
+                metrics.persist_metrics()
+
 # --- END OF FILE soul_completion_controller.py ---
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # --- START OF FILE src/stage_1/soul_completion_controller.py ---
-
-
-# # whole file is now wrong - rewrite from scratch do not include any fallbacks only hard fails. this was refactored
-# # to try match the stage functions for evolve. that whole refactor was abandoned as it was grossly incomplete
-# # you will need to check that each part of the controller from soul spark to birth matches the refactored files from soul
-# # spark to birth and includes all the new files that have been created for the brain formation process.
-# # birth has to be refactored to match the new birth process as well and the new refactored files include reference to
-# # the life cord so that needs to be checked to see if it matches. new process is soul is passed through the life cord which
-# # must be attached to the brain stem and then the soul is guided to its new home in the brain.
-
-# """
-# Soul Completion Controller (Refactored V4.3.11 - Full Soul Formation, Comp. Report)
-
-# Orchestrates the complete soul formation process from Spark Harmonization through Birth.
-# Handles all stage functions directly.
-# Works with refactored stage functions that use wave physics and layer-based approaches.
-# Uses constants directly after wildcard import.
-# Calls the new comprehensive soul report at the end of each soul's processing.
-# """
-
-# import logging
-# import os
-# import sys
-# import uuid
-# import json
-# import time
-# import random
-# from datetime import datetime, timedelta # Added timedelta
-# from typing import Optional, Tuple, Dict, Any, List # type: ignore
-# from stage_1.brain_formation.brain_structure import AnatomicalBrain
-# from stage_1.soul_formation.creator_entanglement import (
-#     save_creator_entanglement_sensory_data  # This function needs to be imported
-# )
-# from stage_1.soul_formation.sephiroth_journey_processing import (
-#     create_encoded_sephirah_sigil,
-#     capture_sephirah_interaction_sensory_data,
-#     save_sephiroth_journey_sensory_data
-# )
-
-# # --- Logging ---
-# logger = logging.getLogger(__name__)
-
-# # --- Constants (Wildcard Import) ---
-# try:
-#     from shared.constants.constants import *
-#     logger.setLevel(LOG_LEVEL) # Set logger level after successful import
-# except ImportError as e:
-#     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-#     LOG_LEVEL = 'INFO'
-#     logger.critical(f"CRITICAL ERROR: constants.py failed import in soul_completion_controller.py: {e}")
-#     logger.warning(f"Constants not loaded, using fallback values. LOG_LEVEL set to {LOG_LEVEL}")
-#     logger.setLevel(getattr(logging, str(LOG_LEVEL).upper(), logging.INFO))
-#     if not logger.handlers: # Basic handler if constants failed and logger wasn't set up by root
-#         logging.basicConfig(level=getattr(logging, str(LOG_LEVEL).upper(), logging.INFO), format=LOG_FORMAT)
-
-# # --- Dependency Imports ---
-# try:
-#     from stage_1.soul_spark.soul_spark import SoulSpark
-#     from stage_1.fields.field_controller import FieldController
-#     from stage_1.fields.sephiroth_field import SephirothField
-#     from stage_1.soul_formation.spark_harmonization import perform_spark_harmonization
-#     from stage_1.soul_formation.guff_strengthening import perform_guff_strengthening
-#     from stage_1.soul_formation.sephiroth_journey_processing import process_sephirah_interaction
-#     from stage_1.soul_formation.creator_entanglement import perform_creator_entanglement
-#     from stage_1.soul_formation.harmonic_strengthening import perform_harmonic_strengthening
-#     from stage_1.soul_formation.life_cord import form_life_cord
-#     from stage_1.soul_formation.earth_harmonisation import perform_earth_harmonization
-#     from stage_1.soul_formation.identity_crystallization import perform_identity_crystallization
-#     from stage_1.soul_formation.birth import perform_birth
-
-
-
-#     try:
-#         import metrics_tracking as metrics
-#         METRICS_AVAILABLE = True
-#     except ImportError:
-#         logger.warning("Metrics tracking module not found. Metrics will not be recorded.")
-#         METRICS_AVAILABLE = False
-#         class MetricsPlaceholder:
-#             def record_metrics(self, *args, **kwargs): pass
-#             def record_metric(self, *args, **kwargs): pass
-#             def persist_metrics(self, *args, **kwargs): pass
-#         metrics = MetricsPlaceholder() # type: ignore
-# except ImportError as e:
-#     logger.critical(f"CRITICAL ERROR: Failed to import stage modules/SoulSpark: {e}", exc_info=True)
-#     raise ImportError(f"Core stage dependencies missing: {e}") from e
-
-# # --- Visualization Import & Setup ---
-# VISUALIZATION_ENABLED = False # Default
-# VISUALIZATION_OUTPUT_DIR = os.path.join(DATA_DIR_BASE, "visuals", "soul_completion") # Consistent path
-# try:
-#     from stage_1.soul_formation.soul_visualizer import (
-#         visualize_soul_state,
-#         visualize_state_comparison,
-#         create_comprehensive_soul_report # New import
-#     )
-#     VISUALIZATION_ENABLED = True
-#     os.makedirs(VISUALIZATION_OUTPUT_DIR, exist_ok=True)
-#     os.makedirs(os.path.join(DATA_DIR_BASE, "completed_souls"), exist_ok=True)
-#     logger.info("Soul visualization module loaded successfully in SoulCompletionController.")
-# except ImportError as ie:
-#     logger.warning(f"Soul visualization module not found in SoulCompletionController: {ie}. Visualizations disabled.")
-# except Exception as e:
-#     logger.warning(f"Error setting up visualization in SoulCompletionController: {e}. Visualizations disabled.")
-
-# # --- Mother Resonance Import ---
-# MOTHER_RESONANCE_AVAILABLE = False # Default
-# try:
-#     from stage_1.womb.mother_resonance import create_mother_resonance_data
-#     MOTHER_RESONANCE_AVAILABLE = True
-#     logger.info("Mother resonance module loaded successfully in SoulCompletionController.")
-# except ImportError:
-#     logger.warning("Mother resonance module not found in SoulCompletionController. Birth will proceed without mother influence or require explicit profile.")
-
-# # --- Helper Function for Metrics Display (Copied from root_controller) ---
-# def display_stage_metrics(stage_name, metrics_dict):
-#     """Prints a formatted summary of stage metrics."""
-#     skip_keys = {
-#         'success', 'error', 'failed_step', 'action', 'soul_id', 'start_time',
-#         'end_time', 'timestamp', 'duration_seconds', 'initial_state',
-#         'final_state', 'guff_properties_used', 'imparted_aspect_strengths',
-#         'aspects_touched_names', 'initial_state_changes', 'geometric_changes',
-#         'local_entanglement_changes', 'element_details', 'cycle_details',
-#         'components', 'missing_attributes', 'gained_aspect_names',
-#         'strengthened_aspect_names', 'transfers', 'memory_retentions',
-#         'layer_formation_changes', 'imparted_aspect_strengths_summary',
-#         'detailed_metrics', 'guff_targets_used', 'initial_stability_su',
-#         'initial_coherence_cu', 'initial_energy_seu',
-#         'initial_pattern_coherence', 'initial_phi_resonance',
-#         'initial_harmony', 'initial_toroidal_flow',
-#         'peak_stability_su_during_stabilization',
-#         'peak_coherence_cu_during_stabilization', 'step_metrics'
-#     }
-#     print(f"\n{'='*20} {stage_name} Metrics Summary {'='*20}")
-#     if not isinstance(metrics_dict, dict):
-#         print("  Invalid metrics format (not a dict).")
-#         print("=" * (40 + len(stage_name)))
-#         return
-#     if not metrics_dict:
-#         print("  No metrics captured.")
-#         print("=" * (40 + len(stage_name)))
-#         return
-
-#     success = metrics_dict.get('success')
-#     if success is not None: print(f"  Success: {success}")
-#     else:
-#         print("  Success: Unknown (key missing)")
-#         logger.warning(f"Metrics for '{stage_name}' missing 'success' key.")
-
-#     if not success and success is not None:
-#         print(f"  Error: {metrics_dict.get('error', 'Unknown')}")
-#         print(f"  Failed Step: {metrics_dict.get('failed_step', 'N/A')}")
-
-#     display_keys = sorted([
-#         str(k) for k in metrics_dict.keys() if str(k) not in skip_keys
-#     ])
-
-#     if not display_keys and success is not False:
-#         print("  (No specific metrics to display)")
-
-#     max_key_len = max(len(k.replace('_',' ').title()) for k in display_keys) if display_keys else 30
-
-#     for key in display_keys:
-#         value = metrics_dict[key]
-#         unit = ""
-#         key_display = key
-#         key_lower = key.lower()
-#         if key_lower.endswith('_seu'): unit=" SEU"; key_display=key[:-4]
-#         elif key_lower.endswith('_su'): unit=" SU"; key_display=key[:-3]
-#         elif key_lower.endswith('_cu'): unit=" CU"; key_display=key[:-3]
-#         elif key_lower.endswith('_hz'): unit=" Hz"; key_display=key[:-3]
-#         elif key_lower.endswith('_pct'): unit="%"; key_display=key[:-4]
-#         elif key_lower.endswith('_factor'): key_display=key[:-7]
-#         elif key_lower.endswith('_score'): key_display=key[:-6]
-#         elif key_lower.endswith('_level'): key_display=key[:-6]
-#         elif key_lower.endswith('_count'): key_display=key[:-6]
-#         elif key_lower.endswith('_ratio'): key_display=key[:-6]
-#         elif key_lower.endswith('_strength'): key_display=key[:-9]
-#         elif key_lower.endswith('_coherence'): key_display=key[:-10]
-#         elif key_lower.endswith('_resonance'): key_display=key[:-10]
-#         elif key_lower.endswith('_alignment'): key_display=key[:-10]
-#         elif key_lower.endswith('_integration'): key_display=key[:-12]
-
-#         if isinstance(value, float):
-#             if unit in [" SU", " CU", " Hz"]: formatted_val = f"{value:.1f}"
-#             elif unit == " SEU": formatted_val = f"{value:.2f}"
-#             elif unit == "%": formatted_val = f"{value:.1f}"
-#             elif '_gain' in key_lower: formatted_val = f"{value:+.2f}"
-#             elif any(sfx in key_lower for sfx in ['_factor','_score','_level','_resonance','_strength','_change','_integrity','_coherence','_ratio','_alignment','_integration']):
-#                 formatted_val = f"{value:.3f}"
-#             else: formatted_val = f"{value:.3f}"
-#         elif isinstance(value, int): formatted_val = str(value)
-#         elif isinstance(value, bool): formatted_val = str(value)
-#         elif isinstance(value, list): formatted_val = f"<List ({len(value)} items)>"
-#         elif isinstance(value, dict): formatted_val = f"<Dict ({len(value)} keys)>"
-#         else: formatted_val = str(value)
-
-#         key_display_cleaned = key_display.replace('_', ' ').title()
-#         print(f"  {key_display_cleaned:<{max_key_len}} : {formatted_val}{unit}")
-#     print("=" * (40 + len(stage_name)))
-
-
-# CONTROLLER_METRIC_CATEGORY = "soul_completion_controller"
-
-# class SoulCompletionController:
-#     """
-#     Orchestrates complete soul formation from Spark Harmonization to Birth.
-#     """
-
-#     def __init__(self, data_dir: str = DATA_DIR_BASE, field_controller: Optional[FieldController] = None,
-#                 controller_id: Optional[str] = None, visualization_enabled: bool = VISUALIZATION_ENABLED):
-#         if not data_dir or not isinstance(data_dir, str): raise ValueError("Data directory invalid.")
-#         self.controller_id: str = controller_id or str(uuid.uuid4())
-#         self.creation_time: str = datetime.now().isoformat()
-#         self.output_dir: str = os.path.join(data_dir, "controller_data", f"soul_completion_{self.controller_id}")
-#         self.visualization_enabled = visualization_enabled
-#         self.visual_save_dir = VISUALIZATION_OUTPUT_DIR # Use the module-level constant
-#         self.field_controller = field_controller
-        
-#         # Initialize mycelial components
-#         self.memory_fragment_system = None
-#         self.quantum_network = None
-#         self.mycelial_initialized = False
-        
-#         try:
-#             os.makedirs(self.output_dir, exist_ok=True)
-#             if self.visualization_enabled:
-#                 os.makedirs(self.visual_save_dir, exist_ok=True)
-#         except OSError as e:
-#             logger.critical(f"CRITICAL: Failed to create output dir {self.output_dir}: {e}")
-#             raise
-#         self.active_souls: Dict[str, Dict[str, Any]] = {}
-#         self.development_states: Dict[str, List[Tuple[SoulSpark, str]]] = {}
-#         logger.info(f"Initializing Soul Completion Controller (ID: {self.controller_id})")
-#         if METRICS_AVAILABLE:
-#             metrics.record_metrics(CONTROLLER_METRIC_CATEGORY, {
-#                 'status': 'initialized', 'controller_id': self.controller_id,
-#                 'timestamp': self.creation_time, 'visualization_enabled': self.visualization_enabled
-#             })
-#         logger.info(f"Soul Completion Controller '{self.controller_id}' initialized.")
-
-#     def _run_stage(self, stage_func: callable, soul_spark: SoulSpark, stage_name_readable: str,
-#                    show_visuals: bool, pre_stage_vis_name: str, post_stage_vis_name: str,
-#                    **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         """Helper to run a generic stage with visualization and error handling."""
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: {stage_name_readable} for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': stage_name_readable, 'start_time': datetime.now().isoformat()}
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 # Use a copy or a new SoulSpark instance if the original is heavily modified in-place by visualize_soul_state
-#                 # For now, assuming visualize_soul_state is non-destructive or its modifications are acceptable.
-#                 self.development_states[spark_id].append((soul_spark, pre_stage_vis_name))
-#                 visualize_soul_state(soul_spark, pre_stage_vis_name, self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"{pre_stage_vis_name} visualization failed: {vis_err}")
-
-#         try:
-#             # Ensure kwargs passed to stage_func are only what it expects, or that stage_func handles **kwargs
-#             # For now, passing all kwargs assuming stage functions can handle them or ignore extras.
-#             _, stage_metrics = stage_func(soul_spark=soul_spark, **kwargs)
-
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, post_stage_vis_name))
-#                     visualize_soul_state(soul_spark, post_stage_vis_name, self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"{post_stage_vis_name} visualization failed: {vis_err}")
-
-#             display_stage_metrics(stage_name_readable, stage_metrics)
-#             logger.info(f"{stage_name_readable} Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"{stage_name_readable} failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"{stage_name_readable} failed: {e}") from e
-
-
-#     def run_spark_harmonization(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         # iterations is a parameter for perform_spark_harmonization, get it from constants or pass via kwargs
-#         iterations = kwargs.get('harmonization_iterations', HARMONIZATION_ITERATIONS)
-        
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: Spark Harmonization for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': 'Spark Harmonization', 'start_time': datetime.now().isoformat()}
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Harmonization"))
-#                 visualize_soul_state(soul_spark, "Pre_Harmonization", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre_Harmonization visualization failed: {vis_err}")
-
-#         try:
-#             _, stage_metrics = perform_spark_harmonization(soul_spark=soul_spark, iterations=iterations)
-
-#             # Initialize basic mycelial network after harmonization
-#             if hasattr(soul_spark, 'brain_structure') and soul_spark.brain_structure is not None:
-#                 try:
-#                     logger.info("Initializing basic mycelial network")
-#                     brain_structure = soul_spark.brain_structure
-#                     seed_position = getattr(soul_spark, 'position', (32, 32, 32))
-                    
-#                     # Initialize mycelial network
-#                     network_metrics = initialize_basic_network(brain_structure, seed_position)
-#                     stage_metrics['mycelial_initialization'] = network_metrics
-                    
-#                     # Initialize memory fragment system
-#                     self.memory_fragment_system = MemoryFragmentSystem(brain_structure)
-                    
-#                     self.mycelial_initialized = True
-#                     logger.info(f"Mycelial network initialized with {network_metrics['cells_affected']} cells")
-                    
-#                 except Exception as e:
-#                     logger.warning(f"Failed to initialize mycelial network: {e}")
-#                     stage_metrics['mycelial_initialization'] = {'error': str(e)}
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Harmonization"))
-#                     visualize_soul_state(soul_spark, "Post_Harmonization", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"Post_Harmonization visualization failed: {vis_err}")
-
-#             display_stage_metrics("Spark Harmonization", stage_metrics)
-#             logger.info(f"Spark Harmonization Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"Spark Harmonization failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"Spark Harmonization failed: {e}") from e
-        
-
-#     def run_guff_strengthening(self, soul_spark: SoulSpark, field_controller: Optional[FieldController] = None,
-#                             duration: float = GUFF_STRENGTHENING_DURATION, show_visuals: bool = False) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         field_ctrl = field_controller or self.field_controller
-#         if not field_ctrl: raise ValueError("Field controller required for Guff strengthening.")
-        
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: Guff Strengthening for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': 'Guff Strengthening', 'start_time': datetime.now().isoformat()}
-        
-#         try:
-#             current_field = getattr(soul_spark, 'current_field_key', None)
-#             if current_field != 'guff' and current_field != 'kether': # Allow if already in Kether but not yet Guff
-#                 logger.info(f"Moving soul {soul_spark.spark_id} to Guff for strengthening...")
-#                 field_ctrl.place_soul_in_guff(soul_spark)
-#         except Exception as move_err: raise RuntimeError(f"Failed to move soul to Guff: {move_err}") from move_err
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Guff_Strengthening"))
-#                 visualize_soul_state(soul_spark, "Pre_Guff_Strengthening", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre_Guff_Strengthening visualization failed: {vis_err}")
-
-#         try:
-#             _, stage_metrics = perform_guff_strengthening(soul_spark=soul_spark, field_controller=field_ctrl, duration=duration)
-
-#             # Establish primary mycelial pathways
-#             if self.mycelial_initialized and hasattr(soul_spark, 'brain_structure'):
-#                 try:
-#                     logger.info("Establishing primary mycelial pathways")
-#                     pathway_metrics = establish_primary_pathways(soul_spark.brain_structure)
-#                     stage_metrics['mycelial_pathways'] = pathway_metrics
-                    
-#                     # Setup energy distribution channels
-#                     energy_metrics = setup_energy_distribution_channels(soul_spark.brain_structure)
-#                     stage_metrics['mycelial_energy'] = energy_metrics
-                    
-#                     logger.info(f"Established {pathway_metrics['pathways_created']} pathways, "
-#                             f"{energy_metrics['channels_created']} energy channels")
-                            
-#                 except Exception as e:
-#                     logger.warning(f"Failed to establish mycelial pathways: {e}")
-#                     stage_metrics['mycelial_pathways'] = {'error': str(e)}
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Guff_Strengthening"))
-#                     visualize_soul_state(soul_spark, "Post_Guff_Strengthening", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"Post_Guff_Strengthening visualization failed: {vis_err}")
-
-#             display_stage_metrics("Guff Strengthening", stage_metrics)
-#             logger.info(f"Guff Strengthening Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-            
-#             try: field_ctrl.release_soul_from_guff(soul_spark)
-#             except Exception as release_err: raise RuntimeError(f"Failed to release soul from Guff: {release_err}") from release_err
-            
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"Guff Strengthening failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"Guff Strengthening failed: {e}") from e
-
-#     def run_sephiroth_journey(self, soul_spark: SoulSpark, field_controller: Optional[FieldController] = None,
-#                             journey_duration_per_sephirah: float = 2.0, show_visuals: bool = False) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         stage_name = "Sephiroth Journey"
-#         field_ctrl = field_controller or self.field_controller
-#         if not field_ctrl: raise ValueError("Field controller required for Sephiroth journey.")
-#         logger.info(f"Stage: {stage_name} for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': stage_name, 'start_time': datetime.now().isoformat()}
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Sephiroth_Journey"))
-#                 visualize_soul_state(soul_spark, "Pre_Sephiroth_Journey", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre-Journey visualization failed: {vis_err}")
-#         try:
-#             journey_path = ["kether", "chokmah", "binah", "daath", "chesed",
-#                         "geburah", "tiphareth", "netzach", "hod", "yesod", "malkuth"]
-#             journey_step_metrics: Dict[str, Any] = {}
-#             journey_sensory_captures: Dict[str, Any] = {}
-#             for sephirah_name_iter in journey_path:
-#                 stage_id = f"Interaction ({sephirah_name_iter.capitalize()})"
-#                 logger.info(f"  Entering {sephirah_name_iter.capitalize()}...")
-#                 sephirah_influencer = field_ctrl.get_field(sephirah_name_iter)
-#                 if not sephirah_influencer or not isinstance(sephirah_influencer, SephirothField):
-#                     raise RuntimeError(f"SephirothField missing for '{sephirah_name_iter}'.")
-                
-#                 # Process Sephirah interaction (existing functionality)
-#                 _, step_metrics = process_sephirah_interaction(
-#                     soul_spark=soul_spark, sephirah_influencer=sephirah_influencer,
-#                     field_controller=field_ctrl, duration=journey_duration_per_sephirah
-#                 )
-#                 journey_step_metrics[sephirah_name_iter] = step_metrics
-#                 try:
-#                     # Create encoded Sephirah sigil with Gateway Key frequency
-#                     sigil_glyph_id, encoded_sigil_path = create_encoded_sephirah_sigil(
-#                         soul_spark, sephirah_name_iter, step_metrics
-#                     )
-                    
-#                     # Capture complete sensory data for this Sephirah interaction
-#                     sephirah_sensory = capture_sephirah_interaction_sensory_data(
-#                         soul_spark, sephirah_name_iter, step_metrics, sigil_glyph_id, encoded_sigil_path
-#                     )
-                    
-#                     journey_sensory_captures[sephirah_name_iter] = sephirah_sensory
-#                     logger.info(f"Captured sensory data for {sephirah_name_iter}: {sephirah_sensory['capture_id']}")
-                    
-#                 except Exception as sens_err:
-#                     logger.error(f"Failed to capture sensory data for {sephirah_name_iter}: {sens_err}")
-#                     journey_step_metrics[sephirah_name_iter] = {'error': str(sens_err)}
-#                 logger.info(f"  Exiting {sephirah_name_iter.capitalize()}.")
-#                 if self.visualization_enabled and sephirah_name_iter in ["kether", "tiphareth", "malkuth"]:
-#                     try: visualize_soul_state(soul_spark, f"Sephiroth_{sephirah_name_iter.capitalize()}", self.visual_save_dir, show=show_visuals)
-#                 except Exception as sensory_err:
-#                     logger.warning(f"Failed to capture sensory data for {sephirah_name_iter}: {sensory_err}")
-#                     journey_sensory_captures[sephirah_name_iter] = {'error': str(sensory_err)}
-                
-#                 display_stage_metrics(stage_id, step_metrics)
-#                 logger.info(f"  Exiting {sephirah_name_iter.capitalize()}.")
-#                 if self.visualization_enabled and sephirah_name_iter in ["kether", "tiphareth", "malkuth"]:
-#                     try:
-#                         visualize_soul_state(soul_spark, f"Sephiroth_{sephirah_name_iter.capitalize()}", self.visual_save_dir, show=show_visuals)
-#                     except Exception as vis_err:
-#                         logger.warning(f"Sephiroth {sephirah_name_iter} visualization failed: {vis_err}")
-            
-#             # Save complete Sephiroth journey sensory data for soul echos processing
-#             try:
-#                 if journey_sensory_captures:
-#                     sensory_data_path = save_sephiroth_journey_sensory_data(
-#                         soul_spark, journey_sensory_captures, journey_path
-#                     )
-#                     journey_step_metrics['sensory_data_saved'] = {
-#                         'path': sensory_data_path,
-#                         'captures_count': len(journey_sensory_captures),
-#                         'success': True
-#                     }
-#                     logger.info(f"Saved Sephiroth journey sensory data: {sensory_data_path}")
-#                 else:
-#                     logger.warning("No sensory captures to save")
-                    
-#             except Exception as save_err:
-#                 logger.error(f"Failed to save Sephiroth journey sensory data: {save_err}")
-#                 journey_step_metrics['sensory_data_saved'] = {'error': str(save_err), 'success': False}
-
-#             # Create memory fragments for soul aspects gained during journey
-#             if self.memory_fragment_system and hasattr(soul_spark, 'aspects'):
-#                 try:
-#                     logger.info("Creating memory fragments for soul aspects")
-#                     aspects = getattr(soul_spark, 'aspects', {})
-                    
-#                     if aspects:
-#                         fragment_metrics = distribute_soul_aspects(
-#                             self.memory_fragment_system, 
-#                             soul_spark.brain_structure, 
-#                             aspects
-#                         )
-#                         journey_step_metrics['memory_fragments'] = fragment_metrics
-#                         logger.info(f"Created {fragment_metrics['aspects_distributed']} memory fragments")
-                    
-#                 except Exception as e:
-#                     logger.warning(f"Failed to create memory fragments: {e}")
-#                     journey_step_metrics['memory_fragments'] = {'error': str(e)}
-            
-#             setattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, True)
-#             setattr(soul_spark, FLAG_READY_FOR_ENTANGLEMENT, True)
-#             journey_metrics = {
-#                 'steps': journey_step_metrics, 
-#                 'soul_id': spark_id, 
-#                 'journey_path': journey_path,
-#                 'journey_duration_per_sephirah': journey_duration_per_sephirah,
-#                 'total_journey_duration': journey_duration_per_sephirah * len(journey_path), 
-#                 'sensory_captures': {
-#                     'total_captures': len(journey_sensory_captures),
-#                     'successful_captures': len([c for c in journey_sensory_captures.values() if 'error' not in c]),
-#                     'failed_captures': len([c for c in journey_sensory_captures.values() if 'error' in c]),
-#                     'captures_by_sephirah': list(journey_sensory_captures.keys())
-#                 },
-#                 'success': True
-#             }
-            
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Sephiroth_Journey"))
-#                     visualize_soul_state(soul_spark, "Post_Sephiroth_Journey", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err:
-#                     logger.warning(f"Post-Journey visualization failed: {vis_err}")
-#             logger.info(f"{stage_name} Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-#             return soul_spark, journey_metrics
-#         except Exception as e:
-#             logger.error(f"{stage_name} failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status']='failed'; self.active_souls[spark_id]['error']=str(e)
-#             setattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, False); setattr(soul_spark, FLAG_READY_FOR_ENTANGLEMENT, False)
-#             raise RuntimeError(f"{stage_name} failed: {e}") from e
-    
-#     def run_creator_entanglement(self, soul_spark: SoulSpark, field_controller: Optional[FieldController] = None,
-#                                 show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         field_ctrl = field_controller or self.field_controller
-#         if not field_ctrl: raise ValueError("Field controller required for Creator entanglement.")
-#         if not getattr(soul_spark, FLAG_SEPHIROTH_JOURNEY_COMPLETE, False): raise ValueError("Sephiroth journey not complete.")
-#         if not getattr(soul_spark, FLAG_READY_FOR_ENTANGLEMENT, False): raise ValueError(f"Missing {FLAG_READY_FOR_ENTANGLEMENT} flag.")
-#         kether_influencer = field_ctrl.kether_field
-#         if not kether_influencer: raise RuntimeError("Kether field unavailable.")
-
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: Creator Entanglement for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': 'Creator Entanglement', 'start_time': datetime.now().isoformat()}
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Creator_Entanglement"))
-#                 visualize_soul_state(soul_spark, "Pre_Creator_Entanglement", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre_Creator_Entanglement visualization failed: {vis_err}")
-
-#         try:
-#             # Extract relevant kwargs for perform_creator_entanglement
-#             entanglement_kwargs = {
-#                 'base_creator_potential': kwargs.get('base_creator_potential', CREATOR_POTENTIAL_DEFAULT),
-#                 'edge_of_chaos_target': kwargs.get('edge_of_chaos_target', EDGE_OF_CHAOS_DEFAULT)
-#             }
-            
-#             _, stage_metrics = perform_creator_entanglement(soul_spark=soul_spark, kether_field=kether_influencer, **entanglement_kwargs)
-
-#             # Prepare mycelial network for soul attachment
-#             if self.mycelial_initialized and hasattr(soul_spark, 'brain_structure'):
-#                 try:
-#                     logger.info("Preparing mycelial network for soul attachment")
-#                     preparation_metrics = prepare_for_soul_attachment(soul_spark.brain_structure)
-#                     stage_metrics['soul_preparation'] = preparation_metrics
-                    
-#                     # Store soul attachment position for later use
-#                     soul_spark.soul_attachment_position = preparation_metrics['position']
-                    
-#                     logger.info(f"Soul attachment prepared at {preparation_metrics['position']}")
-                    
-#                 except Exception as e:
-#                     logger.warning(f"Failed to prepare soul attachment: {e}")
-#                     stage_metrics['soul_preparation'] = {'error': str(e)}
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Creator_Entanglement"))
-#                     visualize_soul_state(soul_spark, "Post_Creator_Entanglement", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"Post_Creator_Entanglement visualization failed: {vis_err}")
-
-#             display_stage_metrics("Creator Entanglement", stage_metrics)
-#             logger.info(f"Creator Entanglement Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-            
-#             setattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, True)
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"Creator Entanglement failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"Creator Entanglement failed: {e}") from e
-
-#     def run_harmonic_strengthening(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         """
-#         Runs the harmonic strengthening stage.
-        
-#         Args:
-#             soul_spark: The SoulSpark object to strengthen
-#             show_visuals: Whether to display visualizations
-#             **kwargs: Optional parameters including harmony_intensity and harmony_duration_factor
-            
-#         Returns:
-#             Tuple of (modified SoulSpark, stage metrics)
-#         """
-#         if not getattr(soul_spark, FLAG_CREATOR_ENTANGLED, False): 
-#             raise ValueError("Creator entanglement not complete.")
-#         if not getattr(soul_spark, FLAG_READY_FOR_HARMONIZATION, False): 
-#             raise ValueError(f"Missing {FLAG_READY_FOR_HARMONIZATION} flag.")
-
-#         # Prepare parameters ensuring sufficient cycles for full convergence
-#         hs_kwargs = {
-#             'intensity': kwargs.get('harmony_intensity', HARMONIC_STRENGTHENING_INTENSITY_DEFAULT),
-#             'duration_factor': kwargs.get('harmony_duration_factor', HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT)
-#         }
-        
-#         # Log the max cycles that will be used
-#         max_cycles = int(HS_MAX_CYCLES * hs_kwargs['duration_factor'])
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Running Harmonic Strengthening on {spark_id} with up to {max_cycles} cycles")
-#         logger.info(f"Using intensity={hs_kwargs['intensity']:.2f}, aiming for 100% convergence")
-        
-#         # Run the harmonic strengthening stage
-#         stage_result = self._run_stage(
-#             perform_harmonic_strengthening, soul_spark, "Harmonic Strengthening", show_visuals,
-#             "Pre_Harmonic_Strengthening", "Post_Harmonic_Strengthening",
-#             **hs_kwargs
-#         )
-        
-#         # Extract convergence info from metrics for detailed logging
-#         _, metrics = stage_result
-#         cycles_run = metrics.get('cycles_run', 0)
-#         stability_converged = metrics.get('stability_converged', False)
-#         coherence_converged = metrics.get('coherence_converged', False)
-        
-#         # Log detailed convergence status
-#         if stability_converged and coherence_converged:
-#             logger.info(f"Harmonic Strengthening achieved FULL convergence after {cycles_run} cycles!")
-#         elif cycles_run >= max_cycles:
-#             logger.warning(f"Harmonic Strengthening reached max cycles ({max_cycles}) without full convergence")
-#             if not stability_converged:
-#                 logger.warning(f"Stability did not converge to maximum (current: {soul_spark.stability:.2f})")
-#             if not coherence_converged:
-#                 logger.warning(f"Coherence did not converge to maximum (current: {soul_spark.coherence:.2f})")
-#         else:
-#             logger.info(f"Harmonic Strengthening met thresholds after {cycles_run} cycles")
-        
-#         # Set ready for next stage
-#         setattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, True)
-#         return stage_result
-
-#     def run_brain_formation_sequence(self, brain_seed: Dict[str, Any] = None) -> Dict[str, Any]:
-#         """Run complete brain formation sequence."""
-#         logger.info("🧠 Starting brain formation sequence...")
-        
-#         try:
-#             # Create anatomical brain instance
-#             brain = AnatomicalBrain(brain_seed=brain_seed)
-            
-#             # Run complete brain formation
-#             formation_result = brain.run_brain_formation_sequence(create_mirror_grid=True)
-            
-#             # Store brain structure in soul controller
-#             self.brain_structure = brain.get_brain_structure()
-#             self.anatomical_brain = brain  # Keep reference to brain instance
-            
-#             # Update soul completion status
-#             if formation_result['success']:
-#                 self.completion_status['brain_formation'] = True
-#                 logger.info("✅ Brain formation completed successfully")
-#             else:
-#                 logger.error("❌ Brain formation completed with issues")
-            
-#             return formation_result
-            
-#         except Exception as e:
-#             logger.error(f"Brain formation sequence failed: {e}")
-#             raise RuntimeError(f"Brain formation failed: {e}") from e
-
-
-#     def run_life_cord_formation(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]: # Added kwargs
-#         if not getattr(soul_spark, FLAG_READY_FOR_LIFE_CORD, False): raise ValueError(f"Missing {FLAG_READY_FOR_LIFE_CORD} flag.")
-
-#         lc_kwargs = {
-#             'intensity': kwargs.get('life_cord_intensity', 0.7), # Using provided default
-#             'complexity': kwargs.get('cord_complexity', LIFE_CORD_COMPLEXITY_DEFAULT)
-#         }
-#         return self._run_stage(
-#             form_life_cord, soul_spark, "Life Cord Formation", show_visuals,
-#             "Pre_Life_Cord", "Post_Life_Cord",
-#             **lc_kwargs
-#         )
-
-#     def run_earth_harmonization(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]: # Added kwargs
-#         if not getattr(soul_spark, FLAG_CORD_FORMATION_COMPLETE, False): raise ValueError("Life cord not formed.")
-#         if not getattr(soul_spark, FLAG_READY_FOR_EARTH, False): raise ValueError(f"Missing {FLAG_READY_FOR_EARTH} flag.")
-
-#         eh_kwargs = {
-#             'schumann_intensity': kwargs.get('schumann_intensity', EARTH_HARMONY_INTENSITY_DEFAULT),
-#             'core_intensity': kwargs.get('core_intensity', EARTH_HARMONY_INTENSITY_DEFAULT)
-#         }
-#         return self._run_stage(
-#             perform_earth_harmonization, soul_spark, "Earth Harmonization", show_visuals,
-#             "Pre_Earth_Harmonization", "Post_Earth_Harmonization",
-#             **eh_kwargs
-#         )
-
-#     def run_identity_crystallization(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         if not getattr(soul_spark, FLAG_EARTH_ATTUNED, False): raise ValueError("Not harmonized with Earth.")
-        
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: Identity Crystallization for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': 'Identity Crystallization', 'start_time': datetime.now().isoformat()}
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Identity_Crystallization"))
-#                 visualize_soul_state(soul_spark, "Pre_Identity_Crystallization", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre_Identity_Crystallization visualization failed: {vis_err}")
-
-#         try:
-#             # Pass all kwargs directly, perform_identity_crystallization will pick what it needs
-#             _, stage_metrics = perform_identity_crystallization(soul_spark=soul_spark, **kwargs)
-
-#             # Initialize quantum communication network
-#             if hasattr(soul_spark, 'brain_structure') and not self.quantum_network:
-#                 try:
-#                     logger.info("Initializing quantum communication network")
-#                     self.quantum_network = create_mycelial_quantum_network(soul_spark.brain_structure)
-                    
-#                     quantum_state = self.quantum_network.get_network_state()
-#                     stage_metrics['quantum_network'] = quantum_state
-                    
-#                     logger.info(f"Quantum network created with {quantum_state['total_seeds']} seeds, "
-#                             f"{quantum_state['total_entanglements']} entanglements")
-                    
-#                 except Exception as e:
-#                     logger.warning(f"Failed to initialize quantum network: {e}")
-#                     stage_metrics['quantum_network'] = {'error': str(e)}
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Identity_Crystallization"))
-#                     visualize_soul_state(soul_spark, "Post_Identity_Crystallization", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"Post_Identity_Crystallization visualization failed: {vis_err}")
-
-#             display_stage_metrics("Identity Crystallization", stage_metrics)
-#             logger.info(f"Identity Crystallization Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"Identity Crystallization failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"Identity Crystallization failed: {e}") from e
-
-#     def run_birth_process(self, soul_spark: SoulSpark, show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         if not getattr(soul_spark, FLAG_IDENTITY_CRYSTALLIZED, False): raise ValueError("Identity not crystallized.")
-#         if not getattr(soul_spark, FLAG_READY_FOR_BIRTH, False): raise ValueError(f"Missing {FLAG_READY_FOR_BIRTH} flag.")
-
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Stage: Birth Process for {spark_id}...")
-#         self.active_souls[spark_id] = {'status': 'processing', 'current_stage': 'Birth Process', 'start_time': datetime.now().isoformat()}
-
-#         if self.visualization_enabled:
-#             if spark_id not in self.development_states: self.development_states[spark_id] = []
-#             try:
-#                 self.development_states[spark_id].append((soul_spark, "Pre_Birth"))
-#                 visualize_soul_state(soul_spark, "Pre_Birth", self.visual_save_dir, show=show_visuals)
-#             except Exception as vis_err: logger.warning(f"Pre_Birth visualization failed: {vis_err}")
-
-#         try:
-#             birth_kwargs = {
-#                 'intensity': kwargs.get('birth_intensity', BIRTH_INTENSITY_DEFAULT),
-#                 'mother_profile': kwargs.get('mother_profile') # Will be None if not in kwargs
-#             }
-#             # Create/get mother profile if not provided and module available
-#             if not birth_kwargs['mother_profile'] and MOTHER_RESONANCE_AVAILABLE:
-#                 try:
-#                     mother_resonance_data = create_mother_resonance_data()
-#                     birth_kwargs['mother_profile'] = {
-#                         'nurturing_capacity': mother_resonance_data.get('nurturing_capacity', 0.7),
-#                         'spiritual': mother_resonance_data.get('spiritual', {'connection': 0.6}),
-#                         'love_resonance': mother_resonance_data.get('love_resonance', 0.7),
-#                         'physical': mother_resonance_data.get('physical', {'health': 0.7}),
-#                         'emotional': mother_resonance_data.get('emotional', {'stability': 0.7})
-#                     }
-#                 except Exception as mother_err:
-#                     logger.warning(f"Failed to create mother resonance data: {mother_err}. Using defaults.")
-
-#             _, stage_metrics = perform_birth(soul_spark=soul_spark, **birth_kwargs)
-
-#             # Create final soul connection channels
-#             if (self.mycelial_initialized and hasattr(soul_spark, 'brain_structure') and 
-#                 hasattr(soul_spark, 'soul_attachment_position')):
-#                 try:
-#                     logger.info("Creating soul connection channels")
-                    
-#                     # Create dedicated soul connection channel
-#                     channel_metrics = create_soul_connection_channel(
-#                         soul_spark.brain_structure, 
-#                         soul_spark.soul_attachment_position
-#                     )
-#                     stage_metrics['soul_connection'] = channel_metrics
-                    
-#                     # Connect to limbic region for emotional integration
-#                     limbic_metrics = connect_soul_to_limbic_region(
-#                         soul_spark.brain_structure, 
-#                         soul_spark.soul_attachment_position
-#                     )
-#                     stage_metrics['limbic_connection'] = limbic_metrics
-                    
-#                     logger.info(f"Soul connection established with {channel_metrics['unique_cells']} channel cells, "
-#                             f"{limbic_metrics.get('emotional_centers', 0)} emotional centers")
-                    
-#                 except Exception as e:
-#                     logger.warning(f"Failed to create soul connection: {e}")
-#                     stage_metrics['soul_connection'] = {'error': str(e)}
-
-#             if self.visualization_enabled:
-#                 try:
-#                     self.development_states[spark_id].append((soul_spark, "Post_Birth"))
-#                     visualize_soul_state(soul_spark, "Post_Birth", self.visual_save_dir, show=show_visuals)
-#                 except Exception as vis_err: logger.warning(f"Post_Birth visualization failed: {vis_err}")
-
-#             display_stage_metrics("Birth Process", stage_metrics)
-#             logger.info(f"Birth Process Complete. S:{soul_spark.stability:.1f}, C:{soul_spark.coherence:.1f}")
-#             return soul_spark, stage_metrics
-#         except Exception as e:
-#             logger.error(f"Birth Process failed for {spark_id}: {e}", exc_info=True)
-#             self.active_souls[spark_id]['status'] = 'failed'; self.active_souls[spark_id]['error'] = str(e)
-#             raise RuntimeError(f"Birth Process failed: {e}") from e
-
-#     """
-#     NEW METHOD to add to the class:
-#     """
-#     def cleanup_mycelial_resources(self):
-#         """Clean up mycelial system resources."""
-#         try:
-#             if self.memory_fragment_system:
-#                 # Save memory fragments if needed
-#                 logger.info("Cleaning up memory fragment system")
-                
-#             if self.quantum_network:
-#                 # Save quantum network state if needed  
-#                 logger.info("Cleaning up quantum network")
-                
-#             self.mycelial_initialized = False
-#             logger.info("Mycelial resources cleaned up")
-            
-#         except Exception as e:
-#             logger.error(f"Error during mycelial cleanup: {e}")
-
-#     """
-#     COMPLETE cleanup_resources method replacement:
-#     """
-#     def cleanup_resources(self):
-#         """Cleans up any resources used by the controller."""
-#         try:
-#             self.cleanup_mycelial_resources()
-            
-#             self.active_souls.clear()
-#             if METRICS_AVAILABLE and hasattr(metrics, 'persist_metrics'):
-#                 metrics.persist_metrics()
-#             shutdown_time = datetime.now().isoformat()
-#             logger.info(f"Soul Completion Controller '{self.controller_id}' shutting down at {shutdown_time}")
-#             return True
-#         except Exception as e:
-#             logger.error(f"Error during controller cleanup: {e}", exc_info=True)
-#             return False
-    
-#     def create_final_reports(self, soul_spark: SoulSpark, save_path: Optional[str] = None) -> Dict[str, str]:
-#         """
-#         Creates comprehensive reports for the completed soul.
-        
-#         Args:
-#             soul_spark: The completed SoulSpark object
-#             save_path: Optional path to save reports (defaults to completed_souls dir)
-            
-#         Returns:
-#             Dict mapping report types to their file paths
-#         """
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Creating final reports for soul {spark_id}...")
-        
-#         if not save_path:
-#             save_path = os.path.join(DATA_DIR_BASE, "completed_souls", spark_id)
-        
-#         os.makedirs(save_path, exist_ok=True)
-#         report_paths = {}
-        
-#         # Generate comprehensive soul report
-#         if VISUALIZATION_ENABLED:
-#             try:
-#                 report_path = create_comprehensive_soul_report(
-#                     soul_spark, 
-#                     os.path.join(save_path, f"{spark_id}_comprehensive_report.html")
-#                 )
-#                 report_paths['comprehensive'] = report_path
-#                 logger.info(f"Created comprehensive soul report at {report_path}")
-#             except Exception as report_err:
-#                 logger.error(f"Failed to create comprehensive report: {report_err}")
-        
-#         # Save soul state JSON
-#         try:
-#             soul_data = soul_spark.to_dict()
-#             json_path = os.path.join(save_path, f"{spark_id}_state.json")
-#             with open(json_path, 'w') as f:
-#                 json.dump(soul_data, f, indent=2)
-#             report_paths['json'] = json_path
-#             logger.info(f"Saved soul state JSON to {json_path}")
-#         except Exception as json_err:
-#             logger.error(f"Failed to save soul state JSON: {json_err}")
-        
-#         # Create development timeline visualization
-#         if VISUALIZATION_ENABLED and spark_id in self.development_states:
-#             try:
-#                 timeline_path = os.path.join(save_path, f"{spark_id}_development_timeline.html")
-#                 # Create development timeline visualization with all states
-#                 visualize_state_comparison(
-#                     self.development_states[spark_id],
-#                     timeline_path,
-#                     show=False
-#                 )
-#                 report_paths['timeline'] = timeline_path
-#                 logger.info(f"Created development timeline at {timeline_path}")
-#             except Exception as timeline_err:
-#                 logger.error(f"Failed to create development timeline: {timeline_err}")
-        
-#         # Record metrics about final reports
-#         if METRICS_AVAILABLE:
-#             metrics.record_metrics(CONTROLLER_METRIC_CATEGORY, {
-#                 'action': 'create_final_reports',
-#                 'soul_id': spark_id,
-#                 'report_types': list(report_paths.keys()),
-#                 'report_paths': report_paths,
-#                 'success': bool(report_paths),
-#                 'timestamp': datetime.now().isoformat()
-#             })
-        
-#         return report_paths
-
-#     def run_complete_formation(self, soul_spark: SoulSpark, field_controller: Optional[FieldController] = None,
-#                               show_visuals: bool = False, **kwargs) -> Tuple[SoulSpark, Dict[str, Any]]:
-#         """
-#         Runs the complete soul formation process from Spark to Birth.
-        
-#         Args:
-#             soul_spark: The initial SoulSpark object
-#             field_controller: Optional field controller (uses self.field_controller if None)
-#             show_visuals: Whether to display visualizations
-#             **kwargs: Optional parameters for various stages
-            
-#         Returns:
-#             Tuple of (completed SoulSpark, complete metrics dictionary)
-#         """
-#         spark_id = getattr(soul_spark, 'spark_id', 'unknown_spark')
-#         logger.info(f"Starting complete formation for soul {spark_id}...")
-        
-#         # Record start time and set soul status
-#         start_time = datetime.now()
-#         self.active_souls[spark_id] = {
-#             'status': 'starting', 
-#             'start_time': start_time.isoformat()
-#         }
-        
-#         # Initialize metrics
-#         all_metrics = {
-#             'soul_id': spark_id,
-#             'start_time': start_time.isoformat(),
-#             'stages': {},
-#             'success': False
-#         }
-        
-#         # Use provided or internal field controller
-#         field_ctrl = field_controller or self.field_controller
-#         if not field_ctrl:
-#             raise ValueError("Field controller required for complete soul formation.")
-        
-#         try:
-#             # Run all stages in sequence
-#             try:
-#                 logger.info("STAGE 1: Spark Harmonization")
-#                 soul_spark, harmonization_metrics = self.run_spark_harmonization(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     harmonization_iterations=kwargs.get('harmonization_iterations', HARMONIZATION_ITERATIONS)
-#                 )
-#                 all_metrics['stages']['spark_harmonization'] = harmonization_metrics
-#             except Exception as e:
-#                 logger.error(f"Spark Harmonization failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 2: Guff Strengthening")
-#                 soul_spark, guff_metrics = self.run_guff_strengthening(
-#                     soul_spark, 
-#                     field_controller=field_ctrl,
-#                     duration=kwargs.get('guff_duration', GUFF_STRENGTHENING_DURATION),
-#                     show_visuals=show_visuals
-#                 )
-#                 all_metrics['stages']['guff_strengthening'] = guff_metrics
-#             except Exception as e:
-#                 logger.error(f"Guff Strengthening failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 3: Sephiroth Journey")
-#                 journey_duration = kwargs.get('journey_duration_per_sephirah', 2.0)
-#                 soul_spark, journey_metrics = self.run_sephiroth_journey(
-#                     soul_spark, 
-#                     field_controller=field_ctrl,
-#                     journey_duration_per_sephirah=journey_duration,
-#                     show_visuals=show_visuals
-#                 )
-#                 all_metrics['stages']['sephiroth_journey'] = journey_metrics
-#             except Exception as e:
-#                 logger.error(f"Sephiroth Journey failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 4: Creator Entanglement")
-#                 # Extract creator entanglement specific kwargs
-#                 ce_kwargs = {
-#                     'base_creator_frequency': kwargs.get('base_creator_frequency', 432.0),
-#                     'resonance_intensity': kwargs.get('resonance_intensity', 0.7),
-#                     'entanglement_duration': kwargs.get('entanglement_duration', 3.0),
-#                     'quantum_coherence_threshold': kwargs.get('quantum_coherence_threshold', 0.8)
-#                 }
-                
-#                 soul_spark, entanglement_metrics = perform_creator_entanglement(
-#                     soul_spark, 
-#                     kether_influencer, 
-#                     show_visuals=show_visuals, 
-#                     **ce_kwargs
-#                 )
-            
-#             # Save Creator Entanglement sensory data for soul echos processing
-#                 try:
-#                     if 'sensory_captures' in entanglement_metrics and entanglement_metrics['sensory_captures']:
-#                         ce_sensory_data_path = save_creator_entanglement_sensory_data(
-#                             soul_spark, entanglement_metrics['sensory_captures']
-#                         )
-#                         entanglement_metrics['sensory_data_saved'] = {
-#                             'path': ce_sensory_data_path,
-#                             'captures_count': len(entanglement_metrics['sensory_captures']),
-#                             'success': True
-#                         }
-#                         logger.info(f"Saved Creator Entanglement sensory data: {ce_sensory_data_path}")
-#                     else:
-#                         logger.warning("No Creator Entanglement sensory captures to save")
-#                         entanglement_metrics['sensory_data_saved'] = {
-#                             'captures_count': 0,
-#                             'success': False,
-#                             'reason': 'no_captures'
-#                         }
-                        
-#                 except Exception as save_err:
-#                     logger.error(f"Failed to save Creator Entanglement sensory data: {save_err}")
-#                     entanglement_metrics['sensory_data_saved'] = {
-#                         'error': str(save_err),
-#                         'success': False
-#                     }
-                
-#                 all_metrics['stages']['creator_entanglement'] = entanglement_metrics
-#             except Exception as e:
-#                 logger.error(f"Creator Entanglement failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 5: Harmonic Strengthening")
-#                 # Extract harmonic strengthening specific kwargs
-#                 hs_kwargs = {
-#                     'harmony_intensity': kwargs.get('harmony_intensity', HARMONIC_STRENGTHENING_INTENSITY_DEFAULT),
-#                     'harmony_duration_factor': kwargs.get('harmony_duration_factor', HARMONIC_STRENGTHENING_DURATION_FACTOR_DEFAULT)
-#                 }
-#                 soul_spark, harmonic_metrics = self.run_harmonic_strengthening(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     **hs_kwargs
-#                 )
-#                 all_metrics['stages']['harmonic_strengthening'] = harmonic_metrics
-#             except Exception as e:
-#                 logger.error(f"Harmonic Strengthening failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 6: Life Cord Formation")
-#                 # Extract life cord specific kwargs
-#                 lc_kwargs = {
-#                     'intensity': kwargs.get('life_cord_intensity', 0.7),
-#                     'complexity': kwargs.get('cord_complexity', LIFE_CORD_COMPLEXITY_DEFAULT)
-#                 }
-#                 soul_spark, cord_metrics = self.run_life_cord_formation(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     **lc_kwargs
-#                 )
-#                 all_metrics['stages']['life_cord_formation'] = cord_metrics
-#             except Exception as e:
-#                 logger.error(f"Life Cord Formation failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 7: Earth Harmonization")
-#                 # Extract earth harmonization specific kwargs
-#                 eh_kwargs = {
-#                     'schumann_intensity': kwargs.get('schumann_intensity', HARMONY_SCHUMANN_INTENSITY),
-#                     'core_intensity': kwargs.get('core_intensity', HARMONY_CORE_INTENSITY)
-#                 }
-#                 soul_spark, earth_metrics = self.run_earth_harmonization(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     **eh_kwargs
-#                 )
-#                 all_metrics['stages']['earth_harmonization'] = earth_metrics
-#             except Exception as e:
-#                 logger.error(f"Earth Harmonization failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 8: Identity Crystallization")
-#                 # Extract identity crystallization specific kwargs
-#                 ic_kwargs = {
-#                     'train_cycles': kwargs.get('train_cycles', 7),
-#                     'entrainment_bpm': kwargs.get('entrainment_bpm', 72.0),
-#                     'entrainment_duration': kwargs.get('entrainment_duration', 120.0),
-#                     'love_cycles': kwargs.get('love_cycles', 5),
-#                     'geometry_stages': kwargs.get('geometry_stages', 2),
-#                     'crystallization_threshold': kwargs.get('crystallization_threshold', IDENTITY_CRYSTALLIZATION_THRESHOLD)
-#                 }
-#                 soul_spark, identity_metrics = self.run_identity_crystallization(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     **ic_kwargs
-#                 )
-#                 all_metrics['stages']['identity_crystallization'] = identity_metrics
-#             except Exception as e:
-#                 logger.error(f"Identity Crystallization failed: {e}")
-#                 raise
-
-#             try:
-#                 logger.info("STAGE 9: Birth Process")
-#                 # Extract birth process specific kwargs
-#                 birth_kwargs = {
-#                     'birth_intensity': kwargs.get('birth_intensity', BIRTH_INTENSITY_DEFAULT),
-#                     'mother_profile': kwargs.get('mother_profile')
-#                 }
-#                 soul_spark, birth_metrics = self.run_birth_process(
-#                     soul_spark, 
-#                     show_visuals=show_visuals,
-#                     **birth_kwargs
-#                 )
-#                 all_metrics['stages']['birth_process'] = birth_metrics
-#             except Exception as e:
-#                 logger.error(f"Birth Process failed: {e}")
-#                 raise
-
-#             # Create comprehensive final reports
-#             try:
-#                 logger.info("Creating Final Reports")
-#                 report_paths = self.create_final_reports(soul_spark)
-#                 all_metrics['report_paths'] = report_paths
-#             except Exception as e:
-#                 logger.error(f"Final Reports generation failed: {e}")
-#                 # Continue since reports are optional
-
-#             # Completion successful
-#             end_time = datetime.now()
-#             all_metrics['end_time'] = end_time.isoformat()
-#             all_metrics['duration_seconds'] = (end_time - start_time).total_seconds()
-#             all_metrics['success'] = True
-            
-#             self.active_souls[spark_id] = {
-#                 'status': 'completed',
-#                 'start_time': start_time.isoformat(),
-#                 'end_time': end_time.isoformat(),
-#                 'duration_seconds': (end_time - start_time).total_seconds()
-#             }
-            
-#             # Record final metrics
-#             if METRICS_AVAILABLE:
-#                 metrics.record_metrics(CONTROLLER_METRIC_CATEGORY, {
-#                     'action': 'complete_formation',
-#                     'soul_id': spark_id,
-#                     'success': True,
-#                     'start_time': start_time.isoformat(),
-#                     'end_time': end_time.isoformat(),
-#                     'duration_seconds': (end_time - start_time).total_seconds(),
-#                     'stages_completed': list(all_metrics['stages'].keys())
-#                 })
-            
-#             logger.info(f"Complete formation SUCCESSFUL for soul {spark_id} in {(end_time - start_time).total_seconds():.1f}s")
-#             return soul_spark, all_metrics
-            
-#         except Exception as e:
-#             # Record failure
-#             end_time = datetime.now()
-#             all_metrics['end_time'] = end_time.isoformat()
-#             all_metrics['duration_seconds'] = (end_time - start_time).total_seconds()
-#             all_metrics['error'] = str(e)
-#             all_metrics['success'] = False
-            
-#             self.active_souls[spark_id] = {
-#                 'status': 'failed',
-#                 'error': str(e),
-#                 'start_time': start_time.isoformat(),
-#                 'end_time': end_time.isoformat(),
-#                 'duration_seconds': (end_time - start_time).total_seconds()
-#             }
-            
-#             # Record failure metrics
-#             if METRICS_AVAILABLE:
-#                 metrics.record_metrics(CONTROLLER_METRIC_CATEGORY, {
-#                     'action': 'complete_formation',
-#                     'soul_id': spark_id,
-#                     'success': False,
-#                     'error': str(e),
-#                     'start_time': start_time.isoformat(),
-#                     'end_time': end_time.isoformat(),
-#                     'duration_seconds': (end_time - start_time).total_seconds(),
-#                     'stages_completed': list(all_metrics['stages'].keys())
-#                 })
-            
-#             logger.error(f"Complete formation FAILED for soul {spark_id}: {e}")
-#             raise RuntimeError(f"Complete soul formation failed: {e}") from e
-
-#     def get_active_souls_status(self) -> Dict[str, Dict[str, Any]]:
-#         """Returns the status of all active souls."""
-#         return self.active_souls.copy()
-
-#     def get_development_timeline(self, soul_id: str) -> List[Tuple[str, str]]:
-#         """Returns the development timeline for a specific soul."""
-#         if soul_id not in self.development_states:
-#             return []
-#         return [(getattr(soul, 'spark_id', 'unknown'), stage) 
-#                 for soul, stage in self.development_states[soul_id]]              
